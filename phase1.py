@@ -158,8 +158,6 @@ print depth_init.shape
 # xgrid = np.vstack([x1.reshape(x1.size), x2.reshape(x2.size)]).T
 # depth_init=depth_init.flatten()
 
-
-
 #Plot the initial data
 fig = plt.figure(figsize=(16, 4))
 ax = fig.add_subplot(131, projection='3d')
