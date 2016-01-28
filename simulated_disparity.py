@@ -3,14 +3,15 @@ import cv2, os, sys
 import matplotlib.pyplot as plt
 from scipy.interpolate import RegularGridInterpolator as RGI
 from scipy.io import savemat
+from scipy.misc import imresize
+from observations import _observationModel
 
 LEFT = '/scene1.001.png'
 RIGHT = '/scene1.002.png'
 stereo = cv2.StereoSGBM(0, 256, 11, P1=100, P2=200, disp12MaxDiff=181, preFilterCap=4,\
         uniquenessRatio=5, speckleWindowSize=150, speckleRange=16, fullDP=True)
 folders = [x[0] for x in os.walk('image_pairs')]
-IMAGE_SIZE = 500
-
+IMG_SIZE = 500
 
 # 3x3 Projective Transformation
 def computeH(im1_pts, im2_pts):
@@ -43,6 +44,7 @@ def computeH(im1_pts, im2_pts):
     H = h.reshape((3,3))
 
     return H
+
 def interp_function(image):
     # creating interpolation functions
     x = np.array(range(image.shape[0]))
@@ -50,24 +52,23 @@ def interp_function(image):
     # R,G,B interpolators
     return RGI((x, y), image, bounds_error=False, fill_value=0)
 
-# Crops the center plane we want, rectifies as if we are looking at it from above
-def rectify(image):
+# Crops the center plane we want, reshapes into IMG_SIZExIMG_SIZE matrix
+def project(image):
         im1_pts = np.array([[210, 630], [300, 210], [770, 210], [870, 630]])
         im2_pts = np.array([[0, 499], [0, 0], [499, 0], [499, 499]])
 
         H = computeH(im1_pts, im2_pts)
 
-        rectified = np.zeros((IMAGE_SIZE, IMAGE_SIZE))
-        rr, cc = np.where(rectified == 0)
+        projection = np.zeros((IMG_SIZE, IMG_SIZE))
+        rr, cc = np.where(projection == 0)
         indices = np.array([cc, rr, np.ones(len(rr))]).reshape((3, len(rr)))
         indices_to_obtain = np.dot(H, indices)
         indices_to_obtain[0] /= indices_to_obtain[2]
         indices_to_obtain[1] /= indices_to_obtain[2]
         indices_to_obtain = np.array([indices_to_obtain[1], indices_to_obtain[0]])
         interpolator = interp_function(image)
-        rectified = interpolator(indices_to_obtain.T).reshape(rectified.shape)
-        return rectified
-
+        projection = interpolator(indices_to_obtain.T).reshape(projection.shape)
+        return projection
 
 def getDisparityMap(folder):
     left = cv2.imread(folder + LEFT, 1)
@@ -77,168 +78,157 @@ def getDisparityMap(folder):
     disparity = stereo.compute(left, right)
     return disparity
 
-
 def getDefaultBelief():
-    belief = np.ones((IMAGE_SIZE, IMAGE_SIZE))
-    a = (np.ones(IMAGE_SIZE)*0.997)**range(IMAGE_SIZE)
+    belief = np.ones((IMG_SIZE, IMG_SIZE))
+    a = (np.ones(IMG_SIZE)*0.997)**range(IMG_SIZE)
     return (belief*a).T[::-1]
 
+def compute_depth(F, T, disparity):
+    return F*T/disparity
 
+def compute_topdown_height(depth, size, x, y):
+    a1 = np.ones((IMG_SIZE,IMG_SIZE))
+    for n in range(IMG_SIZE):
+        a1[n] = x + (IMG_SIZE-1-n)*size/(IMG_SIZE-1)
+    a3 = y
+    theta2 = np.arctan(a1/a3)
+    theta1 = np.pi/2 - theta2
+    x1 = depth * np.sin(theta1)
+    x1 = y - x1
+    return x1
 
+def getObservationModel(planeName):
+    model = np.array(_observationModel[planeName])
+    # print("model: " + str(model))
+    # print("shape: " + str(len(model)) + " " + str(len(model[0])))
+    if model is None:
+        return None
+    # model is 21x21 points, we want the image to be 500x500
+    obs = cv2.resize(model, (IMG_SIZE,IMG_SIZE))#, interpolation=cv2.INTER_LANCZOS4)
+    # print("obs: " + str(obs))
+    # print("shape: " + str(obs.shape))
+    return obs
 
+# main loop
 for i, folder in enumerate(folders[1:]):
-    disparity = getDisparityMap(folder)/16
-    # print(disparity.dtype)
-    # c_x = len(disparity[0])/2
-    # c_xp = c_x
-    # c_y = len(disparity)/2
-    # f = 35
-    # T_x = 14
-    # Q = np.array([[1, 0, 0, -c_x], [0, 1, 0, -c_y], [0, 0, 0, f], [0, 0, -1.0/T_x, (c_x-c_xp)/T_x]])
-    # threeD = cv2.reprojectImageTo3D(disparity, Q)
-    # print(threeD)
-    # plt.imsave(folder+ "/disparity.mat", disparity)
+    if folder == 'image_pairs/exp' or folder == 'image_pairs/halved' or folder == 'image_pairs/plain_random' or folder == 'image_pairs/squaredDiffs':
+        continue
+    print("folder: " + str(folder))
+    disparity = getDisparityMap(folder).astype(np.float32)/16
+    print(disparity.dtype)
     
-    # plt.imsave(folder+ "/rectified.mat", rectified)
+    # plt.imsave(folder+ "/disparity.mat", disparity)
+    # plt.imsave(folder+ "/rectified.mat", rectified) #rectified is wrong word?
     # belief = getDefaultBelief()
     # plt.imsave(folder+ "/belief.png", np.dstack([belief, belief, belief]))
 
 
-
-
-    print("Max disp: " + str(np.max(disparity)))
-    print("Min disp: " + str(np.min(disparity)))
-    # print("Changed zeros to 1e10")
-    print(disparity[200:600, 350:750])
-    disparity2 = disparity.astype(np.float32) #+ 17
-    disparity2[disparity2 < 10] = 35
-    print(disparity2[200:600, 350:750])
-    print("Max disp: " + str(np.max(disparity2)))
-    print("Min disp: " + str(np.min(disparity2)))
-
-    # for i in range(len(disparity2)):
-    #     for j in range(len(disparity2[0])):
-    #         if disparity2[i][j] <= 0:
-    #             disparity2[i][j] = 1
-    rectified = rectify(disparity2)
-    # rectified[rectified < 200] = 600
-    print("max rect: " + str(rectified.max()))
-    print("min rect: " + str(rectified.min()))
-    # plt.hist(rectified.flatten())
+    projected_disp = project(disparity)
+    projected_disp = projected_disp.astype(np.float32)
+    print(projected_disp.dtype)
+    projected_disp_new = cv2.medianBlur(projected_disp, 5)
+    print("diff: " + str(np.sum(np.abs(projected_disp_new - projected_disp))))
+    projected_disp = projected_disp_new
+    # plt.hist(projected_disp.flatten())
+    # values = sorted(projected_disp.flatten())
+    # print("1st percentile: " + str(values[int(0.01*len(values))]))
     # plt.show()
-    print(np.sum(rectified[0])/500)
-    print(np.sum(rectified[499]/500))
 
-    # print("Max disp2: " + str(np.max(disparity2)))
-    # print("Min disp2: " + str(np.min(disparity2)))
-    FT = 1200*20#*(35/2) #995.603 #1200 more closely matches geometry
-    depth = FT / rectified
-    print("depth first row avg: " + str(np.sum(depth[0])/500))
-    print("max depth first row: " + str(np.max(depth[0])))
-    print("min depth first row: " + str(np.min(depth[0])))
-    print("max depth last row: " + str(np.max(depth[499])))
-    print("min depth last row: " + str(np.min(depth[499])))
-    print("depth last row avg: " + str(np.sum(depth[499])/500))
+    values = sorted(projected_disp.flatten())
+    floor = values[int(0.01*len(values))]
+    projected_disp[projected_disp < floor] = floor
+    ceil = values[int(0.99*len(values))]
+    projected_disp[projected_disp > ceil] = ceil
+    projected_disp[projected_disp < 0] = 0
 
-    depth_display = depth.copy()
-    depth_display[depth_display > 1] = 1 #1
+    avg_disp = np.sum(projected_disp)/np.square(IMG_SIZE)
+    projected_disp[projected_disp < 1] = avg_disp
+    print("min disp: " + str(np.min(projected_disp)))
+    print("max disp: " + str(np.max(projected_disp)))
+    # plt.hist(projected_disp.flatten())
+    # plt.show()
 
-    # print("Max depth: " + str(np.max(depth)))
-    # print("Min depth: " + str(np.min(depth)))
+    F = 1200 #995.603 is the value we get from the equation, but 120 more closely matches geometric model & ground truth
+    T = 20
+    depth = compute_depth(F, T, projected_disp)
+    print("min depth: " + str(np.min(depth)))
+    print("max depth: " + str(np.max(depth)))
+    # plt.hist(depth.flatten())
+    # plt.show()
     # plt.imsave(folder + "/depth.mat", depth)
-    rect_depth = rectify(depth)
-    rect_depth_display = rectify(depth_display)
-    rect_depth_display[rect_depth_display > 1] = 1
-    rect_depth_display[rect_depth_display > 0.7] = 0.7
-    rect_depth_display[rect_depth_display < 0.45] = 0.45
 
-    rect_depth_display = depth
-    # plt.imsave(folder + "/rectified_depth.mat", rectified_depth)
-    
-    # print("disparity")
-    # print(disparity)
-    # print('disparity2')
-    # print(disparity2)
-    # print('depth')
-    # print(depth)
-    # print('rectified')
-    # print(rectified)
-    # print('min rect: ' + str(np.min(rectified)))
-    # print('max rect: ' + str(np.max(rectified)))
-    # print('rectified_depth')
-    # print(rect_depth)
-    # print('min rectd: ' + str(np.min(rect_depth)))
-    # print('max rectd: ' + str(np.max(rect_depth)))
-    # print("disparity2 shape: " + str(disparity2.shape))
-    # print("rectified shape: " + str(rectified.shape)) 
-    # print("depth shape: " + str(depth.shape))
-    # print("rect_d shape: " + str(rect_depth.shape))
-    # print('min rectdd: ' + str(np.min(rect_depth_display)))
-    # print('max rectdd: ' + str(np.max(rect_depth_display)))
-    # print(rect_depth_display)
-    # print(np.sum(rect_depth_display[0]))
-    # print(np.sum(rect_depth_display[499]))
-    a1 = np.ones((500,500))
-    for n in range(500):
-        a1[n] = 250 + (499-n)*200.0/499
-    # print('a1: ' + str(a1))
-    a3 = 300
-    theta2 = np.arctan(a1/a3)
-    # print('theta2: ' + str(theta2))
-    theta1 = np.pi/2 - theta2
-    # print('theta1: ' + str(theta1))
-    x1 = rect_depth_display * np.sin(theta1)
-    x1 = 300 - x1
-    # x1[x1 < 25] = 25 (for F=995.603)
-    x1[x1 < -20] = -20 # for (F=1200). actually doesn't work that well
-    print('max x1: ' + str(np.max(x1)))
-    print('min x1: ' + str(np.min(x1)))
+    size = 200.0
+    x = 250
+    y = 300
+    x1 = compute_topdown_height(depth, size, x, y)
+    values = sorted(x1.flatten())
+    floor = values[int(0.01*len(values))]
+    ceil = values[int(0.99*len(values))]
+    x1[x1 < floor] = floor
+    x1[x1 > ceil] = ceil
+    # print(floor)
     # plt.hist(x1.flatten())
     # plt.show()
-    x2 = a1 * np.tan(theta1) #okay this makes sense. x1&x3 are different but it's okay I think.
-    # print('a1: ' + str(a1))
-    # print('theta1: ' + str(theta1))
-    # print('rectdepthdisplay: ' + str(rect_depth_display))
-    # print('rectifieddisp: ' + str(rectified))  
-    # print(np.square(rect_depth_display) - np.square(a1))
-    x3 = np.sqrt(np.square(rect_depth_display) - np.square(a1))
+    print("a")
+    print(x1.dtype)
+    print("b")
+    x1_median = x1.astype(np.float32)
+    num_iter1 = 5
+    num_iter2 = 25
+    kernel_size = 5
+    for _ in range(num_iter1):
+    	x1_median = cv2.medianBlur(x1_median,kernel_size)
+    x1_median2 = x1_median.astype(np.float32)
+    for _ in range(num_iter2-num_iter1):
+    	x1_median2 = cv2.medianBlur(x1_median2,kernel_size)
 
-    colormap = 'seismic'
+
+
+    colormap = 'Blues'
     plt.figure(figsize = (20,8))
-    plots = [rect_depth_display, x1, x2, x3]#disparity2, rectified, depth_display, rect_depth_display, x1, x2, x3]
-    numplots = len(plots)
-    start = 101 + numplots*10
-    
-    for i in range(numplots):
-        plt.subplot(start+i)
-        plt.imshow(plots[i], cmap=colormap)
-    
-    print('x1: ' + str(x1))
-    print('x2: ' + str(x2))
-    print('x3: ' + str(x3))
-    # print('rd: ' + str(rect_depth))
-    # plt.show()
-    # let's do gradients w/ steps of 10
 
-    x1_smoothed = cv2.GaussianBlur(x1, (43,43), 0)
+    g_kernel_size1 = 43
+    g_kernel_size2 = 25
+    x1_smoothed = cv2.GaussianBlur(x1_median2, (g_kernel_size1, g_kernel_size1), 0)
+    x1_smoothed2 = cv2.GaussianBlur(x1_median2, (g_kernel_size2, g_kernel_size2), 0)
+    # x1_smoothed[:470, 30:] = x1_smoothed[30:, :470] #OMG the problem is that the "ground truth" we're reading is rotated by 180*...
+
+    
+    avg_x1 = np.sum(x1_smoothed)/np.square(IMG_SIZE)
+    print("avg_x1: " + str(avg_x1))
+    obs = getObservationModel(folder)*10 #convert to mm
+    if folder == 'image_pairs/sinxy1':
+    	obs = np.rot90(obs,1) #correct for sinxy1, wrong for the smoothed images
+    else:
+    	obs = np.fliplr(obs)
+    avg_obs = np.sum(obs)/np.square(IMG_SIZE)
+    print("avg_obs: " + str(avg_obs))
+    x1_smoothed = x1_smoothed - (avg_x1-avg_obs) # this is where I center the prediction around the obs...sketch LOL.
+    print("new avg_x1: " + str(np.sum(x1_smoothed)/np.square(IMG_SIZE)))
+
 
     h = 5
-    x1_padded = np.zeros((500+2*h,500+2*h))
+    x1_padded = np.zeros((IMG_SIZE+2*h,IMG_SIZE+2*h))
     x1_padded[h:len(x1_padded)-h, h:len(x1_padded)-h] = x1_smoothed
-    xgrad = np.zeros((500,500))
-    ygrad = np.zeros((500,500))
+    xgrad = np.zeros((IMG_SIZE,IMG_SIZE))
+    ygrad = np.zeros((IMG_SIZE,IMG_SIZE))
 
-
-    for i in range(500):
-        for j in range(500):
+    for i in range(IMG_SIZE):
+        for j in range(IMG_SIZE):
             ygrad[i][j] = (x1_padded[i+h+h][j+h] - x1_padded[i-h+h][j+h])/(2*h)
             xgrad[i][j] = (x1_padded[i+h][j+h+h] - x1_padded[i+h][j-h+h])/(2*h)
-    print("xgrad: " + str(xgrad))
-    print("ygrad: " + str(ygrad))
-    print("xgrad shape: " + str(xgrad.shape))
-    print("ygrad shape: " + str(ygrad.shape))
-    print("x1: " + str(x1))
-    print("x1_smoothed: " + str(x1_smoothed))
+
+    grad = np.sqrt(np.square(xgrad) + np.square(ygrad))
+    
+    errors = np.abs(obs - x1_smoothed)
+    sse = np.sum(np.square(obs - x1_smoothed))
+    mae = np.sum(np.abs(obs - x1_smoothed))/np.square(IMG_SIZE)
+    print(obs)
+    print(x1_smoothed)
+    print("SSE: " + str(sse))
+    print("MSE: " + str(sse/np.square(IMG_SIZE)))
+    print("mean absolute error: " + str(mae))
+    # for finding appropriate size of gaussian kernel
     # plots = []
     # for i in range(10):
     #     plots.append(cv2.GaussianBlur(x1, (10*i + 3,10*i + 3), 0))
@@ -248,17 +238,114 @@ for i, folder in enumerate(folders[1:]):
     #     plt.imshow(plots[j], cmap=colormap)
     # plt.show()
 
-    plt.subplot(141)
-    plt.imshow(xgrad, cmap=colormap)
-    plt.subplot(142)
-    plt.imshow(ygrad, cmap=colormap)
-    plt.subplot(143)
+    # obs = getObservationModel(folder)
+    # print("folder: " + str(folder))
+    # print("obs: " + str(obs))
+    # print("obs type: " + str(obs.shape))
+
+
+    print("min disp: " + str(np.min(projected_disp)))
+    print("max disp: " + str(np.max(projected_disp)))
+
+    left = cv2.imread(folder + LEFT, 1)
+    right = cv2.imread(folder + RIGHT, 1)
+
+    a1=plt.subplot(3,4,1)
+    a1.set_title("Right image")
+    plt.imshow(right)
+    plt.colorbar()
+    a2=plt.subplot(3,4,2)
+    a2.set_title("Projected disparity")
+    plt.imshow(projected_disp, cmap=colormap)
+    plt.colorbar()
+    a3=plt.subplot(3,4,3)
+    a3.set_title("Projected depth map")
+    plt.imshow(depth, cmap=colormap)
+    plt.colorbar()
+    a4=plt.subplot(3,4,4)
+    a4.set_title("Topdown height map")
     plt.imshow(x1, cmap=colormap)
-    plt.subplot(144)
+    plt.colorbar()
+
+    a5=plt.subplot(3,4,8)
+    a5.set_title("Median filtered topdown height map " + str(num_iter2))
+    plt.imshow(x1_median2, cmap=colormap)
+    plt.colorbar()
+    a6=plt.subplot(3,4,7)
+    a6.set_title("Gaussian smoothed topdown height map ")
     plt.imshow(x1_smoothed, cmap=colormap)
+    plt.colorbar()
+    a7=plt.subplot(3,4,6)
+    a7.set_title("Gaussian smoothed topdown height map ")
+    plt.imshow(x1_smoothed, cmap=colormap)
+    plt.colorbar()
+
+    a8=plt.subplot(3,4,5)
+    a8.set_title("Gradient norms")
+    plt.imshow(grad, cmap=colormap)
+    plt.colorbar()
+    a9=plt.subplot(3,4,9)
+    a9.set_title("Errors")
+    plt.imshow(errors, cmap=colormap)
+    plt.colorbar()
+    a10=plt.subplot(3,4,10)
+    a10.set_title("Ground truth")
+    plt.imshow(obs, cmap=colormap)
+    plt.colorbar()
+
+
     plt.show()
-    # print("x1")
-    # for i in range(len(x1)):
-    #     print("i: " + str(x1[i]))
-    #     a=raw_input("blahwtfisthis: ")
     savemat('depth_grad_maps.mat', {'depth':x1, 'ygrad':ygrad, 'xgrad':xgrad})
+
+    #change colormap to a sequential one
+    #plot norm of gradients
+    #calc sum of squared errors
+    #plot errors for each point
+
+    # should we translate? subtracting by the difference in mean y value universally helps, while translating diagonally helps
+    # the sinxy1 case by a lot but slightly decreases performance for the other 2 surfaces
+    # omg the thing was rotated...rishi pls
+    # need to unsmooth edges. oh the gaussian blurring function is not even written by me...
+
+
+
+    # why does maya return a 21x21...can't it just return 500x500?
+    # looks like removing the "outliers" isn't going to be so easy...because our outliers aren't real salt/pepper noise (it's not single pixels)
+    # and also we're dealing with floats. jk floats is fine o.o why did I think they're not fine?
+    # should we downsample or convert to ints first? or use multiple applications of median filter
+    # or just use erosion&dilation instead. jk erosion/dilation is just median filter but using max/min instead...
+
+    #install maya
+    #random field, gaussian process
+    #mrf smoothing w/ separate gaussians
+
+    #gaussian process, gpy
+    #some sort of uncertainty estimate related to camera parameters/depth. just do naive thing and relate it to depth? clean.
+    #some thing on friday o.o; lauren coming back on thursday
+
+    #so turns out my function was incorrectly named compute_topdown_depth when inside the function I already converted depth map to height map
+    #(so that it's in the same frame as the ground truth)
+    #also turns out the given ground truth is rotated 90deg relative to the picture, not 180. lol. notice that 2 sides of the ground truth are flat
+    #explain the errors in going from normal depth map to topdown depth map. what?
+
+
+    #group interviews man
+    #lol I'm reading for 170
+    #lol was any of those ppl the 11 A+ one? and lol @ the first guy just blabbing on and on...
+    #ya how to do research animesh??
+
+    #lol bengio and 227 and andrew ng and fei-fei/cnn stuff sigh. lol can I even get into 281a? maybe I should just take that
+    #as masters student. then I don't have to take the placement test LOL. 126, 168, 162, 127?, math classes next year.
+    #graded units??
+
+ #    SSE: 7068517.00533
+	# MSE: 28.2740680213
+	# mean absolute error: 4.23565557687
+
+
+# wait so if I use 995.603, after the centering it's lower. but before centering the values are completely wrong? weird.
+# SSE: 5961775.37316
+# MSE: 23.8471014927
+# mean absolute error: 3.90050820834
+# min disp: 45.0947
+# max disp: 64.1791
