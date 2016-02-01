@@ -6,8 +6,15 @@ from scipy.io import savemat
 
 LEFT = '/scene1.001.png'
 RIGHT = '/scene1.002.png'
-stereo = cv2.StereoSGBM(0, 256, 11, P1=100, P2=200, disp12MaxDiff=181, preFilterCap=4,\
+try:
+    stereo = cv2.StereoSGBM(0, 256, 11, P1=100, P2=200, disp12MaxDiff=181, preFilterCap=4,\
         uniquenessRatio=5, speckleWindowSize=150, speckleRange=16, fullDP=True)
+except AttributeError:
+    stereo = cv2.StereoSGBM_create(0, 256, 11, P1=100, P2=200, disp12MaxDiff=181,
+                        preFilterCap=4, uniquenessRatio=1,
+                        speckleWindowSize=150, speckleRange=16)
+
+                                   
 folders = [x[0] for x in os.walk('image_pairs')]
 IMAGE_SIZE = 500
 
