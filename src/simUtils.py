@@ -37,6 +37,18 @@ def GaussianSurface(xx, yy):
 
         return z
 
+def gaussian_tumor(xx,yy):
+        mu =[.1,.1]
+        var = [.3,.3]
+      
+        z= np.exp(-((xx - mu[0])**2/( 2*var[0]**2)) -
+              ((yy - mu[1])**2/(2*var[1]**2))) 
+           
+        return z
+
+def uniform_pdf(X):
+        return np.ones(X.shape)
+
 def SixhumpcamelSurface(xx,yy):
         """
         test function for simulation: simulated surface from GPyopt
@@ -105,6 +117,29 @@ def SimulateStereoMeas(surface, rangeX,
 	return xx, yy, z
 
 def SimulateProbeMeas(surface, sample_locations):
+	"""
+        Simulate measurements from palpation (tapping mode) for the test functions above
+        inputs:	
+           *surface: a function defining a test surface
+           *locations: list of points [[x1,y1],[x2,y2]]
+        outputs:
+           *xx,yy, z, matrices
+
+        This functions would be replaced by experiment
+        """
+
+        # unpack
+        xx, yy = sample_locations.T
+
+        # this is a simulated measurement, add noise
+        sensornoise = .001
+        
+        z = surface(xx,yy)
+        z = z + sensornoise*np.random.randn(z.shape[0])
+
+	return xx, yy, z
+
+def SimulateStiffnessMeas(surface, sample_locations):
 	"""
         Simulate measurements from palpation (tapping mode) for the test functions above
         inputs:	

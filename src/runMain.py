@@ -14,11 +14,20 @@ from matplotlib import cm
 from simUtils import *
 from utils import *
 from GaussianProcess import *
-
+import ErgodicPlanner
 
 def max_uncertainty(GPdata,numpoints=1):
     # return the x,y locations of the "numpoints" largest uncertainty values
     ind = np.argpartition(GPdata[3].flatten(), -numpoints)[-numpoints:]
+    newpointx=GPdata[0].flatten()[ind]
+    newpointy=GPdata[1].flatten()[ind]
+    
+    return np.array([newpointx,newpointy]).T
+
+def max_uncertainty_IS(GPdata,numpoints=1):
+    # return the x,y locations of the "numpoints" largest uncertainty values
+    GPISdat=implicitsurface(GPdata)
+    ind = np.argpartition(GPISdat[2].flatten(), -numpoints)[-numpoints:]
     newpointx=GPdata[0].flatten()[ind]
     newpointy=GPdata[1].flatten()[ind]
     
@@ -29,16 +38,20 @@ def max_MI(GPdata,numpoints=1):
     pass
 
 
-
+##############################
 # set boundary
 rangeX = [-2,2]
 rangeY = [-1,1]
 
 # choose surface for simulation
-surface=GaussianSurface
+surface=SixhumpcamelSurface
 
+
+##############################
+# Phase 1
+###############################
 # initialize measurement from stereo data
-meas = getSimulatedStereoMeas(GaussianSurface,rangeX=rangeX,rangeY=rangeY)
+meas = getSimulatedStereoMeas(surface,rangeX=rangeX,rangeY=rangeY)
 
 
 # add termination criterion
@@ -51,7 +64,7 @@ while i<10:
     # Predections based on current GP estimate
     GPdata=eval_GP(gpmodel, rangeX, rangeY)
     
-    #plot_belief(GPdata)
+    # plot_belief(GPdata)
 
     # choose points to probe based on max uncertainty
     next_samples_points=max_uncertainty(GPdata,numpoints=2)
@@ -66,45 +79,7 @@ while i<10:
 
 plot_error(surface, gpmodel, rangeX, rangeY)
 
-# plot_belief(GPdata)
+##############################
+# Phase 2
+###############################
 
-# def estimate(verbose=False):
-#     """
-#     Input Options Description
-#     """
-
-#     # Initialize Belief -- this is akin to gettig camera estimate
-#     # x,y vectors, xx,yy,z- is a matrix
-#     x, y, xx, yy, z = getMap(modality=1)
-
-#     if verbose:
-#         plotBelief(xx, yy, z)
-
-#     # add noise and normalize to get belief
-#     z += 0.05 * np.random.standard_normal(z.shape)
-#     if verbose:
-#         plotBelief(xx, yy, z)
-
-#     # Calculate FIM
-
-#     # calculate EID
-
-#     # Planning Trajectory
-
-#     # greedy Local
-#     # greedy FI
-
-#     # tEID -- refer the paper.
-
-#     # Collect Observations- simulate
-#     # Sensor simulator
-#     h = sensorHeight(z, probePos)
-#     # Belief Update
-
-#     # update information  - Fisher information?
-
-#     # To keep all the plots made during the execution.
-#     plt.show()
-
-# if __name__ == "__main__":
-#     planning(verbose=True)
