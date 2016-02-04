@@ -6,6 +6,17 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 from utils import *
 
+
+def sigmoid(xProbe, xEdge, k=2, base=.02, maxs=2):
+        #k: slope-like
+        #k: baseline/offset: defliction w/0 tumor
+        # maxs: deflection with tumor
+        # xedge: zero crossing. in characterizing the meas model, we also probably have an offsert from edge to zero crossing 
+     y = 1 / (1/float(maxs) + np.exp(-k*(xProbe-xEdge)))+base
+     return y
+
+
+
 def getActualHeight (pos, modality=0):
 	"""
 	Get actual surface height at a point 'pos'
@@ -42,7 +53,7 @@ def gaussian_tumor(xx,yy):
         var = [.3,.3]
       
         z= np.exp(-((xx - mu[0])**2/( 2*var[0]**2)) -
-              ((yy - mu[1])**2/(2*var[1]**2))) 
+               ((yy - mu[1])**2/(2*var[1]**2))) 
            
         return z
 
@@ -138,6 +149,10 @@ def SimulateProbeMeas(surface, sample_locations):
         z = z + sensornoise*np.random.randn(z.shape[0])
 
 	return xx, yy, z
+
+x = np.arange(-10, 10, 0.2)
+sig = sigmoid(x,0)
+plt.plot(x, sig, linewidth=3.0)
 
 def SimulateStiffnessMeas(surface, sample_locations):
 	"""
