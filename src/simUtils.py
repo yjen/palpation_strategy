@@ -10,24 +10,83 @@ from matplotlib import _cntr as cntr #to get polygon of getLevelSet
 from shapely.geometry import asShape, Point, Polygon #to calculate point-polygon distances
 
 
-def sigmoid(dist, alpha=50, a=0, b=1, c=-0.1):
-    """  
-    a, b: base and max readings of the probe with and without tumor
-    dist = xProbe-xEdge
-    xProbe: 
-    xEdge: the center of sigmoid
-    alpha: slope  
-    Output:
-    y = a + (b-a)/(1+ exp(-alpha*(xProbe-xEdge)))
+
+#######################################
+# Curved surface functions for simulation: don't delete, but these
+# should be replaced by some sort of output from Maya for the full
+# simulation pipeline
+#######################################
+
+def SimulateStereoMeas(surface, rangeX, rangeY, sensornoise=.01, gridSize = 20):
     """
-    # This is old code ignore
-    #k: slope-like
-    #k: baseline/offset: defliction w/0 tumor
-    # maxs: deflection with tumor
-    # xedge: zero crossing. in characterizing the meas model, we also probably have an offsert from edge to zero crossing 
-    # y = 1 / (1/float(maxs) + np.exp(-k*(xProbe-xEdge)))+base
-    y = a + np.divide((b-a),(1+ np.exp(-alpha*(dist-c))))  
-    return y
+    simulate measurements from stereo depth mapping for the test functions above
+    
+    inputs:
+       *surface: a function defining a test surface
+       *rangeX, rangeY: boundaries of the regions
+       *gridSize: resolution for simulated stereo measurements
+
+    outputs:
+       *xx,yy, z, matrices
+
+    This functions would be replaced by experiment
+    """
+    x = np.linspace(rangeX[0], rangeX[1], num = gridSize)
+    y = np.linspace(rangeY[0], rangeY[1], num = gridSize)
+    
+    sizeX = rangeX[1] - rangeX[0]
+    sizeY = rangeY[1] - rangeY[0]
+
+    xx, yy = np.meshgrid(x, y)
+
+    z = surface(xx,yy)
+    z = z+np.random.randn(z.shape[0],1)*sensornoise
+
+    # xx, yy, z = stereo_pad(x,y,z,rangeX,rangeY)
+    return xx, yy, z
+
+def SimulateProbeMeas(surface, sample_locations, sensornoise = .001):
+    """
+    Simulate measurements from palpation (tapping mode) for the test functions above
+    inputs:	
+       *surface: a function defining a test surface
+       *locations: list of points [[x1,y1],[x2,y2]]
+    outputs:
+       *xx,yy, z, matrices
+
+    This functions would be replaced by experiment
+    """
+
+    # unpack
+    xx, yy = sample_locations.T
+
+    # this is a simulated measurement-- add noise!
+    z = surface(xx,yy) + sensornoise*np.random.randn(z.shape[0])
+
+    return xx, yy, z
+
+def SimulateStiffnessMeas(poly, sample_locations, sensornoise = .001):
+    """Simulate measurements from palpation (tapping mode) for the test
+    functions above inputs: *surface: a function defining a test surface
+    *locations: list of points [[x1,y1],[x2,y2]] outputs: *xx,yy, z,
+    matrices
+
+    This functions would be replaced by experiment
+
+    """
+    # unpack
+    xx, yy = sample_locations.T
+
+    # this is a simulated measurement, add noise
+    
+    z = makeMeasurement_LS(sample_locations, poly)\
+        +  sensornoise*np.random.randn(z.shape[0])
+
+    return xx, yy, z
+
+#######################################
+# LM question: this function was already in here--not sure if it does anything?
+#######################################
 
 def getActualHeight (pos, modality=0):
     """
@@ -37,13 +96,19 @@ def getActualHeight (pos, modality=0):
     h = z (pos[0], pos[1])
     return h
 
+#######################################
+# Curved surface functions for simulating phase1: don't delete, but these
+# should be replaced by some sort of output from Maya for the full
+# simulation pipeline
+#######################################
+
 def GaussianSurface(xx, yy):
     """
     test function for simulation: Gaussian Surface
     standin for input from stero simulations
     
     xx,yy: test points to evaluate function
-	"""
+    """
     mu = [0,0]
     mu2 =[.2,.2]
     var = [.5,.7]
@@ -54,9 +119,7 @@ def GaussianSurface(xx, yy):
                      ((yy - mu[1])**2/(2*var[1]**2))) + \
                  np.exp(-((xx - mu2[0])**2/( 2*var[0]**2)) -
                         ((yy - mu2[0])**2/(2*var[1]**2)))
-
-    #noise=np.random.randn(z.flatten().shape[0],1)*noisevar
-    z = z#+noise.reshape(z.shape)
+    z = z
 
     return z
 
@@ -95,81 +158,28 @@ def SixhumpcamelSurface(xx,yy):
 
     return z
 
-def SimulateStereoMeas(surface, rangeX, rangeY, noisevar=.01, gridSize = 20):
+#######################################
+# polygon test functions for simulating phase2: 
+#######################################
+squaretumor=np.array([[-0.5,-0.5],[0.5,-0.5],[0.5,0.5],[-0.5,0.5]])
+
+
+#######################################
+# Functions for simulating deflection measurements
+#######################################
+
+def sigmoid(dist, alpha=50, a=0, b=1, c=-0.1):
+    """  
+    a, b: base and max readings of the probe with and without tumor
+    dist = xProbe-xEdge
+    xProbe: 
+    xEdge: the center of sigmoid
+    alpha: slope  
+    Output:
+    y = a + (b-a)/(1+ exp(-alpha*(xProbe-xEdge)))
     """
-    simulate measurements from stereo depth mapping for the test functions above
-    
-    inputs:
-       *surface: a function defining a test surface
-       *rangeX, rangeY: boundaries of the regions
-       *gridSize: resolution for simulated stereo measurements
-
-    outputs:
-       *xx,yy, z, matrices
-
-    This functions would be replaced by experiment
-    """
-    x = np.linspace(rangeX[0], rangeX[1], num = gridSize)
-    y = np.linspace(rangeY[0], rangeY[1], num = gridSize)
-    
-    sizeX = rangeX[1] - rangeX[0]
-    sizeY = rangeY[1] - rangeY[0]
-
-    xx, yy = np.meshgrid(x, y)
-
-    z = surface(xx,yy)
-    z = z+np.random.randn(z.shape[0],1)*noisevar
-
-    # xx, yy, z = stereo_pad(x,y,z,rangeX,rangeY)
-    return xx, yy, z
-
-def SimulateProbeMeas(surface, sample_locations, sensornoise = .001):
-    """
-    Simulate measurements from palpation (tapping mode) for the test functions above
-    inputs:	
-       *surface: a function defining a test surface
-       *locations: list of points [[x1,y1],[x2,y2]]
-    outputs:
-       *xx,yy, z, matrices
-
-    This functions would be replaced by experiment
-    """
-
-    # unpack
-    xx, yy = sample_locations.T
-
-    # this is a simulated measurement, add noise
-    
-    z = surface(xx,yy)
-    z = z + sensornoise*np.random.randn(z.shape[0])
-
-    return xx, yy, z
-
-
-# debug plotting
-# x = np.arange(-10, 10, 0.2)
-# sig = sigmoid(x,0)
-# plt.plot(x, sig, linewidth=3.0)
-
-
-def SimulateStiffnessMeas(poly, sample_locations, sensornoise = .001):
-    """Simulate measurements from palpation (tapping mode) for the test
-    functions above inputs: *surface: a function defining a test surface
-    *locations: list of points [[x1,y1],[x2,y2]] outputs: *xx,yy, z,
-    matrices
-
-    This functions would be replaced by experiment
-
-    """
-    # unpack
-    xx, yy = sample_locations.T
-
-    # this is a simulated measurement, add noise
-    
-    z = makeMeasurement_LS(sample_locations, poly)
-    #z = surface(xx,yy)
-    z = z +  sensornoise*np.random.randn(z.shape[0])
-    return xx, yy, z
+    y = a + np.divide((b-a),(1+ np.exp(-alpha*(dist-c))))  
+    return y
 
 
 def getLevelSet (Pts, z, level):
@@ -221,6 +231,11 @@ def makeMeasurement_LS(xProbe, boundaryEstimate):
     
     # return measurement value z
     return np.array(z)
+
+# debug plotting
+# x = np.arange(-10, 10, 0.2)
+# sig = sigmoid(x,0)
+# plt.plot(x, sig, linewidth=3.0)
 
 def probeMeasure(xProbe, Pts, z, level):
     """
