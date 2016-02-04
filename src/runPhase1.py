@@ -14,28 +14,10 @@ from matplotlib import cm
 from simUtils import *
 from utils import *
 from GaussianProcess import *
-import ErgodicPlanner
+# import ErgodicPlanner
+from planner import *
 
-def max_uncertainty(GPdata,numpoints=1):
-    # return the x,y locations of the "numpoints" largest uncertainty values
-    ind = np.argpartition(GPdata[3].flatten(), -numpoints)[-numpoints:]
-    newpointx=GPdata[0].flatten()[ind]
-    newpointy=GPdata[1].flatten()[ind]
-    
-    return np.array([newpointx,newpointy]).T
 
-def max_uncertainty_IS(GPdata,numpoints=1):
-    # return the x,y locations of the "numpoints" largest uncertainty values
-    GPISdat=implicitsurface(GPdata)
-    ind = np.argpartition(GPISdat[2].flatten(), -numpoints)[-numpoints:]
-    newpointx=GPdata[0].flatten()[ind]
-    newpointy=GPdata[1].flatten()[ind]
-    
-    return np.array([newpointx,newpointy]).T
-
-def max_MI(GPdata,numpoints=1):
-    # TODO
-    pass
 
 
 ##############################
