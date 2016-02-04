@@ -15,7 +15,9 @@ from simUtils import *
 from utils import *
 from GaussianProcess import *
 # import ErgodicPlanner
-from planner import *
+
+
+from Planner import *
 
 
 

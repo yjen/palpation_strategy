@@ -10,7 +10,7 @@ from matplotlib import _cntr as cntr #to get polygon of getLevelSet
 from shapely.geometry import asShape, Point, Polygon #to calculate point-polygon distances
 
 
-def sigmoid(dist, alpha=5, a=0, b=1):
+def sigmoid(dist, alpha=50, a=0, b=1, c=-0.1):
     """  
     a, b: base and max readings of the probe with and without tumor
     dist = xProbe-xEdge
@@ -18,7 +18,7 @@ def sigmoid(dist, alpha=5, a=0, b=1):
     xEdge: the center of sigmoid
     alpha: slope  
     Output:
-      y = a + (b-a)/(1+ exp(-alpha*(xProbe-xEdge)))
+    y = a + (b-a)/(1+ exp(-alpha*(xProbe-xEdge)))
     """
     # This is old code ignore
     #k: slope-like
@@ -26,16 +26,16 @@ def sigmoid(dist, alpha=5, a=0, b=1):
     # maxs: deflection with tumor
     # xedge: zero crossing. in characterizing the meas model, we also probably have an offsert from edge to zero crossing 
     # y = 1 / (1/float(maxs) + np.exp(-k*(xProbe-xEdge)))+base
-    y = a + np.divide((b-a),(1+ np.exp(-alpha*dist)))  
+    y = a + np.divide((b-a),(1+ np.exp(-alpha*(dist-c))))  
     return y
 
 def getActualHeight (pos, modality=0):
-	"""
-	Get actual surface height at a point 'pos'
-	"""
-	x,y,xx,yy,z = getMap(modality) 
-	h = z (pos[0], pos[1])
-	return h
+    """
+    Get actual surface height at a point 'pos'
+    """
+    x,y,xx,yy,z = getMap(modality) 
+    h = z (pos[0], pos[1])
+    return h
 
 def GaussianSurface(xx, yy):
     """
@@ -49,9 +49,9 @@ def GaussianSurface(xx, yy):
     var = [.5,.7]
   
     z= np.exp(-((xx - mu[0])**2/( 2*var[0]**2)) -
-          ((yy - mu[1])**2/(2*var[1]**2))) + \
-          np.exp(-((xx - mu[0])**2/( 2*var[0]**2)) -
-                 ((yy - mu[1])**2/(2*var[1]**2))) + \
+              ((yy - mu[1])**2/(2*var[1]**2))) + \
+              np.exp(-((xx - mu[0])**2/( 2*var[0]**2)) -
+                     ((yy - mu[1])**2/(2*var[1]**2))) + \
                  np.exp(-((xx - mu2[0])**2/( 2*var[0]**2)) -
                         ((yy - mu2[0])**2/(2*var[1]**2)))
 
@@ -78,7 +78,7 @@ def SixhumpcamelSurface(xx,yy):
     standin for input from stero simulations
     
     xx,yy: test points to evaluate function
-	"""
+    """
     sixhumpcamel = GPyOpt.fmodels.experiments2d.sixhumpcamel().f
     
     # function takes in list of (x,y) pairs:
@@ -95,9 +95,9 @@ def SixhumpcamelSurface(xx,yy):
 
     return z
 
-def SimulateStereoMeas(surface, rangeX, rangeY, noisevar=.01, gridSize = 20, plot = True):
-	"""
-	simulate measurements from stereo depth mapping for the test functions above
+def SimulateStereoMeas(surface, rangeX, rangeY, noisevar=.01, gridSize = 20):
+    """
+    simulate measurements from stereo depth mapping for the test functions above
     
     inputs:
        *surface: a function defining a test surface
@@ -108,35 +108,23 @@ def SimulateStereoMeas(surface, rangeX, rangeY, noisevar=.01, gridSize = 20, plo
        *xx,yy, z, matrices
 
     This functions would be replaced by experiment
-	"""
-	x = np.linspace(rangeX[0], rangeX[1], num = gridSize)
-	y = np.linspace(rangeY[0], rangeY[1], num = gridSize)
-	
-	sizeX = rangeX[1] - rangeX[0]
-	sizeY = rangeY[1] - rangeY[0]
+    """
+    x = np.linspace(rangeX[0], rangeX[1], num = gridSize)
+    y = np.linspace(rangeY[0], rangeY[1], num = gridSize)
+    
+    sizeX = rangeX[1] - rangeX[0]
+    sizeY = rangeY[1] - rangeY[0]
 
-	xx, yy = np.meshgrid(x, y)
+    xx, yy = np.meshgrid(x, y)
 
     z = surface(xx,yy)
     z = z+np.random.randn(z.shape[0],1)*noisevar
 
-    xx, yy, z = stereo_pad(x,y,z,rangeX,rangeY)
+    # xx, yy, z = stereo_pad(x,y,z,rangeX,rangeY)
+    return xx, yy, z
 
-    if plot==True:
-        # plot the surface from disparity
-        fig = plt.figure(figsize=(4, 4))
-        ax = fig.gca(projection='3d')
-        ax.plot_surface(xx, yy, z, rstride=1, cstride=1,
-                        cmap=cm.coolwarm, linewidth=0, antialiased=False)
-        ax.set_title("Depth from Disparity")
-        plt.xlabel('x')
-        plt.ylabel('y')
-        plt.show()
-
-	return xx, yy, z
-
-def SimulateProbeMeas(surface, sample_locations):
-	"""
+def SimulateProbeMeas(surface, sample_locations, sensornoise = .001):
+    """
     Simulate measurements from palpation (tapping mode) for the test functions above
     inputs:	
        *surface: a function defining a test surface
@@ -151,12 +139,11 @@ def SimulateProbeMeas(surface, sample_locations):
     xx, yy = sample_locations.T
 
     # this is a simulated measurement, add noise
-    sensornoise = .001
     
     z = surface(xx,yy)
     z = z + sensornoise*np.random.randn(z.shape[0])
 
-	return xx, yy, z
+    return xx, yy, z
 
 
 # debug plotting
@@ -164,28 +151,25 @@ def SimulateProbeMeas(surface, sample_locations):
 # sig = sigmoid(x,0)
 # plt.plot(x, sig, linewidth=3.0)
 
-def SimulateStiffnessMeas(surface, sample_locations):
-	"""
-    Simulate measurements from palpation (tapping mode) for the test functions above
-    inputs:	
-       *surface: a function defining a test surface
-       *locations: list of points [[x1,y1],[x2,y2]]
-    outputs:
-       *xx,yy, z, matrices
+
+def SimulateStiffnessMeas(poly, sample_locations, sensornoise = .001):
+    """Simulate measurements from palpation (tapping mode) for the test
+    functions above inputs: *surface: a function defining a test surface
+    *locations: list of points [[x1,y1],[x2,y2]] outputs: *xx,yy, z,
+    matrices
 
     This functions would be replaced by experiment
-    """
 
+    """
     # unpack
     xx, yy = sample_locations.T
 
     # this is a simulated measurement, add noise
-    sensornoise = .001
     
-    z = surface(xx,yy)
-    z = z + sensornoise*np.random.randn(z.shape[0])
-
-	return xx, yy, z
+    z = makeMeasurement_LS(sample_locations, poly)
+    #z = surface(xx,yy)
+    z = z +  sensornoise*np.random.randn(z.shape[0])
+    return xx, yy, z
 
 
 def getLevelSet (Pts, z, level):
@@ -220,18 +204,28 @@ def makeMeasurement_LS(xProbe, boundaryEstimate):
     boundaryEst_tuples = [tuple(p) for p in boundaryEstimate]
     
     #get distance of xProbe form polygon
-    dist = Point(tuple(xProbe)).distance(Polygon(boundaryEst_tuples))
-    
+    sizeProbe = xProbe.shape[0]
+    z = []
+    for p in range(sizeProbe):
+        dist= Point(tuple(xProbe[p])).distance(Polygon(boundaryEst_tuples))
+        point_in_poly =  Point(tuple(xProbe[p])).within(Polygon(boundaryEst_tuples))
+        #create signed distance function
+        if point_in_poly:
+            dist = dist
+        else:
+            dist = -dist
+
+        z.append(sigmoid(dist))
     #calculate the sigmoidal measurement value due to this distance
-    z = sigmoid(dist)
+    #z = sigmoid(dist)
     
     # return measurement value z
-    return z
+    return np.array(z)
 
 def probeMeasure(xProbe, Pts, z, level):
     """
     input: 
-        xProbe: desired point of measurement
+        xProbe: desired point(s) of measurement
         Pts: x, y - 2-d numpy array N-by-d
         Z : values at each of the points 1-D numpy array length N
         level: find the polygon at level
