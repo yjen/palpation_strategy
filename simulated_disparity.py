@@ -3,13 +3,17 @@ import cv2, os, sys
 import matplotlib.pyplot as plt
 from scipy.interpolate import RegularGridInterpolator as RGI
 from scipy.io import savemat
-from scipy.misc import imresize
 from observations import _observationModel
 
 LEFT = '/scene1.001.png'
 RIGHT = '/scene1.002.png'
-stereo = cv2.StereoSGBM(0, 256, 11, P1=100, P2=200, disp12MaxDiff=181, preFilterCap=4,\
+try:
+    stereo = cv2.StereoSGBM(0, 256, 11, P1=100, P2=200, disp12MaxDiff=181, preFilterCap=4,\
         uniquenessRatio=5, speckleWindowSize=150, speckleRange=16, fullDP=True)
+except AttributeError:
+    stereo = cv2.StereoSGBM_create(0, 256, 11, P1=100, P2=200, disp12MaxDiff=181,
+                        preFilterCap=4, uniquenessRatio=1,
+                        speckleWindowSize=150, speckleRange=16)
 folders = [x[0] for x in os.walk('image_pairs')]
 IMG_SIZE = 500
 
@@ -295,57 +299,6 @@ for i, folder in enumerate(folders[1:]):
 
 
     plt.show()
-    savemat('depth_grad_maps.mat', {'depth':x1, 'ygrad':ygrad, 'xgrad':xgrad})
+    output_name = folder[(len('image_pairs/')):] + '_depth_grad_maps.mat'
+    savemat(output_name, {'height':x1_smoothed, 'ygrad':ygrad, 'xgrad':xgrad})
 
-    #change colormap to a sequential one
-    #plot norm of gradients
-    #calc sum of squared errors
-    #plot errors for each point
-
-    # should we translate? subtracting by the difference in mean y value universally helps, while translating diagonally helps
-    # the sinxy1 case by a lot but slightly decreases performance for the other 2 surfaces
-    # omg the thing was rotated...rishi pls
-    # need to unsmooth edges. oh the gaussian blurring function is not even written by me...
-
-
-
-    # why does maya return a 21x21...can't it just return 500x500?
-    # looks like removing the "outliers" isn't going to be so easy...because our outliers aren't real salt/pepper noise (it's not single pixels)
-    # and also we're dealing with floats. jk floats is fine o.o why did I think they're not fine?
-    # should we downsample or convert to ints first? or use multiple applications of median filter
-    # or just use erosion&dilation instead. jk erosion/dilation is just median filter but using max/min instead...
-
-    #install maya
-    #random field, gaussian process
-    #mrf smoothing w/ separate gaussians
-
-    #gaussian process, gpy
-    #some sort of uncertainty estimate related to camera parameters/depth. just do naive thing and relate it to depth? clean.
-    #some thing on friday o.o; lauren coming back on thursday
-
-    #so turns out my function was incorrectly named compute_topdown_depth when inside the function I already converted depth map to height map
-    #(so that it's in the same frame as the ground truth)
-    #also turns out the given ground truth is rotated 90deg relative to the picture, not 180. lol. notice that 2 sides of the ground truth are flat
-    #explain the errors in going from normal depth map to topdown depth map. what?
-
-
-    #group interviews man
-    #lol I'm reading for 170
-    #lol was any of those ppl the 11 A+ one? and lol @ the first guy just blabbing on and on...
-    #ya how to do research animesh??
-
-    #lol bengio and 227 and andrew ng and fei-fei/cnn stuff sigh. lol can I even get into 281a? maybe I should just take that
-    #as masters student. then I don't have to take the placement test LOL. 126, 168, 162, 127?, math classes next year.
-    #graded units??
-
- #    SSE: 7068517.00533
-	# MSE: 28.2740680213
-	# mean absolute error: 4.23565557687
-
-
-# wait so if I use 995.603, after the centering it's lower. but before centering the values are completely wrong? weird.
-# SSE: 5961775.37316
-# MSE: 23.8471014927
-# mean absolute error: 3.90050820834
-# min disp: 45.0947
-# max disp: 64.1791
