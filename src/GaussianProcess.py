@@ -119,9 +119,7 @@ def getSimulatedStereoMeas(surface, focalplane=0, rangeX = [-2,2], rangeY = [-1,
 
     should fix these functions so they're not necessary by default...
     """
-
     xx, yy, z = SimulateStereoMeas(surface, rangeX, rangeY)
-    xx, yy, z = stereo_pad(x,y,z,rangeX,rangeY)
 
     # we assume Gaussian measurement noise:
     sigma_g = .001

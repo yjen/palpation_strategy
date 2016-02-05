@@ -40,9 +40,9 @@ def SimulateStereoMeas(surface, rangeX, rangeY, sensornoise=.01, gridSize = 20):
     xx, yy = np.meshgrid(x, y)
 
     z = surface(xx,yy)
-    z = z+np.random.randn(z.shape[0],1)*sensornoise
+    z = z + np.random.randn(z.shape[0],1)*sensornoise
 
-    # xx, yy, z = stereo_pad(x,y,z,rangeX,rangeY)
+    xx, yy, z = stereo_pad(x,y,z,rangeX,rangeY)
     return xx, yy, z
 
 def SimulateProbeMeas(surface, sample_locations, sensornoise = .001):
@@ -61,7 +61,8 @@ def SimulateProbeMeas(surface, sample_locations, sensornoise = .001):
     xx, yy = sample_locations.T
 
     # this is a simulated measurement-- add noise!
-    z = surface(xx,yy) + sensornoise*np.random.randn(z.shape[0])
+    z = surface(xx,yy)
+    z = z + sensornoise*np.random.randn(z.shape[0])
 
     return xx, yy, z
 
@@ -79,8 +80,8 @@ def SimulateStiffnessMeas(poly, sample_locations, sensornoise = .001):
 
     # this is a simulated measurement, add noise
     
-    z = makeMeasurement_LS(sample_locations, poly)\
-        +  sensornoise*np.random.randn(z.shape[0])
+    z = makeMeasurement_LS(sample_locations, poly)
+    z = z + sensornoise*np.random.randn(z.shape[0])
 
     return xx, yy, z
 
