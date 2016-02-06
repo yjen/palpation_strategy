@@ -9,6 +9,8 @@ from utils import *
 from matplotlib import _cntr as cntr #to get polygon of getLevelSet
 from shapely.geometry import asShape, Point, Polygon #to calculate point-polygon distances
 
+from simulated_disparity import runTrial, getInterpolatedObservationModel
+
 
 
 #######################################
@@ -61,7 +63,9 @@ def SimulateProbeMeas(surface, sample_locations, sensornoise = .001):
     xx, yy = sample_locations.T
 
     # this is a simulated measurement-- add noise!
-    z = surface(xx,yy)
+
+    interp = getInterpolatedObservationModel(surface)
+    z = interp(xx,yy)
     z = z + sensornoise*np.random.randn(z.shape[0])
 
     return xx, yy, z

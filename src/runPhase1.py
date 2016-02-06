@@ -24,11 +24,12 @@ from Planner import *
 
 ##############################
 # set boundary
-rangeX = [-2,2]
-rangeY = [-1,1]
+rangeX = [0,500]
+rangeY = [0,500]
 
 # choose surface for simulation
-surface=SixhumpcamelSurface
+#surface=SixhumpcamelSurface
+surface = "image_pairs/smooth3"
 
 
 ##############################

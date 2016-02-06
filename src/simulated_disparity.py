@@ -50,11 +50,12 @@ def computeH(im1_pts, im2_pts):
 
     return H
 
-def interp_function(image):
+def interp_function(image, rangeX=None, rangeY=None):
     # creating interpolation functions
     x = np.array(range(image.shape[0]))
     y = np.array(range(image.shape[1]))
-    # R,G,B interpolators
+    if (rangeX is not None and rangeY is not None):
+        return RGI((rangeX, rangeY), image, bounds_error=False, fill_value=0)
     return RGI((x, y), image, bounds_error=False, fill_value=0)
 
 # Crops the center plane we want, reshapes into IMG_SIZExIMG_SIZE matrix
@@ -112,15 +113,25 @@ def getObservationModel(planeName):
     obs = cv2.resize(model, (IMG_SIZE,IMG_SIZE))#, interpolation=cv2.INTER_LANCZOS4)
     # print("obs: " + str(obs))
     # print("shape: " + str(obs.shape))
-    return obs
+    return obs*10 #convert to mm
 
-# main loop
-for i, folder in enumerate(folders[1:]):
-    if folder == 'image_pairs/exp' or folder == 'image_pairs/halved' or folder == 'image_pairs/plain_random' or folder == 'image_pairs/squaredDiffs':
-        continue
-    print("folder: " + str(folder))
+# returns a function that interpolates a vector of continuous (x, y) coords,
+# expects x and y values from [0, 21]
+def getInterpolatedObservationModel(planeName):
+    model = np.array(_observationModel[planeName])
+    if model is None:
+        return None
+    rangeX = np.array(range(500))
+    rangeY = np.array(range(500))
+    return interp_function(image, rangeX, rangeY)
+
+# Note: shouldPlot=False disables all plots and print statements
+def runTrial(folder, shouldPlot=False):
+    if shouldPlot:
+        print("folder: " + str(folder))
     disparity = getDisparityMap(folder).astype(np.float32)/16
-    print(disparity.dtype)
+    if shouldPlot:
+        print(disparity.dtype)
     
     # plt.imsave(folder+ "/disparity.mat", disparity)
     # plt.imsave(folder+ "/rectified.mat", rectified) #rectified is wrong word?
@@ -130,9 +141,11 @@ for i, folder in enumerate(folders[1:]):
 
     projected_disp = project(disparity)
     projected_disp = projected_disp.astype(np.float32)
-    print(projected_disp.dtype)
+    if shouldPlot:
+        print(projected_disp.dtype)
     projected_disp_new = cv2.medianBlur(projected_disp, 5)
-    print("diff: " + str(np.sum(np.abs(projected_disp_new - projected_disp))))
+    if shouldPlot:
+        print("diff: " + str(np.sum(np.abs(projected_disp_new - projected_disp))))
     projected_disp = projected_disp_new
     # plt.hist(projected_disp.flatten())
     # values = sorted(projected_disp.flatten())
@@ -148,16 +161,18 @@ for i, folder in enumerate(folders[1:]):
 
     avg_disp = np.sum(projected_disp)/np.square(IMG_SIZE)
     projected_disp[projected_disp < 1] = avg_disp
-    print("min disp: " + str(np.min(projected_disp)))
-    print("max disp: " + str(np.max(projected_disp)))
+    if shouldPlot:
+        print("min disp: " + str(np.min(projected_disp)))
+        print("max disp: " + str(np.max(projected_disp)))
     # plt.hist(projected_disp.flatten())
     # plt.show()
 
     F = 1200 #995.603 is the value we get from the equation, but 120 more closely matches geometric model & ground truth
     T = 20
     depth = compute_depth(F, T, projected_disp)
-    print("min depth: " + str(np.min(depth)))
-    print("max depth: " + str(np.max(depth)))
+    if shouldPlot:
+        print("min depth: " + str(np.min(depth)))
+        print("max depth: " + str(np.max(depth)))
     # plt.hist(depth.flatten())
     # plt.show()
     # plt.imsave(folder + "/depth.mat", depth)
@@ -171,12 +186,13 @@ for i, folder in enumerate(folders[1:]):
     ceil = values[int(0.99*len(values))]
     x1[x1 < floor] = floor
     x1[x1 > ceil] = ceil
-    # print(floor)
-    # plt.hist(x1.flatten())
-    # plt.show()
-    print("a")
-    print(x1.dtype)
-    print("b")
+    if shouldPlot:
+        # print(floor)
+        # plt.hist(x1.flatten())
+        # plt.show()
+        print("a")
+        print(x1.dtype)
+        print("b")
     x1_median = x1.astype(np.float32)
     num_iter1 = 5
     num_iter2 = 25
@@ -200,16 +216,19 @@ for i, folder in enumerate(folders[1:]):
 
     
     avg_x1 = np.sum(x1_smoothed)/np.square(IMG_SIZE)
-    print("avg_x1: " + str(avg_x1))
-    obs = getObservationModel(folder)*10 #convert to mm
+    if shouldPlot:
+        print("avg_x1: " + str(avg_x1))
+    obs = getObservationModel(folder)
     if folder == 'image_pairs/sinxy1':
     	obs = np.rot90(obs,1) #correct for sinxy1, wrong for the smoothed images
     else:
     	obs = np.fliplr(obs)
     avg_obs = np.sum(obs)/np.square(IMG_SIZE)
-    print("avg_obs: " + str(avg_obs))
+    if shouldPlot:
+        print("avg_obs: " + str(avg_obs))
     x1_smoothed = x1_smoothed - (avg_x1-avg_obs) # this is where I center the prediction around the obs...sketch LOL.
-    print("new avg_x1: " + str(np.sum(x1_smoothed)/np.square(IMG_SIZE)))
+    if shouldPlot:
+        print("new avg_x1: " + str(np.sum(x1_smoothed)/np.square(IMG_SIZE)))
 
 
     h = 5
@@ -228,20 +247,22 @@ for i, folder in enumerate(folders[1:]):
     errors = np.abs(obs - x1_smoothed)
     sse = np.sum(np.square(obs - x1_smoothed))
     mae = np.sum(np.abs(obs - x1_smoothed))/np.square(IMG_SIZE)
-    print(obs)
-    print(x1_smoothed)
-    print("SSE: " + str(sse))
-    print("MSE: " + str(sse/np.square(IMG_SIZE)))
-    print("mean absolute error: " + str(mae))
+    if shouldPlot:
+        print(obs)
+        print(x1_smoothed)
+        print("SSE: " + str(sse))
+        print("MSE: " + str(sse/np.square(IMG_SIZE)))
+        print("mean absolute error: " + str(mae))
     # for finding appropriate size of gaussian kernel
     # plots = []
     # for i in range(10):
     #     plots.append(cv2.GaussianBlur(x1, (10*i + 3,10*i + 3), 0))
     
-    # for j in range(len(plots)):
-    #     plt.subplot(2, 5, j+1)
-    #     plt.imshow(plots[j], cmap=colormap)
-    # plt.show()
+    # if shouldPlot:
+    #     for j in range(len(plots)):
+    #         plt.subplot(2, 5, j+1)
+    #         plt.imshow(plots[j], cmap=colormap)
+    #     plt.show()
 
     # obs = getObservationModel(folder)
     # print("folder: " + str(folder))
@@ -249,58 +270,76 @@ for i, folder in enumerate(folders[1:]):
     # print("obs type: " + str(obs.shape))
 
 
-    print("min disp: " + str(np.min(projected_disp)))
-    print("max disp: " + str(np.max(projected_disp)))
+    if shouldPlot:
+        print("min disp: " + str(np.min(projected_disp)))
+        print("max disp: " + str(np.max(projected_disp)))
 
     left = cv2.imread(folder + LEFT, 1)
     right = cv2.imread(folder + RIGHT, 1)
 
-    a1=plt.subplot(3,4,1)
-    a1.set_title("Right image")
-    plt.imshow(right)
-    plt.colorbar()
-    a2=plt.subplot(3,4,2)
-    a2.set_title("Projected disparity")
-    plt.imshow(projected_disp, cmap=colormap)
-    plt.colorbar()
-    a3=plt.subplot(3,4,3)
-    a3.set_title("Projected depth map")
-    plt.imshow(depth, cmap=colormap)
-    plt.colorbar()
-    a4=plt.subplot(3,4,4)
-    a4.set_title("Topdown height map")
-    plt.imshow(x1, cmap=colormap)
-    plt.colorbar()
+    if shouldPlot:
+        a1=plt.subplot(3,4,1)
+        a1.set_title("Right image")
+        plt.imshow(right)
+        plt.colorbar()
+        a2=plt.subplot(3,4,2)
+        a2.set_title("Projected disparity")
+        plt.imshow(projected_disp, cmap=colormap)
+        plt.colorbar()
+        a3=plt.subplot(3,4,3)
+        a3.set_title("Projected depth map")
+        plt.imshow(depth, cmap=colormap)
+        plt.colorbar()
+        a4=plt.subplot(3,4,4)
+        a4.set_title("Topdown height map")
+        plt.imshow(x1, cmap=colormap)
+        plt.colorbar()
 
-    a5=plt.subplot(3,4,8)
-    a5.set_title("Median filtered topdown height map " + str(num_iter2))
-    plt.imshow(x1_median2, cmap=colormap)
-    plt.colorbar()
-    a6=plt.subplot(3,4,7)
-    a6.set_title("Gaussian smoothed topdown height map ")
-    plt.imshow(x1_smoothed, cmap=colormap)
-    plt.colorbar()
-    a7=plt.subplot(3,4,6)
-    a7.set_title("Gaussian smoothed topdown height map ")
-    plt.imshow(x1_smoothed, cmap=colormap)
-    plt.colorbar()
+        a5=plt.subplot(3,4,8)
+        a5.set_title("Median filtered topdown height map " + str(num_iter2))
+        plt.imshow(x1_median2, cmap=colormap)
+        plt.colorbar()
+        a6=plt.subplot(3,4,7)
+        a6.set_title("Gaussian smoothed topdown height map ")
+        plt.imshow(x1_smoothed, cmap=colormap)
+        plt.colorbar()
+        a7=plt.subplot(3,4,6)
+        a7.set_title("Gaussian smoothed topdown height map ")
+        plt.imshow(x1_smoothed, cmap=colormap)
+        plt.colorbar()
 
-    a8=plt.subplot(3,4,5)
-    a8.set_title("Gradient norms")
-    plt.imshow(grad, cmap=colormap)
-    plt.colorbar()
-    a9=plt.subplot(3,4,9)
-    a9.set_title("Errors")
-    plt.imshow(errors, cmap=colormap)
-    plt.colorbar()
-    a10=plt.subplot(3,4,10)
-    a10.set_title("Ground truth")
-    plt.imshow(obs, cmap=colormap)
-    plt.colorbar()
+        a8=plt.subplot(3,4,5)
+        a8.set_title("Gradient norms")
+        plt.imshow(grad, cmap=colormap)
+        plt.colorbar()
+        a9=plt.subplot(3,4,9)
+        a9.set_title("Errors")
+        plt.imshow(errors, cmap=colormap)
+        plt.colorbar()
+        a10=plt.subplot(3,4,10)
+        a10.set_title("Ground truth")
+        plt.imshow(obs, cmap=colormap)
+        plt.colorbar()
 
 
-    plt.show()
+        plt.show()
 
     output_name = folder[(len('image_pairs/')):] + '_depth_grad_maps.mat'
     savemat(output_name, {'height':x1_smoothed, 'ygrad':ygrad, 'xgrad':xgrad})
+
+
+if __name__ == "__main__":
+    for i, folder in enumerate(folders[1:]):
+        if folder == 'image_pairs/exp' or folder == 'image_pairs/halved' or folder == 'image_pairs/plain_random' or folder == 'image_pairs/squaredDiffs':
+            continue
+        runTrial(folder, True);
+
+
+
+
+
+
+
+
+
 
