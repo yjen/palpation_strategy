@@ -61,7 +61,7 @@ def interp_function(image, rangeX=None, rangeY=None):
 # Crops the center plane we want, reshapes into IMG_SIZExIMG_SIZE matrix
 def project(image):
         im1_pts = np.array([[210, 630], [300, 210], [770, 210], [870, 630]])
-        im2_pts = np.array([[0, 499], [0, 0], [499, 0], [499, 499]])
+        im2_pts = np.array([[0, IMG_SIZE-1], [0, 0], [IMG_SIZE-1, 0], [IMG_SIZE-1, IMG_SIZE-1]])
 
         H = computeH(im1_pts, im2_pts)
 
@@ -325,8 +325,8 @@ def getStereoDepthMap(folder, shouldPlot=False):
 
         plt.show()
 
-        output_name = folder[(len('image_pairs/')):] + '_depth_grad_maps.mat'
-        savemat(output_name, {'height':x1_smoothed, 'ygrad':ygrad, 'xgrad':xgrad})
+        # output_name = folder[(len('image_pairs/')):] + '_depth_grad_maps.mat'
+        # savemat(output_name, {'height':x1_smoothed, 'ygrad':ygrad, 'xgrad':xgrad})
 
     return x1_smoothed
 
@@ -335,14 +335,4 @@ if __name__ == "__main__":
     for i, folder in enumerate(folders[1:]):
         if folder == 'image_pairs/exp' or folder == 'image_pairs/halved' or folder == 'image_pairs/plain_random' or folder == 'image_pairs/squaredDiffs':
             continue
-        getStereoDepthMap(folder, False);
-
-
-
-
-
-
-
-
-
-
+        getStereoDepthMap(folder, True);
