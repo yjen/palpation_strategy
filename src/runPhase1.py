@@ -41,9 +41,11 @@ meas = getSimulatedStereoMeas(surface,rangeX=rangeX,rangeY=rangeY)
 # add termination criterion
 i=0
 
-while i<10:
+while i<5:
+    print "iteration = ", j
+
     # initialzie Gaussian process
-    gpmodel = update_GP_het(meas)
+    gpmodel = update_GP_sparse(meas)
 
     # Predections based on current GP estimate
     GPdata=eval_GP(gpmodel, rangeX, rangeY)
