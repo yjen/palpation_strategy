@@ -76,6 +76,38 @@ def update_GP(measurements):
     # sigma=sigma.reshape(self.x1.shape)
     return m
 
+def update_GP_sparse(measurements,numpts=10):
+    """
+    GP for phase2:
+    Inputs: data=[x position, y position, measurement, measurement noise]
+    TODO: maybe combine with updateGP above
+    """
+    sensornoise=.00001
+
+    # parse locations, measurements, noise from data
+    X = measurements[:,0:2]
+    Y = np.array([measurements[:,2]]).T
+
+    kern = GPy.kern.Matern52(2,ARD=True) +\
+           GPy.kern.White(2)
+
+    #subsample range in the x direction
+    subx=np.linspace(X.T[0].min(),X.T[0].max(),numpts)
+    suby=np.linspace(X.T[1].min(),X.T[1].max(),numpts)
+
+    subxx,subyy=np.meshgrid(subx,suby)
+    #subsample in y
+    Z = np.array([subxx.flatten(),subyy.flatten()]).T
+    m = GPy.models.SparseGPRegression(X,Y,Z=Z)
+    m.optimize('bfgs')
+    # xgrid = np.vstack([self.x1.reshape(self.x1.size),
+    #                    self.x2.reshape(self.x2.size)]).T
+    # y_pred=m.predict(self.xgrid)[0]
+    # y_pred=y_pred.reshape(self.x1.shape)
+    # sigma=m.predict(self.xgrid)[1]
+    # sigma=sigma.reshape(self.x1.shape)
+    return m
+
 def implicitsurface(GPdata,thresh=.4):
     """
     not sure bout this one...
