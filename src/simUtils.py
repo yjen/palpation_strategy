@@ -19,7 +19,7 @@ from simulated_disparity import getStereoDepthMap, getInterpolatedObservationMod
 # simulation pipeline
 #######################################
 
-def SimulateStereoMeas(surface, rangeX, rangeY, sensornoise=.01, gridSize = 500):
+def SimulateStereoMeas(surface, rangeX, rangeY, sensornoise=.01, gridSize = 50):
     """
     simulate measurements from stereo depth mapping for the test functions above
     
@@ -63,12 +63,12 @@ def SimulateProbeMeas(surface, sample_locations, sensornoise = .001):
     """
 
     # unpack
-    xx, yy = sample_locations.T
+    # xx, yy = sample_locations.T
 
     # this is a simulated measurement-- add noise!
 
     interp = getInterpolatedObservationModel(surface)
-    z = interp(xx,yy)
+    z = interp(sample_locations.T)
     z = z + sensornoise*np.random.randn(z.shape[0])
 
     return xx, yy, z

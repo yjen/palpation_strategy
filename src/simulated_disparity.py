@@ -16,7 +16,7 @@ except AttributeError:
                         speckleWindowSize=150, speckleRange=16)
 
 folders = [x[0] for x in os.walk('image_pairs')]
-IMG_SIZE = 500
+IMG_SIZE = 50
 
 # 3x3 Projective Transformation
 def computeH(im1_pts, im2_pts):
@@ -118,12 +118,12 @@ def getObservationModel(planeName):
 # returns a function that interpolates a vector of continuous (x, y) coords,
 # expects x and y values from [0, 21]
 def getInterpolatedObservationModel(planeName):
-    model = np.array(_observationModel[planeName])
+    model = getObservationModel(planeName)
     if model is None:
         return None
-    rangeX = np.array(range(500))
-    rangeY = np.array(range(500))
-    return interp_function(image, rangeX, rangeY)
+    rangeX = np.array(range(IMG_SIZE))
+    rangeY = np.array(range(IMG_SIZE))
+    return interp_function(model, rangeX, rangeY)
 
 # Note: shouldPlot=False disables all plots and print statements
 def getStereoDepthMap(folder, shouldPlot=False):
@@ -335,7 +335,7 @@ if __name__ == "__main__":
     for i, folder in enumerate(folders[1:]):
         if folder == 'image_pairs/exp' or folder == 'image_pairs/halved' or folder == 'image_pairs/plain_random' or folder == 'image_pairs/squaredDiffs':
             continue
-        getStereoDepthMap(folder, True);
+        getStereoDepthMap(folder, False);
 
 
 

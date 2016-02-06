@@ -24,8 +24,8 @@ from Planner import *
 
 ##############################
 # set boundary
-rangeX = [0,500]
-rangeY = [0,500]
+rangeX = [0,50]
+rangeY = [0,50]
 
 # choose surface for simulation
 #surface=SixhumpcamelSurface
