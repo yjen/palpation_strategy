@@ -177,9 +177,9 @@ def getStereoDepthMap(folder, shouldPlot=False):
     # plt.show()
     # plt.imsave(folder + "/depth.mat", depth)
 
-    size = 200.0
-    x = 250
-    y = 300
+    size = 20.0 #200.0
+    x = 25 #250
+    y = 30 #300
     x1 = compute_topdown_height(depth, size, x, y)
     values = sorted(x1.flatten())
     floor = values[int(0.01*len(values))]
@@ -194,9 +194,9 @@ def getStereoDepthMap(folder, shouldPlot=False):
         print(x1.dtype)
         print("b")
     x1_median = x1.astype(np.float32)
-    num_iter1 = 5
-    num_iter2 = 25
-    kernel_size = 5
+    num_iter1 = 2 #5
+    num_iter2 = 3 #25
+    kernel_size = 3 #5
     for _ in range(num_iter1):
     	x1_median = cv2.medianBlur(x1_median,kernel_size)
     x1_median2 = x1_median.astype(np.float32)
@@ -209,8 +209,8 @@ def getStereoDepthMap(folder, shouldPlot=False):
     if shouldPlot:
         plt.figure(figsize = (20,8))
 
-    g_kernel_size1 = 43
-    g_kernel_size2 = 25
+    g_kernel_size1 = 5 #43
+    g_kernel_size2 = 3 #25
     x1_smoothed = cv2.GaussianBlur(x1_median2, (g_kernel_size1, g_kernel_size1), 0)
     x1_smoothed2 = cv2.GaussianBlur(x1_median2, (g_kernel_size2, g_kernel_size2), 0)
     # x1_smoothed[:470, 30:] = x1_smoothed[30:, :470] #OMG the problem is that the "ground truth" we're reading is rotated by 180*...
@@ -336,3 +336,4 @@ if __name__ == "__main__":
         if folder == 'image_pairs/exp' or folder == 'image_pairs/halved' or folder == 'image_pairs/plain_random' or folder == 'image_pairs/squaredDiffs':
             continue
         getStereoDepthMap(folder, True);
+    # getStereoDepthMap("image_pairs/smooth3", True);
