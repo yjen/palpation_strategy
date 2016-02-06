@@ -9,7 +9,7 @@ from utils import *
 from matplotlib import _cntr as cntr #to get polygon of getLevelSet
 from shapely.geometry import asShape, Point, Polygon #to calculate point-polygon distances
 
-from simulated_disparity import runTrial, getInterpolatedObservationModel
+from simulated_disparity import getStereoDepthMap, getInterpolatedObservationModel
 
 
 
@@ -19,7 +19,7 @@ from simulated_disparity import runTrial, getInterpolatedObservationModel
 # simulation pipeline
 #######################################
 
-def SimulateStereoMeas(surface, rangeX, rangeY, sensornoise=.01, gridSize = 20):
+def SimulateStereoMeas(surface, rangeX, rangeY, sensornoise=.01, gridSize = 500):
     """
     simulate measurements from stereo depth mapping for the test functions above
     
@@ -36,12 +36,15 @@ def SimulateStereoMeas(surface, rangeX, rangeY, sensornoise=.01, gridSize = 20):
     x = np.linspace(rangeX[0], rangeX[1], num = gridSize)
     y = np.linspace(rangeY[0], rangeY[1], num = gridSize)
     
-    sizeX = rangeX[1] - rangeX[0]
-    sizeY = rangeY[1] - rangeY[0]
+    # sizeX = rangeX[1] - rangeX[0]
+    # sizeY = rangeY[1] - rangeY[0]
 
-    xx, yy = np.meshgrid(x, y)
+    # xx, yy = np.meshgrid(x, y)
 
-    z = surface(xx,yy)
+    # z = surface(xx,yy)
+
+    z = getStereoDepthMap(surface)
+
     z = z + np.random.randn(z.shape[0],1)*sensornoise
 
     xx, yy, z = stereo_pad(x,y,z,rangeX,rangeY)

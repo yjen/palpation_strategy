@@ -126,7 +126,7 @@ def getInterpolatedObservationModel(planeName):
     return interp_function(image, rangeX, rangeY)
 
 # Note: shouldPlot=False disables all plots and print statements
-def runTrial(folder, shouldPlot=False):
+def getStereoDepthMap(folder, shouldPlot=False):
     if shouldPlot:
         print("folder: " + str(folder))
     disparity = getDisparityMap(folder).astype(np.float32)/16
@@ -206,7 +206,8 @@ def runTrial(folder, shouldPlot=False):
 
 
     colormap = 'Blues'
-    plt.figure(figsize = (20,8))
+    if shouldPlot:
+        plt.figure(figsize = (20,8))
 
     g_kernel_size1 = 43
     g_kernel_size2 = 25
@@ -324,15 +325,17 @@ def runTrial(folder, shouldPlot=False):
 
         plt.show()
 
-    output_name = folder[(len('image_pairs/')):] + '_depth_grad_maps.mat'
-    savemat(output_name, {'height':x1_smoothed, 'ygrad':ygrad, 'xgrad':xgrad})
+        output_name = folder[(len('image_pairs/')):] + '_depth_grad_maps.mat'
+        savemat(output_name, {'height':x1_smoothed, 'ygrad':ygrad, 'xgrad':xgrad})
+
+    return x1_smoothed
 
 
 if __name__ == "__main__":
     for i, folder in enumerate(folders[1:]):
         if folder == 'image_pairs/exp' or folder == 'image_pairs/halved' or folder == 'image_pairs/plain_random' or folder == 'image_pairs/squaredDiffs':
             continue
-        runTrial(folder, True);
+        getStereoDepthMap(folder, True);
 
 
 
