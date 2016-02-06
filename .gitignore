@@ -2,3 +2,4 @@
 .idea/
 *.pyc
 src/fisher-information-master/*
+*.DS_Store

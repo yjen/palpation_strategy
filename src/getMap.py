@@ -1,9 +1,9 @@
 import numpy as np
 from IPython import embed
 
-def getMap (rangeX = [-5,5], rangeY = [-5,5] , gridSize = 100 ,type=1):
+def getMap (rangeX = [-5,5], rangeY = [-5,5], gridSize = 100, modality=2):
 	"""
-	Type = {1(sinusoid depression), 2 (2 sinusoid depressions)}
+	modality = {0(flat),1(unimodal depression), 2 (bimodal depressions)}
 	"""
 	x = np.linspace(rangeX[0], rangeX[1], num = gridSize)
 	y = np.linspace(rangeY[0], rangeY[1], num = gridSize)
@@ -13,13 +13,23 @@ def getMap (rangeX = [-5,5], rangeY = [-5,5] , gridSize = 100 ,type=1):
 
 	xx, yy = np.meshgrid(x, y)
 
-	if type ==1:        
+	if modality == 0:
+		# z = np.sin(xx**2 + yy**2) / (xx**2 + yy**2)  
+		# embed()
+		z = np.zeros_like(xx)
+
+	elif modality ==1:        
 		# z = np.sin(xx**2 + yy**2) / (xx**2 + yy**2)  
 		# embed()
 		z = -np.exp (-(xx**2 + yy**2)/max(sizeX, sizeY)) #centered around zero
 
-	elif type == 2:
-		# z = -np.exp (-(xx**2 + yy**2)/max(sizeX, sizeY)) #centered around zero
-		pass
+	elif modality == 2:
+		minDim = min(sizeX, sizeY)
+		z = -(np.exp (-((xx-0.25*minDim)**2 + (yy-0.25*minDim)**2)/max(sizeX, sizeY)) \
+			+ np.exp (-((xx+0.25*minDim)**2 + (yy+0.25*minDim)**2)/max(sizeX, sizeY))) 
+
+	elif modality > 2:
+		print "modality can only be {1,2}"
+		return
 
 	return x,y,xx,yy,z

@@ -14,6 +14,7 @@ except AttributeError:
     stereo = cv2.StereoSGBM_create(0, 256, 11, P1=100, P2=200, disp12MaxDiff=181,
                         preFilterCap=4, uniquenessRatio=1,
                         speckleWindowSize=150, speckleRange=16)
+
 folders = [x[0] for x in os.walk('image_pairs')]
 IMG_SIZE = 500
 
@@ -299,6 +300,7 @@ for i, folder in enumerate(folders[1:]):
 
 
     plt.show()
+
     output_name = folder[(len('image_pairs/')):] + '_depth_grad_maps.mat'
     savemat(output_name, {'height':x1_smoothed, 'ygrad':ygrad, 'xgrad':xgrad})
 
