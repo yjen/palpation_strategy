@@ -17,6 +17,7 @@ import GPy
 from simUtils import *
 from utils import *
 from scipy import stats
+from simulated_disparity import getObservationModel
 
 
         
@@ -217,7 +218,7 @@ def getSimulateStiffnessMeas(surface, sample_points):
 
 ########################## Plot Scripts
 
-def plot_error(surface, GP, rangeX,rangeY, gridSize=100):
+def plot_error(surface, GP, rangeX,rangeY, data=None, gridSize=50):
     # choose points to compare
 
     x = np.linspace(rangeX[0], rangeX[1], num = gridSize)
@@ -226,35 +227,45 @@ def plot_error(surface, GP, rangeX,rangeY, gridSize=100):
     xx, yy = np.meshgrid(x, y)
 
     # evaluate surface ground truth:
-    GroundTruth = surface(xx,yy)
+    #GroundTruth = surface(xx,yy)
+    GroundTruth = getObservationModel(surface)
 
     # evaluate the Gaussian Process mean at the same points
     EstimateMean = eval_GP(GP, rangeX, rangeY, res=gridSize)[2]
 
     # evaluate the RMSerror
     error =np.sqrt((GroundTruth-EstimateMean)**2)
-    fig = plt.figure(figsize=(9, 3))
+    if data is None:
+        fig = plt.figure(figsize=(12, 4))
+        ax1 = fig.add_subplot(131, projection='3d')
+        ax2 = fig.add_subplot(132, projection='3d')
+        ax3 = fig.add_subplot(133, projection='3d')
+        fig.canvas.draw()
+        plt.show(block=False)
+        data = [fig, ax1, ax2, ax3]
+    data[1].clear()
+    data[2].clear()
+    data[3].clear()
 
     # plot the ground truth
-    ax = fig.add_subplot(131, projection='3d')
-    ax.plot_surface(xx, yy, GroundTruth, rstride=1, cstride=1,
+    data[1].plot_surface(xx, yy, GroundTruth, rstride=1, cstride=1,
                     cmap=cm.coolwarm, linewidth=0,
                     antialiased=False)
-    ax.set_title("Ground Truth")
+    data[1].set_title("Ground Truth")
         
     # plot the estimate
-    ax1 = fig.add_subplot(132, projection='3d')
-    cs1=ax1.plot_surface(xx, yy, EstimateMean, rstride=1, cstride=1,
+    data[2].plot_surface(xx, yy, EstimateMean, rstride=1, cstride=1,
                          cmap=cm.coolwarm, linewidth=0, antialiased=False)
-    ax1.set_title("Estimate Mean")  
+    data[2].set_title("Estimate Mean")
 
     # plot the error
-    ax1 = fig.add_subplot(133, projection='3d')
-    cs1=ax1.plot_surface(xx, yy, error, rstride=1, cstride=1,
+    data[3].plot_surface(xx, yy, error, rstride=1, cstride=1,
                          cmap=cm.Greys, linewidth=0, antialiased=False)
-    ax1.set_title("Error")  
+    data[3].set_title("Error")
+    
+    data[0].canvas.draw()
 
-    plt.show()
+    return data
 
 
 def plot_belief(GPdata):
@@ -351,6 +362,7 @@ def plot_beliefGPIS(poly,GPdata,GPISdata, meas, thresh=.4, projection3D=False):
     cb2 = plt.colorbar(cs2, norm=norm)
     cb2.set_label('${\\rm \mathbb{P}}\left[\widehat{G}(\mathbf{x}) = 0\\right]$')# # Define
     plt.draw()
+    plt.show()
 
 
 

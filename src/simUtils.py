@@ -63,7 +63,7 @@ def SimulateProbeMeas(surface, sample_locations, sensornoise = .001):
     """
 
     # unpack
-    # xx, yy = sample_locations.T
+    xx, yy = sample_locations.T
 
     # this is a simulated measurement-- add noise!
 
