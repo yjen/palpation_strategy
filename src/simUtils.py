@@ -9,6 +9,8 @@ from utils import *
 from matplotlib import _cntr as cntr #to get polygon of getLevelSet
 from shapely.geometry import asShape, Point, Polygon #to calculate point-polygon distances
 
+from simulated_disparity import getStereoDepthMap, getInterpolatedObservationModel
+
 
 
 #######################################
@@ -17,7 +19,7 @@ from shapely.geometry import asShape, Point, Polygon #to calculate point-polygon
 # simulation pipeline
 #######################################
 
-def SimulateStereoMeas(surface, rangeX, rangeY, sensornoise=.01, gridSize = 20):
+def SimulateStereoMeas(surface, rangeX, rangeY, sensornoise=.01, gridSize = 50):
     """
     simulate measurements from stereo depth mapping for the test functions above
     
@@ -34,12 +36,15 @@ def SimulateStereoMeas(surface, rangeX, rangeY, sensornoise=.01, gridSize = 20):
     x = np.linspace(rangeX[0], rangeX[1], num = gridSize)
     y = np.linspace(rangeY[0], rangeY[1], num = gridSize)
     
-    sizeX = rangeX[1] - rangeX[0]
-    sizeY = rangeY[1] - rangeY[0]
+    # sizeX = rangeX[1] - rangeX[0]
+    # sizeY = rangeY[1] - rangeY[0]
 
-    xx, yy = np.meshgrid(x, y)
+    # xx, yy = np.meshgrid(x, y)
 
-    z = surface(xx,yy)
+    # z = surface(xx,yy)
+
+    z = getStereoDepthMap(surface)
+
     z = z + np.random.randn(z.shape[0],1)*sensornoise
 
     xx, yy, z = stereo_pad(x,y,z,rangeX,rangeY)
@@ -61,7 +66,9 @@ def SimulateProbeMeas(surface, sample_locations, sensornoise = .001):
     xx, yy = sample_locations.T
 
     # this is a simulated measurement-- add noise!
-    z = surface(xx,yy)
+
+    interp = getInterpolatedObservationModel(surface)
+    z = interp(sample_locations.T)
     z = z + sensornoise*np.random.randn(z.shape[0])
 
     return xx, yy, z

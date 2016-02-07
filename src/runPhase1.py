@@ -24,11 +24,12 @@ from Planner import *
 
 ##############################
 # set boundary
-rangeX = [-2,2]
-rangeY = [-1,1]
+rangeX = [0,50]
+rangeY = [0,50]
 
 # choose surface for simulation
-surface=SixhumpcamelSurface
+#surface=SixhumpcamelSurface
+surface = "image_pairs/smooth3"
 
 
 ##############################
@@ -40,12 +41,13 @@ meas = getSimulatedStereoMeas(surface,rangeX=rangeX,rangeY=rangeY)
 
 # add termination criterion
 i=0
+plot_data = None
 
 while i<5:
-    print "iteration = ", j
+    print "iteration = ", i
 
     # initialzie Gaussian process
-    gpmodel = update_GP_sparse(meas)
+    gpmodel = update_GP_sparse(meas, numpts=5)
 
     # Predections based on current GP estimate
     GPdata=eval_GP(gpmodel, rangeX, rangeY)
@@ -61,9 +63,11 @@ while i<5:
     # add new measurements to old measurements
     meas=np.append(meas,measnew,axis=0)
 
+    plot_data = plot_error(surface, gpmodel, rangeX, rangeY, plot_data)
+    
     i=i+1
 
-plot_error(surface, gpmodel, rangeX, rangeY)
+plt.show(block=True)
 
 ##############################
 # Phase 2

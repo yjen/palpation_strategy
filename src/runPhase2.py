@@ -41,6 +41,8 @@ tumorpoly = squaretumor
 # plt.ion()
 # plt.show()
 
+plot_data = None
+
 for j in range (1,20,1):
     print "iteration = ", j
     # ignore for now: for testing alternate planning strategy
@@ -80,7 +82,9 @@ for j in range (1,20,1):
     # plot_beliefGPIS(fig,testpoly,GPdata,GPISdat,meas)
     time.sleep(0.05)
 
-plot_beliefGPIS(tumorpoly,GPdata,GPISdat,meas)
+    plot_data = plot_beliefGPIS(tumorpoly,GPdata,GPISdat,meas, plot_data)
+
+plt.show(block=True)
 
 # if __name__ == "__main__":
 #     planning(verbose=True)
