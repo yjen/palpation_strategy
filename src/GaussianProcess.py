@@ -295,7 +295,7 @@ def plot_belief(GPdata):
     plt.colorbar(cs1)
     plt.show()
 
-def plot_beliefGPIS(poly,GPdata,GPISdata, meas, thresh=.4, projection3D=False):
+def plot_beliefGPIS(poly,GPdata,GPISdata, meas, data=None, thresh=.4, projection3D=False):
     # parse locations, measurements, noise from data
     #gp data
     xx=GPdata[0]
@@ -310,59 +310,72 @@ def plot_beliefGPIS(poly,GPdata,GPISdata, meas, thresh=.4, projection3D=False):
 
     # for plotting, add first point to end
     GroundTruth = np.vstack((poly,poly[0]))
-    fig = plt.figure(figsize=(16, 4))
+    if data is None:
+        fig = plt.figure(figsize=(16, 4))
+        if projection3D==True:
+            ax1 = fig.add_subplot(131, projection='3d')
+            ax2 = fig.add_subplot(132, projection='3d')
+        else:
+            ax1 = fig.add_subplot(131)
+            ax2 = fig.add_subplot(132)
+        ax3 = fig.add_subplot(133)
+        fig.canvas.draw()
+        plt.show(block=False)
+        data = [fig, ax1, ax2, ax3]
+    data[1].clear()
+    data[2].clear()
+    data[3].clear()
 
     # plot the mean
     if projection3D==True:
-        ax = fig.add_subplot(131, projection='3d')
-        ax.plot_surface(xx, yy, mean, rstride=1, cstride=1,
+        data[1].plot_surface(xx, yy, mean, rstride=1, cstride=1,
                         cmap=cm.coolwarm, linewidth=0,
                         antialiased=False)
     else:
-        ax = fig.add_subplot(131)
-        ax.imshow(mean, cmap=cm.coolwarm,  extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
-        ax.scatter(meas.T[0], meas.T[1], c=meas.T[2], s=20, cmap=cm.coolwarm)
-    ax.set_title("Data and GP Mean: Stiffness map")
-    ax.set_xlabel('x')
-    ax.set_ylabel('y')
+        data[1].imshow(mean, cmap=cm.coolwarm,  extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
+        data[1].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=20, cmap=cm.coolwarm)
+    data[1].set_title("Data and GP Mean: Stiffness map")
+    data[1].set_xlabel('x')
+    data[1].set_ylabel('y')
     
     # plot the uncertainty
     if projection3D==True:
-        ax1 = fig.add_subplot(132, projection='3d')
-        lim=1
-        cs1=ax1.plot_surface(xx, yy, variance, rstride=1, cstride=1,
+        #lim=1
+        cs1=data[2].plot_surface(xx, yy, variance, rstride=1, cstride=1,
                              cmap=cm.Greys, linewidth=0, antialiased=False)
     else:
-        ax1 = fig.add_subplot(132)
-        ax1.imshow(variance, cmap=cm.Greys,  extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
+        data[2].imshow(variance, cmap=cm.Greys,  extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
     
-    ax1.set_title("GP Uncertainty: Stiffness map")  
-    ax1.set_xlabel('x')
-    ax1.set_ylabel('y')
+    data[2].set_title("GP Uncertainty: Stiffness map")  
+    data[2].set_xlabel('x')
+    data[2].set_ylabel('y')
     # plot the uncertainty
     # ax2 = fig.add_subplot(133, projection='3d')
     # lim=1
     # cs2=ax2.plot_surface(xx, yy, np.abs(GPISvar), rstride=1, cstride=1,
     #                      cmap=cm.Greys, linewidth=0, antialiased=False)
     # ax1.set_title("GP Uncertainty")  
-    ax2 = fig.add_subplot(133)
     
-    ax2.set_title("GPIS")
+    data[3].set_title("GPIS")
     #cs = pl.contour(xx, yy, mean, [thresh], colors='k', linestyles='dashdot')
-    ax2.contour(xx, yy, GPdata[2], [thresh], colors='r',  linewidth=1, linestyles='dashdot')
+    data[3].contour(xx, yy, GPdata[2], [thresh], colors='r',  linewidth=1, linestyles='dashdot')
     # ax2.contour(xx, yy, GroundTruth, [thresh], colors='g', linestyles='dashdot')
-    ax2.plot(GroundTruth.T[0], GroundTruth.T[1], '-.',color='g',
+    data[3].plot(GroundTruth.T[0], GroundTruth.T[1], '-.',color='g',
              linewidth=1, solid_capstyle='round', zorder=2)
-    ax2.set_xlabel('x')
-    ax2.set_ylabel('y')  
-    cs2=ax2.imshow(GPISvar, cmap=cm.Greys,
+    data[3].set_xlabel('x')
+    data[3].set_ylabel('y')  
+    cs2=data[3].imshow(GPISvar, cmap=cm.Greys,
                        extent=(xx.min(), xx.max(), yy.min(),yy.max())
     )
     norm = plt.matplotlib.colors.Normalize(vmin=0., vmax=GPISvar.max())
+    if (len(data) > 4):
+        data[4].remove()
+        data = data[:4]
     cb2 = plt.colorbar(cs2, norm=norm)
     cb2.set_label('${\\rm \mathbb{P}}\left[\widehat{G}(\mathbf{x}) = 0\\right]$')# # Define
-    plt.draw()
-    plt.show()
+    data.append(cb2)
+    
+    data[0].canvas.draw()
 
-
+    return data
 
