@@ -18,23 +18,43 @@ from simulated_disparity import getStereoDepthMap, getObservationModel,getInterp
 # should be replaced by some sort of output from Maya for the full
 # simulation pipeline
 #######################################
+IMG_SIZE = 50
+
+# def interp_function(image, workspace):
+#     # creating interpolation functions
+#     x = np.array(range(image.shape[0]))
+#     y = np.array(range(image.shape[1]))
+#     if (rangeX is not None and rangeY is not None):
+#         return RGI((rangeX, rangeY), image, bounds_error=False, fill_value=0)
+#     return RGI((x, y), image, bounds_error=False, fill_value=0)
+
+# def getInterpolatedObservationModel(planeName):
+#     model = getObservationModel(planeName)
+#     if model is None:
+#         return None
+#     rangeX = np.array(range(IMG_SIZE))
+#     rangeY = np.array(range(IMG_SIZE))
+#     return interp_function(model, rangeX, rangeY)
+
 def getInterpolatedGTSurface(surface, workspace):
-    z = getObservationModel(surface).flatten() 
+    z = getObservationModel(surface)
     res=z.shape[0]
     x = np.linspace(workspace.bounds[0][0], workspace.bounds[0][1], num = res)
     y = np.linspace(workspace.bounds[1][0], workspace.bounds[1][1], num = res)
-    f = interpolate.interp2d(x, y, z, kind='cubic')
+    f = interpolate.interp2d(x, y, z, kind='linear')
+    # f=getInterpolatedObservationModel(surface)
+
     return f
 
 def getInterpolatedStereoMeas(surface, workspace):
-    z = getStereoDepthMap(surface).flatten() 
+    z = getStereoDepthMap(surface) 
     res=z.shape[0]
     x = np.linspace(workspace.bounds[0][0], workspace.bounds[0][1], num = res)
     y = np.linspace(workspace.bounds[1][0], workspace.bounds[1][1], num = res)
-    f = interpolate.interp2d(x, y, z, kind='cubic')
+    f = interpolate.interp2d(x, y, z, kind='linear')
     return f
 
-def SimulateStereoMeas(surface, workspace, sensornoise=.01, subsample=True):
+def SimulateStereoMeas(surface, workspace, sensornoise=.001, subsample=True, numstereo=20):
     """
     simulate measurements from stereo depth mapping for the test functions above
     
@@ -48,8 +68,8 @@ def SimulateStereoMeas(surface, workspace, sensornoise=.01, subsample=True):
 
     This functions would be replaced by experiment
     """
-    x = np.linspace(workspace.bounds[0][0], workspace.bounds[0][1], num = workspace.res)
-    y = np.linspace(workspace.bounds[1][0], workspace.bounds[1][1], num = workspace.res)
+    x = np.linspace(workspace.bounds[0][0], workspace.bounds[0][1], num = numstereo)
+    y = np.linspace(workspace.bounds[1][0], workspace.bounds[1][1], num = numstereo)
     
     # sizeX = rangeX[1] - rangeX[0]
     # sizeY = rangeY[1] - rangeY[0]
@@ -63,16 +83,16 @@ def SimulateStereoMeas(surface, workspace, sensornoise=.01, subsample=True):
     else:
         interpf = getInterpolatedStereoMeas(surface,workspace)
         # xx, yy = np.meshgrid(x, y)
-        z = interpf(workspace.xlin,workspace.ylin)
+        z = interpf(x,y)
         # z = interp(np.array(
         #     [xx.flatten(),yy.flatten()]).T).flat
-    z = z + np.random.randn(z.shape[0],1)*sensornoise
+    z = z #+ np.random.randn(z.shape[0],1)*sensornoise
 
     xx, yy, z = stereo_pad(x,y,z,workspace.bounds[0],workspace.bounds[1])
 
     return xx, yy, z
 
-def SimulateProbeMeas(surface, workspace, sample_locations, sensornoise = .001):
+def SimulateProbeMeas(surface, workspace, sample_locations, sensornoise = .00001):
     """
     Simulate measurements from palpation (tapping mode) for the test functions above
     inputs:	

@@ -16,10 +16,10 @@ from Planner import *
 # set workspace boundary
 bounds = ((0,4),(0,4))
 
-#grid resolution: should be same for plots, ergodic stuff
+# grid resolution: should be same for plots, ergodic stuff
 gridres = 200
 
-#initialize workspace object
+# initialize workspace object
 workspace = Workspace(bounds,gridres)
 
 # set level set to look for-- this should correspond to somehting, max FI?
@@ -28,7 +28,7 @@ level=.5
 # initialize probe state--only needed for ergodic
 xinit=np.array([0.01,.011])
             
-# choose inclusion shape for simulation: there are a bunch of saved
+# choose inclusion shape for simulation: there are several saved
 # surface funcions in simUtils
 polyname='square'
 tumorpoly = rantumor
@@ -36,10 +36,9 @@ tumorpoly = rantumor
 # control choices: Max or Erg or dMax. Erg and dMax are still in development.
 control='Max'
 
-# acquisition functions:  MaxVar_GP, UCB_GP, EI_GP, UCB_IS, EI_IS
-AcFunction=MaxVar_GP
-Acfunctionname="MaxVar_GP"
-# planner='RM'
+# acquisition functions:  MaxVar_GP, UCB_GP, EI_GP, UCB_GPIS, EI_IS
+AcFunction=UCB_GPIS
+Acfunctionname="UCB_GPIS"
 
 plot_data = None
 
@@ -48,7 +47,7 @@ if not os.path.exists(directory):
     os.makedirs(directory)
 
 ###############
-#Initializingfffffffff
+#Initializing
 ###############
 if control == 'Erg':
     # initialize ergodic cplanner
@@ -68,31 +67,27 @@ meas = getSimulateStiffnessMeas(tumorpoly, next_samples_points)
 
 for j in range (1,100,1):
     print "iteration = ", j
-    # concatenate measurements to prior measurements
     # collect measurements
     measnew = getSimulateStiffnessMeas(tumorpoly,
                                        next_samples_points)
     
+    # concatenate measurements to prior measurements
     meas = np.append(meas,measnew,axis=0)
-        
+    
+    # update the GP model    
     gpmodel = update_GP(meas)
 
+    # use GP to predict mean, sigma on a grid
     mean, sigma = get_moments(gpmodel, workspace.x)
+
+    # find mean points closest to the level set
     boundaryestimate = getLevelSet (workspace, mean, level)
     GPIS = implicitsurface(mean,sigma,level)
-    # if AcFunction == 'AcFunction':
-    xgrid, AqcuisFunction = AcFunction(gpmodel, workspace.x, level)
-    # elif AcFunction == 'UCB_GP':
-    #     xgrid, AqcuisFunction = UCB_GP(gpmodel, workspace.x, acquisition_par=.4)
-    # elif AcFunction == 'UCB_GPIS':
-    #     xgrid, AqcuisFunction = UCB_GPIS(gpmodel, workspace.x, level, acquisition_par=1)
-    # elif AcFunction == 'EI_GP':
-    #     xgrid, AqcuisFunction = EI_GP(gpmodel, workspace.x, acquisition_par=0)
-    # elif AcFunction == 'EI_GPIS':
-    # #     xgrid, AqcuisFunction = EI_GPIS(gpmodel, workspace.x, level, acquisition_par=0)
 
-    # else:
-    #     pass
+    # evaluate selected aqcuisition function over the grid
+    xgrid, AqcuisFunction = AcFunction(gpmodel, workspace, level)
+
+    # select next sampling points. for now, just use Mac--dMax and Erg need work.
     if control=='Max':     
         print control       
         next_samples_points = maxAcquisition(workspace, AqcuisFunction,
@@ -107,8 +102,10 @@ for j in range (1,100,1):
         print 'RANDOM'
         next_samples_points=randompoints(bounds,1)
         
-    time.sleep(0.05)
-    plt.pause(0.0001)    
+    time.sleep(0.0001)
+    plt.pause(0.0001)  
+
+    # Plot everything
     plot_data = plot_beliefGPIS(tumorpoly,workspace,mean,sigma,
                                 GPIS,AqcuisFunction,meas,
                                 directory,plot_data,level=level,

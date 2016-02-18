@@ -5,7 +5,6 @@ import numpy as np
 # from matplotlib import pyplot as pl
 
 # import matplotlib.path as path
-import GPy
 #import GPyOpt
 #from utils import *
 #from getMap import *
@@ -21,38 +20,40 @@ from scipy import stats
 
 
         
-def update_GP_het(measurements,method='nonhet'):
-    """
-    GP for phase1:
-    Update the GP using heteroskedactic noise model
-    Inputs: data=[x position, y position, measurement, measurement noise]
-    """
-    sensornoise = .00001
+# def update_GP_het(measurements,method='nonhet'):
+#     """
+#     GP for phase1:
+#     Update the GP using heteroskedactic noise model
+#     Inputs: data=[x position, y position, measurement, measurement noise]
+#     """
+#     sensornoise = .01
 
-    # parse locations, measurements, noise from data
-    X = measurements[:,0:2]
-    Y = np.array([measurements[:,2]]).T
+#     # parse locations, measurements, noise from data
+#     X = measurements[:,0:2]
+#     Y = np.array([measurements[:,2]]).T
 
-    # set up the Gaussian Process
+#     # set up the Gaussian Process
 
-    if method=="het":
-        # use heteroskedactic kernel
-        noise = np.array([measurements[:,3]]).T
+#     if method=="het":
+#         # use heteroskedactic kernel
+#         noise = np.array([measurements[:,3]]).T
 
-        kern = GPy.kern.MLP(input_dim=2) + GPy.kern.Bias(1)
-        m = GPy.models.GPHeteroscedasticRegression(X,Y,kern)
-        m['.*het_Gauss.variance'] = abs(noise)
-        m.het_Gauss.variance.fix() # We can fix the noise term, since we already know it
-    else:
-        # use stationary kernel
-        kern = GPy.kern.RBF(input_dim=2 #variance=1., lengthscale=.05
-        ) + GPy.kern.White(2)#GPy.kern.Bias(1)
-        m = GPy.models.GPRegression(X,Y,kern)
-    m.optimize()
+#         kern = GPy.kern.RBF(2) + GPy.kern.Fixed(2, GPy.util.linalg.tdot(noise))
+#         m = GPy.models.GPHeteroscedasticRegression(X,Y,kern)
+#         m = GPy.models.GPRegression(X,Y,kern)
 
-    return m
+#         # m['.*het_Gauss.variance'] = abs(noise)
+#         # m.het_Gauss.variance.fix() # We can fix the noise term, since we already know it
+#     else:
+#         # use stationary kernel
+#         kern = GPy.kern.RBF(2 #variance=1., lengthscale=.05
+#         ) #GPy.kern.Bias(1)
+#         m = GPy.models.GPRegression(X,Y,kern)
+#     m.optimize()
 
-def update_GP(measurements):
+#     return m
+
+def update_GP(measurements,method='nonhet'):
     """
     GP for phase2:
     Inputs: data=[x position, y position, measurement, measurement noise]
@@ -63,11 +64,22 @@ def update_GP(measurements):
     # parse locations, measurements, noise from data
     X = measurements[:,0:2]
     Y = np.array([measurements[:,2]]).T
+    if method=="het":
+        # use heteroskedactic kernel
+        noise = np.array([measurements[:,3]]).T
 
-    # kern = GPy.kern.Matern52(2,ARD=True) +\
-    #        GPy.kern.White(2)+GPy.kern.Bias(1)
-    kern = GPy.kern.RBF(2)
-    m = GPy.models.GPRegression(X,Y,kern)
+        kern = GPy.kern.RBF(2) 
+        m = GPy.models.GPHeteroscedasticRegression(X,Y,kern)
+        # m = GPy.models.GPRegression(X,Y,kern)
+        m['.*het_Gauss.variance'] = abs(noise)
+        m.het_Gauss.variance.fix() # We can fix the noise term, since we already know it
+
+        # m['.*het_Gauss.variance'] = abs(noise)
+        # m.het_Gauss.variance.fix() # We can fix the noise term, since we already know it
+    else:
+        kern = GPy.kern.RBF(2)+ GPy.kern.White(2)
+        m = GPy.models.GPRegression(X,Y,kern)
+        m.optimize_restarts(num_restarts = 10)
     m.optimize()
     # xgrid = np.vstack([self.x1.reshape(self.x1.size),
     #                    self.x2.reshape(self.x2.size)]).T
@@ -76,6 +88,7 @@ def update_GP(measurements):
     # sigma=m.predict(self.xgrid)[1]
     # sigma=sigma.reshape(self.x1.shape)
     return m
+
 
 def update_GP_sparse(measurements,numpts=10):
     """
@@ -155,7 +168,7 @@ def predict_GP(m, pts):
     return [pts, z_pred, sigma]
 
 
-def getSimulatedStereoMeas(surface, workspace, focalplane=0,plot = True):
+def getSimulatedStereoMeas(surface, workspace, plot = True):
     """
     wrapper function for SimulateStereoMeas
     hetero. GP model requires defining the variance for each measurement 
@@ -166,20 +179,20 @@ def getSimulatedStereoMeas(surface, workspace, focalplane=0,plot = True):
     xx, yy, z = SimulateStereoMeas(surface, workspace)
 
     # we assume Gaussian measurement noise:
-    sigma_g = .001
-
+    sigma_g = .01
+    focalplane=workspace.bounds[1][1]/2.0
     # noise component due to curvature:
     # finite differencing
     #xgrid = np.vstack([xx.flatten(), yy.flatten()]).T
     grad = np.gradient(z)
     dx,dy = grad
-    sigma_fd = 1/(dx**2+dy**2)
+    sigma_fd = (dx**2+dy**2)
     sigma_fd[np.isinf(sigma_fd)]=0
 
     # todo: noise due to  offset uncertainty
     sigma_offset=(yy-focalplane)**2
     # weighted total noise for measurements
-    sigma_total = sigma_g + 0*sigma_fd  + .5*sigma_offset
+    sigma_total = sigma_g + 1*sigma_fd  + .0001*sigma_offset
 
     if plot==True:
         # plot the surface from disparity
@@ -207,7 +220,7 @@ def getSimulatedProbeMeas(surface, workspace, sample_points):
     print yy.shape
     print z.shape
     # we assume Gaussian measurement noise:
-    noise=.001
+    noise=.0001
     sigma_t = np.full(z.shape, noise)
     print   sigma_t.shape
 
@@ -232,20 +245,26 @@ def getSimulateStiffnessMeas(surface, sample_points):
 
 
 ########################## Plot Scripts
-def plot_error(surface, workspace, mean, sigma, meas, dirname, data=None,iternum=0):
+def plot_error(surface, workspace, mean, sigma, aq, meas, dirname, data=None,iternum=0, projection3D=False, plotmeas=True):
     # choose points to compare
-    rangeX=workspace.bounds[0]
-    rangeY=workspace.bounds[1]
+    xx=workspace.xx
+    yy=workspace.yy
+    print mean.shape
+    print aq.shape
+    mean = gridreshape(mean,workspace)
+    sigma = gridreshape(sigma,workspace)
     x = workspace.xlin
     y = workspace.ylin
+    aq = gridreshape(aq,workspace)
 
-    xx, yy = np.meshgrid(x, y)
+    # xx, yy = np.meshgrid(x, y)
 
-    # evaluate surface ground truth:
-    #GroundTruth = surface(xx,yy)
     interp=getInterpolatedGTSurface(surface, workspace)
     # interp=getInterpolatedObservationModel(surface)
-    GroundTruth = interp(x,y).flatten()#getObservationModel(surface)
+
+    GroundTruth = interp(x,y)
+    print GroundTruth.shape
+    print mean.shape
     # GroundTruth=GroundTruth.reshape(xx.shape)
     # evaluate the Gaussian Process mean at the same points
 
@@ -253,41 +272,87 @@ def plot_error(surface, workspace, mean, sigma, meas, dirname, data=None,iternum
     error =np.sqrt((GroundTruth-np.squeeze(mean))**2)
 
     if data is None:
-        fig = plt.figure(figsize=(16, 4))
-        ax1 = fig.add_subplot(141, projection='3d')
-        ax2 = fig.add_subplot(142, projection='3d')
-        ax3 = fig.add_subplot(143, projection='3d')
-        ax4 = fig.add_subplot(144, projection='3d')
+        fig = plt.figure(figsize=(20, 4))
+        if projection3D==True:
+            ax1 = fig.add_subplot(151, projection='3d')
+            ax2 = fig.add_subplot(152, projection='3d')
+            # ax3 = fig.add_subplot(153, projection='3d')
+            # ax4 = fig.add_subplot(154, projection='3d')
+            # ax5 = fig.add_subplot(155, projection='3d')
+        else:
+            ax1 = fig.add_subplot(151)
+            ax2 = fig.add_subplot(152)
+        ax3 = fig.add_subplot(153)
+        ax4 = fig.add_subplot(154)
+        ax5 = fig.add_subplot(155)
         fig.canvas.draw()
         fig.canvas.draw()
         plt.show(block=False)
-        data = [fig, ax1, ax2, ax3, ax4]
+        data = [fig, ax1, ax2, ax3, ax4,ax5]
     data[1].clear()
     data[2].clear()
     data[3].clear()
     data[4].clear()
+    data[5].clear()
 
     # plot the ground truth
-    data[1].plot_surface(xx, yy, GroundTruth.reshape(workspace.res,workspace.res), rstride=1, cstride=1,
+    if projection3D==True:
+        data[1].plot_surface(xx, yy, GroundTruth.reshape(workspace.res,workspace.res), rstride=1, cstride=1,
                     cmap=cm.coolwarm, linewidth=0,
                     antialiased=False)
-
+    else:
+        data[1].imshow(np.flipud(GroundTruth), cmap=cm.coolwarm,
+                       extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
+        if plotmeas==True:
+            data[1].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=20,
+                        cmap=cm.coolwarm)
+    
     data[1].set_title("Ground Truth")
         
     # plot the estimate
-    data[2].plot_surface(xx, yy, mean.reshape(workspace.res,workspace.res), rstride=1, cstride=1,
+    if projection3D==True:
+        data[2].plot_surface(xx, yy, mean.reshape(workspace.res,workspace.res), rstride=1, cstride=1,
                          cmap=cm.coolwarm, linewidth=0, antialiased=False)
+    else:
+        data[2].imshow(np.flipud(mean), cmap=cm.coolwarm,
+                       extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
+        if plotmeas==True:
+            data[2].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=20,
+                        cmap=cm.coolwarm)
     data[2].set_title("Estimate Mean")
 
     # plot the variance
-    data[3].plot_surface(xx, yy, sigma.reshape(workspace.res,workspace.res), rstride=1, cstride=1,
-                         cmap=cm.coolwarm, linewidth=0, antialiased=False)
+    # if projection3D==True:
+       # data[3].plot_surface(xx, yy, sigma.reshape(workspace.res,workspace.res), rstride=1, cstride=1,
+                         # cmap=cm.coolwarm, linewidth=0, antialiased=False)
+    # else:
+    data[3].imshow(np.flipud(sigma.reshape(workspace.res,workspace.res)), cmap=cm.coolwarm,
+                       extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
+    if plotmeas==True:
+        data[3].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=20,
+                    cmap=cm.coolwarm)
     data[3].set_title("Estimate Variance")
 
+    # plot the aquis function
+    # if projection3D==True:
+        # data[4].plot_surface(xx, yy, aq.reshape(workspace.res,workspace.res), rstride=1, cstride=1,
+                         # cmap=cm.coolwarm, linewidth=0, antialiased=False)
+    # else:
+    data[4].imshow(np.flipud(aq.reshape(workspace.res,workspace.res)), cmap=cm.coolwarm,
+                   extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
+    if plotmeas==True:
+        data[4].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=20,
+                        cmap=cm.coolwarm)
+    data[4].set_title("Estimate Variance")
+
     # plot the error
-    data[4].plot_surface(xx, yy, error.reshape(workspace.res,workspace.res), rstride=1, cstride=1,
-                         cmap=cm.Greys, linewidth=0, antialiased=False)
-    data[4].set_title("Error from GT")
+    # if projection3D==True:
+        # data[5].plot_surface(xx, yy, error.reshape(workspace.res,workspace.res), rstride=1, cstride=1,
+                           # cmap=cm.Greys, linewidth=0, antialiased=False)
+    # else:
+    data[5].imshow(np.flipud(error.reshape(workspace.res,workspace.res)), cmap=cm.coolwarm,
+                       extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
+    data[5].set_title("Error from GT")
     
     data[0].canvas.draw()
     data[0].savefig(dirname + '/' + str(iternum) + ".pdf" ,bbox_inches='tight')

@@ -16,82 +16,77 @@ from simUtils import *
 from utils import *
 from GaussianProcess import *
 # import ErgodicPlanner
-
-
 from Planner import *
-
-
-
-
 ##############################
-# set boundary
-rangeX = [0,50]
-rangeY = [0,50]
-# set workspace boundary
 
+# set workspace boundary
 bounds=((0,50),(0,50))
 # choose surface for simulation
 
-#grid resolution: should be same for plots, ergodic stuff
-gridres = 20
+# grid resolution: should be same for plots, ergodic stuff
+gridres = 100
 
-#initialize workspace object
+# initialize workspace object
 workspace = Workspace(bounds,gridres)
 
-
-surfacename="smooth3"
+# select surface to simulate
+surfacename="smooth7"
 surface = "image_pairs/"+ surfacename 
 
 planner=''
-# acquisition functions:  MaxVar, UCB_GP, EI_GP, UCB_IS, EI_IS
-AcFunction='MaxVar'
 
-directory='phase1_'+surfacename+'_'+planner
+# acquisition functions:  MaxVar_GP, UCB_GP, EI_GP, UCB_IS, EI_IS
+AcFunction=MaxVar_GP#MaxVar_plus_gradient
+Acfunctionname="MaxVar_GP"
+
+directory='phase1_'+surfacename+'_'+Acfunctionname
 if not os.path.exists(directory):
     os.makedirs(directory)
 ##############################
 # Phase 1
 ###############################
-# initialize measurement from stereo data
-meas = getSimulatedStereoMeas(surface,workspace)
 
 
-# add termination criterion
 i=0
 plot_data = None
 
-while i<20:
-    print "iteration = ", i
+# TODO: add termination criterion instead of counting i (when estimate stops changing)
 
-    # initialzie Gaussian process
-    gpmodel = update_GP(meas)
+while i<100:
+    print "iteration = ", i
+    if i==0:
+        # initialize measurement from stereo data
+        meas = getSimulatedStereoMeas(surface,workspace)
+        next_samples_points =  randompoints(bounds, 10)
+        meastouchonly = getSimulatedProbeMeas(surface, workspace, next_samples_points)
+    else:
+        # add new measurements to old measurements
+        meastouchonly = np.append(meastouchonly,measnew,axis=0)
+        #    add new measurements to old measurements
+        meas = np.append(meas,measnew,axis=0)
+   
+    # update Gaussian process
+    gpmodel = update_GP(meas, method='het')
+
+    # evaluate mean, sigma on a grid
     mean, sigma = get_moments(gpmodel, workspace.x)
 
-    # Predections based on current GP estimate
-    # GPdata=eval_GP(gpmodel, bounds)
-    
-    # plot_belief(GPdata)
-
     # choose points to probe based on max uncertainty
-    if AcFunction == 'MaxVar':
-        xgrid, AqcuisFunction = MaxVar_GP(gpmodel, workspace.x)
+    xgrid, AqcuisFunction = AcFunction(gpmodel, workspace)
 
     next_samples_points = maxAcquisition(workspace, AqcuisFunction,
-                                           numpoints=10)
+                                           numpoints=3)
     # sample surface at points
-    measnew= getSimulatedProbeMeas(surface, workspace, next_samples_points)
+    measnew = getSimulatedProbeMeas(surface, workspace, next_samples_points)
 
-    # add new measurements to old measurements
-    meas=np.append(meas,measnew,axis=0)
-    time.sleep(0.05)
+    # Plot everything
+    time.sleep(0.0001)
     plt.pause(0.0001) 
-    plot_data = plot_error(surface, workspace, mean, sigma, meas, directory, plot_data,iternum=i)
+    plot_data = plot_error(surface, workspace, mean, sigma, AqcuisFunction,  meas, directory, plot_data, projection3D=True, iternum=i)
     
     i=i+1
 
 plt.show(block=True)
 
-##############################
-# Phase 2
-###############################
+
 

@@ -4,6 +4,8 @@ import matplotlib.path as path
 from mpl_toolkits.mplot3d import axes3d
 from matplotlib import cm #colormap
 from scipy.special import erfc
+from scipy.spatial.distance import cdist
+import GPy
 
 
 def plotBelief (xx,yy,z):
@@ -58,7 +60,7 @@ class Params():
 
 def stereo_pad(x,y,z,rangeX,rangeY):
         # pad the stereo measurements by a fixed amount. Necessary to avoid weird undertainty at the edges of the region when using Gaussian Processes
-        percentpad=.1
+        percentpad=0 #.1
 
         padbyX = percentpad*(rangeX[1]-rangeX[0])
         padbyY = percentpad*(rangeY[1]-rangeY[0])
@@ -106,9 +108,15 @@ def get_moments(model,x):
     '''
     Moments (mean and sdev.) of a GP model at x
     '''
+
     input_dim = model.X.shape[1]
     x = reshape(x,input_dim)
-    m, v = model.predict(x)
+    try:
+        m, v = model.predict(x)
+    except TypeError:
+        k1=GPy.kern.RBF(2)
+        m, v = model._raw_predict(x)
+        v += model.likelihood.variance[-1]
     s = np.sqrt(np.clip(v, 0, np.inf))
     return (m,s)
 
@@ -157,6 +165,15 @@ def gridreshape(x,workspace):
              workspace.res)
     xl=xl.T
     return xl
+
+def distanceBetweenCurves(C1, C2):
+    D = cdist(C1, C2, 'euclidean')
+
+    #none symmetric Hausdorff distances
+    H1 = np.max(np.min(D, axis=1))
+    H2 = np.max(np.min(D, axis=0))
+
+    return (H1 + H2) / 2.
 
 class Workspace(object):
     def __init__(self, bounds, res):

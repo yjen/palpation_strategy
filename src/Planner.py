@@ -52,19 +52,46 @@ import ErgodicPlanner
 ##########################
 #Acuisition functions
 ##########################
-def MaxVar_GP(model, x , level=0, acquisition_par=0):
+def MaxVar_plus_gradient(model, workspace , level=0, acquisition_par=0):
     """
     choose next sample points based on maximizing prior variance
     """
+    #x = multigrid(bounds, res)
+    mean, sigma = get_moments(model, workspace.x)     
+    meansq = mean.reshape(workspace.res,workspace.res)
+
+    grad = np.gradient(meansq)
+    dx,dy = grad
+    sigma_fd = (dx**2+dy**2)
+    sigma_fd[np.isinf(sigma_fd)]=0
+    print sigma_fd.shape
+
+    buffx=.02*workspace.bounds[0][1]
+    buffy=.02*workspace.bounds[1][1]
+
+    sigma[workspace.x[:,0]<buffx]=0
+    sigma[workspace.x[:,1]<buffy]=0
+    sigma[workspace.x[:,0]>workspace.bounds[0][1]-buffx]=0
+    sigma[workspace.x[:,1]>workspace.bounds[1][1]-buffy]=0
+    f_acqu = sigma.flatten()+.1*sigma_fd.flatten()
+    f_acqu=np.array([f_acqu]).T
+    return workspace.x, f_acqu  # note: returns negative value for posterior minimization
+
+def MaxVar_GP(model, workspace , level=0, acquisition_par=0):
+    """
+    choose next sample points based on maximizing prior variance
+    """
+    x=workspace.x
     #x = multigrid(bounds, res)
     mean, sigma = get_moments(model, x)     
     f_acqu = sigma
     return x, f_acqu  # note: returns negative value for posterior minimization
 
-def UCB_GP(model, x, level=0, acquisition_par=.4 ):
+def UCB_GP(model, workspace, level=0, acquisition_par=.4 ):
     """
     Upper Confidence Band
     """
+    x=workspace.x
     #x = multigrid(bounds, res)
     mean, sigma = get_moments(model, x)     
     f_acqu = acquisition_par * (mean) +  sigma
@@ -103,10 +130,11 @@ def dmaxAcquisition(workspace, model, acfun, xinit=[.2,.3], numpoints=1, level=0
 #     df_acqu = acquisition_par * dmdx +  dsdx
 #     return df_acqu
 
-def UCB_GPIS(model, x, level, acquisition_par=0 ):
+def UCB_GPIS(model, workspace, level, acquisition_par=0 ):
     """
     Upper Confidence Band
     """
+    x=workspace.x
     #x = multigrid(bounds, res)
     mean, sigma = get_moments(model, x)   
     sdf=abs(mean-level)
@@ -123,20 +151,22 @@ def UCB_GPIS(model, x, level, acquisition_par=0 ):
 #     df_acqu = acquisition_par * dmdx +  dsdx
 #     return df_acqu
 
-def EI_GP(model, x, level=0, acquisition_par = 0 ):
+def EI_GP(model, workspace, level=0, acquisition_par = 0 ):
     """
     Expected Improvement
     """
+    x=workspace.x
     mean, sigma = get_moments(model, x)     
     fmax = max(model.predict(model.X)[0])
     phi, Phi, _ = get_quantiles(fmax, mean, sigma, acquisition_par=acquisition_par)    
     f_acqu = (-fmax + mean - acquisition_par) * Phi + sigma * phi
     return x, f_acqu  # note: returns negative value for posterior minimization 
 
-def EI_GPIS(model, x,  level, acquisition_par =0):
+def EI_GPIS(model, workspace,  level, acquisition_par =0):
     """
     Expected Improvement
     """
+    x=workspace.x
     mean, sigma = get_moments(model, x)     
     sdf=abs(mean-level)
     fmin = min(abs(model.predict(model.X)[0]-level))
