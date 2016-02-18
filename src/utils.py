@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 import matplotlib.path as path
 from mpl_toolkits.mplot3d import axes3d
 from matplotlib import cm #colormap
+from scipy.special import erfc
+
 
 def plotBelief (xx,yy,z):
 	#xx,yy -- matrix obtained from meshgrid
@@ -80,4 +82,89 @@ def stereo_pad(x,y,z,rangeX,rangeY):
 
 ########################## Plot Scripts
 
+
+
+
+def get_quantiles(fmin, m, s, acquisition_par=0):
+    '''
+    Quantiles of the Gaussian distribution useful to determine the acquisition function values
+    :param acquisition_par: parameter of the acquisition function
+    :param fmin: current minimum.
+    :param m: vector of means.
+    :param s: vector of standard deviations. 
+    '''
+    if isinstance(s, np.ndarray):
+        s[s<1e-10] = 1e-10
+    elif s< 1e-10:
+        s = 1e-10
+    u = (m-fmin+acquisition_par)/s
+    phi = np.exp(-0.5 * u**2) / np.sqrt(2*np.pi)
+    Phi = 0.5 * erfc(-u / np.sqrt(2))
+    return (phi, Phi, u)
+
+def get_moments(model,x):
+    '''
+    Moments (mean and sdev.) of a GP model at x
+    '''
+    input_dim = model.X.shape[1]
+    x = reshape(x,input_dim)
+    m, v = model.predict(x)
+    s = np.sqrt(np.clip(v, 0, np.inf))
+    return (m,s)
+
+#need to get the old reshape function from gpyopt
+def get_d_moments(model,x):
+    '''Gradients with respect to x of the moments (mean and sdev.) of the GP
+    :param model: GPy model.  :param x: location where the gradients are
+    evaluated.
+
+    '''
+    input_dim = model.input_dim
+    x = reshape(x,input_dim)
+    _, v = model.predict(x)
+    dmdx, dvdx = model.predictive_gradients(x)
+    dmdx = dmdx[:,:,0]
+    dsdx = dvdx / (2*np.sqrt(v))
+    return (dmdx, dsdx)
+
+def multigrid(bounds, Ngrid):
+    '''
+    Generates a multidimensional lattice
+    :param bounds: box constrains
+    :param Ngrid: number of points per dimension.
+    '''
+    if len(bounds)==1:
+        return np.linspace(bounds[0][0], bounds[0][1],
+                           Ngrid).reshape(Ngrid, 1)
+    xx = np.meshgrid(*[np.linspace(b[0], b[1], Ngrid) for b in bounds]) 
+    return np.vstack([x.flatten(order='F') for x in xx]).T
+
+
+def reshape(x,input_dim):
+    '''
+    Reshapes x into a matrix with input_dim columns
+    '''
+    x = np.array(x)
+    if x.size ==input_dim:
+        x = x.reshape((1,input_dim))
+    return x
+
+def gridreshape(x,workspace):
+    '''
+    Reshapes x into a matrix with input_dim columns
+    '''
+    xl=x.reshape(workspace.res,
+             workspace.res)
+    xl=xl.T
+    return xl
+
+class Workspace(object):
+    def __init__(self, bounds, res):
+        self.bounds=bounds
+        self.res=res
+        self.x = multigrid(bounds, res)
+        self.xx=self.x.T[0].reshape(self.res,self.res).T
+        self.yy=self.x.T[1].reshape(self.res,self.res).T
+        self.xlin=np.linspace(bounds[0][0], bounds[0][1],res)
+        self.ylin=np.linspace(bounds[1][0], bounds[1][1],res)
 

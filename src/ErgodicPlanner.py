@@ -124,6 +124,7 @@ class lqrsolver(object):
             raise Exception(
                 "dimension of xmax_workspace \
                 does not match dimension of workspace")
+        
         if type(self.Nfourier) == int:
         # if a single number is given, create tuple of length dim_worksapce
             self.Nfourier = (self.Nfourier,) * self.dimw  # if tuples
@@ -591,9 +592,9 @@ class lqrsolver(object):
 def ergoptimize(solver,pdf,state_init,
                 control_init=np.array([0,0]),
                 t0=0, tf=10, dt=100,
-                plot=True,
+                plot=False, verbose=False,
                 maxsteps=20):
-    plt.close("all")
+    # plt.close("all")
     #initialize system
     xdim=2
     udim=2
@@ -602,7 +603,10 @@ def ergoptimize(solver,pdf,state_init,
     time=np.linspace(t0,tf,dt)
     
     #state_init=np.array(state_init)
-    U0 = np.array([np.linspace(control_init[0],control_init[0],dt),np.linspace(control_init[1],control_init[1],dt)]).T
+    U0 = np.array([np.linspace(control_init[0],
+                               control_init[0],dt),
+                   np.linspace(control_init[1],
+                               control_init[1],dt)]).T
     X0 =solver.simulate(state_init,U0,time)
     solver.update_traj(X0,U0,time)
 
@@ -645,22 +649,23 @@ def ergoptimize(solver,pdf,state_init,
         plt.pause(.01)
     k=0
     for k in range(0,maxsteps,1):
-        print "*****************k=", k
         descdir=solver.descentdirection()
         newdcost=solver.dcost(descdir)
-        print "DJ=", newdcost
         gamma=1
         newtraj=solver.project(state_init,trajlist[k]+gamma*descdir,time)
         solver.update_traj(newtraj[0],newtraj[1],time)
         newcost=solver.cost()
         while newcost > (costs[k] + alpha*gamma*newdcost) and gamma>.00000000001:
             gamma=beta*gamma
-            print gamma
+            # print gamma
             newtraj=solver.project(state_init,trajlist[k]+gamma*descdir,time)
             solver.update_traj(newtraj[0],newtraj[1],time)
             newcost=solver.cost()
-        print "gamma=", gamma
-        print "new J=", newcost
+        if verbose==True:
+            print "*****************k=", k
+            print "DJ=", newdcost
+            print "gamma=", gamma
+            print "new J=", newcost
         if plot==True:
             q=newtraj[0].T
             ax1.plot(q[0], q[1],  label='q',
@@ -681,14 +686,14 @@ def ergoptimize(solver,pdf,state_init,
                  lw=3,alpha=0.4)
     return solver.X_current
 
-X = .2*np.array([[-4.61611719, -6.00099547],
-              [4.10469096, 5.32782448],
-              [0.00000000, -0.50000000],
-              [-6.17289014, -4.6984743],
-              [1.3109306, -6.93271427],
-              [-5.03823144, 3.10584743],
-              [-2.87600388, 6.74310541],
-              [5.21301203, 4.26386883]])
+# X = .2*np.array([[-4.61611719, -6.00099547],
+#               [4.10469096, 5.32782448],
+#               [0.00000000, -0.50000000],
+#               [-6.17289014, -4.6984743],
+#               [1.3109306, -6.93271427],
+#               [-5.03823144, 3.10584743],
+#               [-2.87600388, 6.74310541],
+#               [5.21301203, 4.26386883]])
 # xdim=2
 # udim=2
 # LQ=lqrsolver(xdim,udim, Nfourier=10, res=100,barrcost=50,contcost=.1,ergcost=10)

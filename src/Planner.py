@@ -12,209 +12,196 @@ from matplotlib import cm
 #sys.path.append("..")
 #import simulated_disparity
 from simUtils import *
+from scipy.stats import norm
+
 from utils import *
 from GaussianProcess import *
 import ErgodicPlanner
 
-def max_uncertainty(GPdata,numpoints=1):
-    # return the x,y locations of the "numpoints" largest uncertainty values
-    ind = np.argpartition(GPdata[3].flatten(),
-                          -numpoints)[-numpoints:]
-    newpointx=GPdata[0].flatten()[ind]
-    newpointy=GPdata[1].flatten()[ind]
+
+
+# def max_uncertainty(GPdata,numpoints=1):
+#     # return the x,y locations of the "numpoints" largest uncertainty values
+#     ind = np.argpartition(GPdata[3].flatten(),
+#                           -numpoints)[-numpoints:]
+#     newpointx=GPdata[0].flatten()[ind]
+#     newpointy=GPdata[1].flatten()[ind]
     
-    return np.array([newpointx,newpointy]).T
+#     return np.array([newpointx,newpointy]).T
 
-def max_uncertainty_IS(GPdata,numpoints=1):
-    # return the x,y locations of the "numpoints" largest uncertainty values
-    GPISdat=implicitsurface(GPdata)
-    ind = np.argpartition(GPISdat[2].flatten(),
-                          -numpoints)[-numpoints:]
-    newpointx=GPdata[0].flatten()[ind]
-    newpointy=GPdata[1].flatten()[ind]
+# def max_uncertainty_IS(GPdata,numpoints=1):
+#     # return the x,y locations of the "numpoints" largest uncertainty values
+#     GPISdat=implicitsurface(GPdata)
+#     ind = np.argpartition(GPISdat[2].flatten(),
+#                           -numpoints)[-numpoints:]
+#     newpointx=GPdata[0].flatten()[ind]
+#     newpointy=GPdata[1].flatten()[ind]
     
-    return np.array([newpointx,newpointy]).T
+#     return np.array([newpointx,newpointy]).T
 
-def get_moments(model,x):
-    '''
-    Moments (mean and sdev.) of a GP model at x
-    '''
-    input_dim = model.X.shape[1]
-    x = reshape(x,input_dim)
-    fmin = min(model.predict(model.X)[0])
-    m, v = model.predict(x)
-    s = np.sqrt(np.clip(v, 0, np.inf))
-    return (m,s, fmin)
+# def ergodic(LQ,GPdata,xinit,thresh,numpoints=1):
+#     # return the x,y locations of the "numpoints" largest uncertainty values
+#     GPISdat=implicitsurface(GPdata,thresh)
+#     pdf=GPISdat[2]
+#     newpts=ErgodicPlanner.ergoptimize(LQ,pdf,
+#                                xinit,
+#                                 maxsteps=15)
+    
+#     return newpts
 
-def get_d_moments(model,x):
-    '''Gradients with respect to x of the moments (mean and sdev.) of the GP
-    :param model: GPy model.  :param x: location where the gradients are
-    evaluated.
+##########################
+#Acuisition functions
+##########################
+def MaxVar_GP(model, x , level=0, acquisition_par=0):
+    """
+    choose next sample points based on maximizing prior variance
+    """
+    #x = multigrid(bounds, res)
+    mean, sigma = get_moments(model, x)     
+    f_acqu = sigma
+    return x, f_acqu  # note: returns negative value for posterior minimization
 
-    '''
-    input_dim = model.input_dim
-    x = reshape(x,input_dim)
-    _, v = model.predict(x)
-    dmdx, dvdx = model.predictive_gradients(x)
-    dmdx = dmdx[:,:,0]
-    dsdx = dvdx / (2*np.sqrt(v))
-    return (dmdx, dsdx)
-
-"""
-Class for Upper (lower) Confidence Band acquisition functions.
-"""
-def acquisition_function(model,x,acquisition_par =0):
+def UCB_GP(model, x, level=0, acquisition_par=.4 ):
     """
     Upper Confidence Band
-    """        
-    m, s, _ = get_moments(model, x)     
-    f_acqu = -acquisition_par * m +  s
-    return -f_acqu  # note: returns negative value for posterior minimization 
-
-def d_acquisition_function(model,x,acquisition_par =0):
     """
-    Derivative of the Upper Confidence Band
+    #x = multigrid(bounds, res)
+    mean, sigma = get_moments(model, x)     
+    f_acqu = acquisition_par * (mean) +  sigma
+    return x, f_acqu  # note: returns negative value for posterior 
+
+def dmaxAcquisition(workspace, model, acfun, xinit=[.2,.3], numpoints=1, level=0):
     """
-    dmdx, dsdx = get_d_moments(model, x)
-    df_acqu = -acquisition_par * dmdx + dsdx
-    return -df_acqu
+    Selects numpoints number of points that are maximal from the list of AcquisitionFunctionVals
+    """
+    dx=.1
+    x=[xinit]
+    for n in range(numpoints):
+        _, current_ac = acfun(model, x[n], level=level)
+        testpts=x[n]+np.array([[dx,0],[-dx,0],[-dx,-dx],[0,dx],[dx,dx],[dx,-dx],[-dx,dx],[0,-dx]])
+        allpts=np.vstack((x[n],testpts))
+        allpts, new_acqu = MaxVar_GP(model, allpts)
+
+        grad=new_acqu-current_ac  
+        i=0
+        ind = np.argpartition(new_acqu.flatten(), -1)[-1-i]
+        newpt = allpts[ind]
+        print newpt
+        while (newpt[0]>workspace.bounds[0][1] or newpt[0]<workspace.bounds[0][0] or 
+                newpt[1]>workspace.bounds[1][1] or newpt[1]<workspace.bounds[1][0]):
+            i = i+1
+            print np.argpartition(new_acqu.flatten(), -1)
+            ind = np.argpartition(new_acqu.flatten(), -1)[-1-i]
+            newpt = allpts[ind]
+        x.append(newpt)
+    return np.array(x[1:])
+# def d_UCB_GP(model,x,acquisition_par=1):
+#     """
+#     Derivative of the Upper Confidence Band
+#     """
+#     dmdx, dsdx = get_d_moments(model, x)
+#     df_acqu = acquisition_par * dmdx +  dsdx
+#     return df_acqu
+
+def UCB_GPIS(model, x, level, acquisition_par=0 ):
+    """
+    Upper Confidence Band
+    """
+    #x = multigrid(bounds, res)
+    mean, sigma = get_moments(model, x)   
+    sdf=abs(mean-level)
+    f_acqu = - sdf +  acquisition_par*sigma
+    return x, f_acqu+abs(min(f_acqu))  # note: returns negative value for posterior minimization
 
 
-def max_uncertainty_joint(GPdata,numpoints=1):
-    GPISdat=implicitsurface(GPdata)
 
-    total= 10*GPdata[3]+GPISdat[2]
-    # return the x,y locations of the "numpoints" largest uncertainty values
-    ind = np.argpartition(total.flatten(), -numpoints)[-numpoints:]
-    newpointx=GPdata[0].flatten()[ind]
-    newpointy=GPdata[1].flatten()[ind]
+# def d_UCB_GPIS(model,x,acquisition_par=1):
+#     """
+#     Derivative of the Upper Confidence Band
+#     """
+#     dmdx, dsdx = get_d_moments(model, x)
+#     df_acqu = acquisition_par * dmdx +  dsdx
+#     return df_acqu
+
+def EI_GP(model, x, level=0, acquisition_par = 0 ):
+    """
+    Expected Improvement
+    """
+    mean, sigma = get_moments(model, x)     
+    fmax = max(model.predict(model.X)[0])
+    phi, Phi, _ = get_quantiles(fmax, mean, sigma, acquisition_par=acquisition_par)    
+    f_acqu = (-fmax + mean - acquisition_par) * Phi + sigma * phi
+    return x, f_acqu  # note: returns negative value for posterior minimization 
+
+def EI_GPIS(model, x,  level, acquisition_par =0):
+    """
+    Expected Improvement
+    """
+    mean, sigma = get_moments(model, x)     
+    sdf=abs(mean-level)
+    fmin = min(abs(model.predict(model.X)[0]-level))
+    phi, Phi, _ = get_quantiles(fmin, sdf, sigma, acquisition_par=acquisition_par)    
+    f_acqu = (-sdf+fmin + acquisition_par) * Phi + sigma * phi
+    return x, f_acqu  # note: returns negative value for posterior minimization 
+
+# def UCBISacquisition_function(model, boundaryestimate, level, numpoints=1):
+#     """
+#     uncertainty along the surface estimate (this only works with the max ac for now...)
+#     """
+#     mean, sigma = get_moments(model, boundaryestimate, level)  
     
-    return np.array([newpointx,newpointy]).T
+#     return boundaryestimate, sigma 
 
-# def max_MI(x,GPdata,numpoints=1):
-#     # TODO
-#     MutualInf=1/2 np.log(I+1/(sigma**2)*K)
-#     pass
+# def MLacquisition_function(model, x, level, acquisition_par=0):
+#     """
+#     Marginal Likelihood
+#     marginal curve likelihood
+#     P(f(x) = 0).
+#     """
+#     mean, sigma, _ = get_moments(model, x, level) 
+#     f_acqui = np.zeros(x.shape) 
+#     phi = stats.distributions.norm.pdf
+#     GPIS = phi(mean,loc = level, scale = (sigma))
+#     GPIS = GPIS/GPIS.max()
+#     return  x, GPIS
+
+def maxAcquisition(workspace, AcquisitionFunctionVals, numpoints=1):
+    """
+    Selects numpoints number of points that are maximal from the list of AcquisitionFunctionVals
+    """
+    ind = np.argpartition(AcquisitionFunctionVals.flatten(), -numpoints)[-numpoints:]
+    newpts = workspace.x[ind]
+    return newpts
 
 
-##############################
-# set boundary
-# rangeX = [-2,2]
-# rangeY = [-1,1]
 
-# # choose surface for simulation
-
-# ##############################
-# # Phase 2
-# ###############################
-
-# # choose surface for simulation
-# surface=gaussian_tumor
-# #surface=SixhumpcamelSurface
-
-# # initialize planner
-# xdim=2
-# udim=2
-# #LQ=ErgodicPlanner.lqrsolver(xdim,udim, Nfourier=10, res=100,barrcost=50,contcost=.1,ergcost=10)
-
-# # initialize probe state
-# xinit=np.array([0.01,.0])
-# U0=np.array([0,0])
-
-# # initialize stiffness map (uniform)
-# #pdf=uniform_pdf(LQ.xlist)
-
-# for j in range (1,30,1):
-# #j=1
-#     #traj=ErgodicPlanner.ergoptimize(LQ,pdf, xinit,control_init=U0,maxsteps=20)
-#     #if j>1:
-#     #    trajtotal=np.concatenate((trajtotal,traj),axis=0)
-#     #else:
-#     #    trajtotal=traj
-#     # choose points to probe based on max uncertainty
-#     if j>1:
-#         next_samples_points=max_uncertainty_IS(GPdata,numpoints=4)
-#         measnew=getSimulateStiffnessMeas(surface,
-#                                           next_samples_points)
-#         meas=np.append(meas,measnew,axis=0)
-#     else:
-#         next_samples_points=np.array([[-1,-1],[-1,1],[0,0],[1,-1],[1,1]])
-#         meas=getSimulateStiffnessMeas(surface,
-#                                           next_samples_points)
-        
-
-#     gpmodel=update_GP(meas)
-
-#     # Predections based on current GP estimate
-#     GPdata=eval_GP(gpmodel, rangeX, rangeY,res=200)
-#    # GPISdat=implicitsurface(GPdata)
+def ergAcquisition(workspace, AcquisitionFunctionVals, LQ, xinit=[.2,.3], T=10, StepstoReplan=20):
+    """
+    Selects numpoints number of points that are maximal from the list of AcquisitionFunctionVals
+    inputs:
+        xinit: starting point for ergodic trajectory optimization
+        T : time horizon for ergodic trajectory optimization
+        dt : time discretization for ergodic trajectory optimization
+        StepstoReplan: number of steps to take/measurements to take before replanning (receding horizon)
+    """
+    pdf = AcquisitionFunctionVals.reshape(workspace.res,workspace.res)
+    newpts = ErgodicPlanner.ergoptimize(LQ,
+                                      pdf,
+                                      xinit,
+                                      maxsteps=25,plot=True)
+    #just use the first half of trajectory
+    #newlen=int(newpts.shape[0]/2)
+    return newpts #newpts[0::newlen]
     
+def randompoints(bounds, numpoints=1):
+    rangeX = bounds[0]
+    rangeY = bounds[1]
+    return np.array([np.random.uniform(rangeX[0],
+                                       rangeX[1],
+                                       numpoints),
+                     np.random.uniform(rangeY[0],
+                                       rangeY[1],
+                                       numpoints)]).T
 
 
-# if __name__ == "__main__":
-#     planning(verbose=True)
 
-
-# def plot_beliefGPIS(surface,GPdata):
-#     # parse locations, measurements, noise from data
-#     thresh=.4
-#     GPISdat=implicitsurface(GPdata,thresh=thresh)
-
-#     #gp data
-#     xx=GPdata[0]
-#     yy=GPdata[1]
-#     mean=GPdata[2]
-#     variance=GPdata[3]
-
-#     #GPIS data
-#     xx=GPISdat[0]
-#     yy=GPISdat[1]
-#     GPISvar=GPISdat[2]
-
-#     # evaluate surface ground truth:
-#     GroundTruth = surface(xx,yy)
-    
-#     fig = plt.figure(figsize=(16, 4))
-
-#     # plot the mean
-#     ax = fig.add_subplot(131, projection='3d')
-#     ax.plot_surface(xx, yy, mean, rstride=1, cstride=1,
-#                     cmap=cm.coolwarm, linewidth=0,
-#                     antialiased=False)
-#     ax.set_title("GP Mean")
-#     ax.set_xlabel('x')
-#     ax.set_ylabel('y')    
-#     # plot the uncertainty
-#     ax1 = fig.add_subplot(132, projection='3d')
-#     lim=1
-#     cs1=ax1.plot_surface(xx, yy, variance, rstride=1, cstride=1,
-#                          cmap=cm.Greys, linewidth=0, antialiased=False)
-#     ax1.set_title("GP Uncertainty")  
-#     ax1.set_xlabel('x')
-#     ax1.set_ylabel('y')
-#     # plot the uncertainty
-#     # ax2 = fig.add_subplot(133, projection='3d')
-#     # lim=1
-#     # cs2=ax2.plot_surface(xx, yy, np.abs(GPISvar), rstride=1, cstride=1,
-#     #                      cmap=cm.Greys, linewidth=0, antialiased=False)
-#     # ax1.set_title("GP Uncertainty")  
-#     ax2 = fig.add_subplot(133)
-    
-#     ax2.set_title("GPIS")
-#     #cs = pl.contour(xx, yy, mean, [thresh], colors='k', linestyles='dashdot')
-#     ax2.contour(xx, yy, GPdata[2], [.4], colors='r', linestyles='dashdot')
-#     ax2.contour(xx, yy, GroundTruth, [.4], colors='g', linestyles='dashdot')
-#     ax2.set_xlabel('x')
-#     ax2.set_ylabel('y')    #phi = stats.distributions.norm.pdf
-#     #GPISv=np.flipud(phi(GPdata[2],loc=.4,scale=( v+GPdata[3])))
-#     #GPISv=GPISv/GPISv.max()
-#     cs2=ax2.imshow(GPISvar, cmap=cm.Greys,
-#                        extent=(xx.min(), xx.max(), yy.min(),yy.max())
-#     )
-#     norm = plt.matplotlib.colors.Normalize(vmin=0., vmax=GPISvar.max())
-#     cb2 = plt.colorbar(cs2, norm=norm)
-#     cb2.set_label('${\\rm \mathbb{P}}\left[\widehat{G}(\mathbf{x}) = 0\\right]$')# # Define
-#     plt.show()
-
-
-# plot_beliefGPIS(surface,GPdata)

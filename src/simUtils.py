@@ -5,11 +5,11 @@ import GPyOpt
 import matplotlib.pyplot as plt
 from matplotlib import cm
 from utils import *
-
+from scipy import interpolate
 from matplotlib import _cntr as cntr #to get polygon of getLevelSet
 from shapely.geometry import asShape, Point, Polygon #to calculate point-polygon distances
 
-from simulated_disparity import getStereoDepthMap, getInterpolatedObservationModel
+from simulated_disparity import getStereoDepthMap, getObservationModel,getInterpolatedObservationModel
 
 
 
@@ -18,8 +18,23 @@ from simulated_disparity import getStereoDepthMap, getInterpolatedObservationMod
 # should be replaced by some sort of output from Maya for the full
 # simulation pipeline
 #######################################
+def getInterpolatedGTSurface(surface, workspace):
+    z = getObservationModel(surface).flatten() 
+    res=z.shape[0]
+    x = np.linspace(workspace.bounds[0][0], workspace.bounds[0][1], num = res)
+    y = np.linspace(workspace.bounds[1][0], workspace.bounds[1][1], num = res)
+    f = interpolate.interp2d(x, y, z, kind='cubic')
+    return f
 
-def SimulateStereoMeas(surface, rangeX, rangeY, sensornoise=.01, gridSize = 50):
+def getInterpolatedStereoMeas(surface, workspace):
+    z = getStereoDepthMap(surface).flatten() 
+    res=z.shape[0]
+    x = np.linspace(workspace.bounds[0][0], workspace.bounds[0][1], num = res)
+    y = np.linspace(workspace.bounds[1][0], workspace.bounds[1][1], num = res)
+    f = interpolate.interp2d(x, y, z, kind='cubic')
+    return f
+
+def SimulateStereoMeas(surface, workspace, sensornoise=.01, subsample=True):
     """
     simulate measurements from stereo depth mapping for the test functions above
     
@@ -33,8 +48,8 @@ def SimulateStereoMeas(surface, rangeX, rangeY, sensornoise=.01, gridSize = 50):
 
     This functions would be replaced by experiment
     """
-    x = np.linspace(rangeX[0], rangeX[1], num = gridSize)
-    y = np.linspace(rangeY[0], rangeY[1], num = gridSize)
+    x = np.linspace(workspace.bounds[0][0], workspace.bounds[0][1], num = workspace.res)
+    y = np.linspace(workspace.bounds[1][0], workspace.bounds[1][1], num = workspace.res)
     
     # sizeX = rangeX[1] - rangeX[0]
     # sizeY = rangeY[1] - rangeY[0]
@@ -43,14 +58,21 @@ def SimulateStereoMeas(surface, rangeX, rangeY, sensornoise=.01, gridSize = 50):
 
     # z = surface(xx,yy)
 
-    z = getStereoDepthMap(surface)
-
+    if subsample==False:
+        z = getStereoDepthMap(surface)
+    else:
+        interpf = getInterpolatedStereoMeas(surface,workspace)
+        # xx, yy = np.meshgrid(x, y)
+        z = interpf(workspace.xlin,workspace.ylin)
+        # z = interp(np.array(
+        #     [xx.flatten(),yy.flatten()]).T).flat
     z = z + np.random.randn(z.shape[0],1)*sensornoise
 
-    xx, yy, z = stereo_pad(x,y,z,rangeX,rangeY)
+    xx, yy, z = stereo_pad(x,y,z,workspace.bounds[0],workspace.bounds[1])
+
     return xx, yy, z
 
-def SimulateProbeMeas(surface, sample_locations, sensornoise = .001):
+def SimulateProbeMeas(surface, workspace, sample_locations, sensornoise = .001):
     """
     Simulate measurements from palpation (tapping mode) for the test functions above
     inputs:	
@@ -61,19 +83,20 @@ def SimulateProbeMeas(surface, sample_locations, sensornoise = .001):
 
     This functions would be replaced by experiment
     """
-
     # unpack
     xx, yy = sample_locations.T
+    interp = getInterpolatedGTSurface(surface, workspace)
+    z = interp(sample_locations[0][0],sample_locations[0][1]) 
+    for pt in sample_locations[1:]:
+        tmp = interp(pt[0],pt[1]) 
+        z=np.vstack((z,tmp))
 
-    # this is a simulated measurement-- add noise!
-
-    interp = getInterpolatedObservationModel(surface)
-    z = interp(sample_locations.T)
-    z = z + sensornoise*np.random.randn(z.shape[0])
+    z = z.flatten() + sensornoise*np.random.randn(z.shape[0])
+    z = np.array(z)
 
     return xx, yy, z
 
-def SimulateStiffnessMeas(poly, sample_locations, sensornoise = .001):
+def SimulateStiffnessMeas(poly, sample_locations, sensornoise = .01):
     """Simulate measurements from palpation (tapping mode) for the test
     functions above inputs: *surface: a function defining a test surface
     *locations: list of points [[x1,y1],[x2,y2]] outputs: *xx,yy, z,
@@ -169,14 +192,16 @@ def SixhumpcamelSurface(xx,yy):
 #######################################
 # polygon test functions for simulating phase2: 
 #######################################
-squaretumor=np.array([[-0.5,-0.5],[0.5,-0.5],[0.5,0.5],[-0.5,0.5]])
+squaretumor=np.array([[1.25,1.25],[2.75,1.25],[2.75,2.75],[1.25,2.75]])
+thintumor=np.array([[2.25,0.25],[2.75,2.25],[2.75,2.75],[2.25,2.75]])
+rantumor=np.array([[2.25,0.75],[3.25,1.25],[2.75,2.25],[2.75,2.75],[2.25,2.75],[2.,1.25]])
 
 
 #######################################
 # Functions for simulating deflection measurements
 #######################################
 
-def sigmoid(dist, alpha=50, a=0, b=1, c=-0.1):
+def sigmoid(dist, alpha=15, a=0, b=1, c=-0.1):
     """  
     a, b: base and max readings of the probe with and without tumor
     dist = xProbe-xEdge
@@ -190,7 +215,27 @@ def sigmoid(dist, alpha=50, a=0, b=1, c=-0.1):
     return y
 
 
-def getLevelSet (Pts, z, level):
+# def getLevelSet (Pts, z, level):
+#     """
+#     Input: 
+#         Pts: x, y - 2-d numpy array N-by-d
+#         Z : values at each of the points 1-D numpy array length N
+#         level: find the polygon at level
+
+#     output:
+#         poly: ordered list of points on the polygon 2-d array
+#     """
+#     x = Pts[:,0]
+#     y = Pts[:,1]
+#     c = cntr.Cntr(x, y, z)
+
+#     res = c.trace(level)
+#     nseg = len(res) // 2
+#     segments, codes = res[:nseg], res[nseg:]
+#     poly = segments[0]
+
+#     return poly
+def getLevelSet (workspace, mean, level):
     """
     Input: 
         Pts: x, y - 2-d numpy array N-by-d
@@ -200,17 +245,19 @@ def getLevelSet (Pts, z, level):
     output:
         poly: ordered list of points on the polygon 2-d array
     """
-    x = Pts[:,0]
-    y = Pts[:,1]
+    x = workspace.xx #GPdata[0]
+    y = workspace.yy# GPdata[1]
+    z = gridreshape(mean,workspace) #GPdata[2]
     c = cntr.Cntr(x, y, z)
 
     res = c.trace(level)
-    nseg = len(res) // 2
-    segments, codes = res[:nseg], res[nseg:]
-    poly = segments[0]
-
+    if len(res)>0:
+        nseg = len(res) // 2
+        segments, codes = res[:nseg], res[nseg:]
+        poly = segments[0]
+    else:
+        poly=[]
     return poly
-
 
 def makeMeasurement_LS(xProbe, boundaryEstimate):
     """
@@ -226,7 +273,8 @@ def makeMeasurement_LS(xProbe, boundaryEstimate):
     z = []
     for p in range(sizeProbe):
         dist= Point(tuple(xProbe[p])).distance(Polygon(boundaryEst_tuples))
-        point_in_poly =  Point(tuple(xProbe[p])).within(Polygon(boundaryEst_tuples))
+        point_in_poly =  Point(tuple(xProbe[p])).within(
+            Polygon(boundaryEst_tuples))
         #create signed distance function
         if point_in_poly:
             dist = dist

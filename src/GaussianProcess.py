@@ -1,8 +1,8 @@
 import sys
 import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib import cm
-from matplotlib import pyplot as pl
+# import matplotlib.pyplot as plt
+# from matplotlib import cm
+# from matplotlib import pyplot as pl
 
 # import matplotlib.path as path
 import GPy
@@ -17,7 +17,7 @@ import GPy
 from simUtils import *
 from utils import *
 from scipy import stats
-from simulated_disparity import getObservationModel
+# from simulated_disparity import getObservationModel
 
 
         
@@ -58,15 +58,15 @@ def update_GP(measurements):
     Inputs: data=[x position, y position, measurement, measurement noise]
     TODO: maybe combine with updateGP above
     """
-    sensornoise=.00001
+    sensornoise=.01
 
     # parse locations, measurements, noise from data
     X = measurements[:,0:2]
     Y = np.array([measurements[:,2]]).T
 
-    kern = GPy.kern.Matern52(2,ARD=True) +\
-           GPy.kern.White(2)+GPy.kern.Bias(1)
-
+    # kern = GPy.kern.Matern52(2,ARD=True) +\
+    #        GPy.kern.White(2)+GPy.kern.Bias(1)
+    kern = GPy.kern.RBF(2)
     m = GPy.models.GPRegression(X,Y,kern)
     m.optimize()
     # xgrid = np.vstack([self.x1.reshape(self.x1.size),
@@ -89,8 +89,9 @@ def update_GP_sparse(measurements,numpts=10):
     X = measurements[:,0:2]
     Y = np.array([measurements[:,2]]).T
 
-    kern = GPy.kern.Matern52(2,ARD=True) +\
-           GPy.kern.White(2)
+    # kern = GPy.kern.Matern52(2,ARD=True) +\
+    #        GPy.kern.White(2)
+    kern = GPy.kern.RBF(2)
 
     #subsample range in the x direction
     subx=np.linspace(X.T[0].min(),X.T[0].max(),numpts)
@@ -109,28 +110,28 @@ def update_GP_sparse(measurements,numpts=10):
     # sigma=sigma.reshape(self.x1.shape)
     return m
 
-def implicitsurface(GPdata,thresh=.4):
+def implicitsurface(mean,sigma,level):
     """
     not sure bout this one...
     """
-    xx=GPdata[0]
+    #xx=GPdata[0]
 
-    yy=GPdata[1]
+    #yy=GPdata[1]
 
-    mean=GPdata[2]
-    sigma=GPdata[3]
+    #mean=GPdata[2]
+    #sigma=GPdata[3]
     phi = stats.distributions.norm.pdf
-    GPIS=np.flipud(phi(mean,loc=thresh,scale=(.1+sigma)))
+    GPIS=phi(mean,loc=level,scale=(sigma))
     GPIS=GPIS/GPIS.max()
-    return [xx, yy, GPIS] 
+    return  GPIS
 
 
-def eval_GP(m, rangeX, rangeY, res=100):
+def eval_GP(m, bounds, res=100):
     """
-    Update the GP using heteroskedactic noise model
-    Inputs: data=[x position, y position, measurement, measurement noise]
+    evaluate the GP on a grid
     """
-
+    rangeX=bounds[0]
+    rangeY=bounds[1]
     # parse locations, measurements, noise from data
    
     xx, yy = np.meshgrid(np.linspace(rangeX[0], rangeX[1], res),
@@ -143,8 +144,18 @@ def eval_GP(m, rangeX, rangeY, res=100):
 
     return [xx, yy, z_pred, sigma]
 
+def predict_GP(m, pts):
+    """
+    evaluate GP at specific points
+    """
+    z_pred, sigma = m._raw_predict(pts)
+    # z_pred = z_pred.reshape(xx.shape)
+    # sigma = sigma.reshape(xx.shape)
 
-def getSimulatedStereoMeas(surface, focalplane=0, rangeX = [-2,2], rangeY = [-1,1], modality=3, plot = True):
+    return [pts, z_pred, sigma]
+
+
+def getSimulatedStereoMeas(surface, workspace, focalplane=0,plot = True):
     """
     wrapper function for SimulateStereoMeas
     hetero. GP model requires defining the variance for each measurement 
@@ -152,7 +163,7 @@ def getSimulatedStereoMeas(surface, focalplane=0, rangeX = [-2,2], rangeY = [-1,
 
     should fix these functions so they're not necessary by default...
     """
-    xx, yy, z = SimulateStereoMeas(surface, rangeX, rangeY)
+    xx, yy, z = SimulateStereoMeas(surface, workspace)
 
     # we assume Gaussian measurement noise:
     sigma_g = .001
@@ -185,16 +196,20 @@ def getSimulatedStereoMeas(surface, focalplane=0, rangeX = [-2,2], rangeY = [-1,
                      z.flatten(),
                      sigma_total.flatten()]).T
 
-def getSimulatedProbeMeas(surface, sample_points):
+def getSimulatedProbeMeas(surface, workspace, sample_points):
     """
     wrapper function for SimulateProbeMeas
     hetero. GP model requires defining the variance for each measurement 
     standard stationary kernel doesn't need this
     """
-    xx,yy,z = SimulateProbeMeas(surface, sample_points)
+    xx,yy,z = SimulateProbeMeas(surface, workspace, sample_points)
+    print xx.shape
+    print yy.shape
+    print z.shape
     # we assume Gaussian measurement noise:
     noise=.001
     sigma_t = np.full(z.shape, noise)
+    print   sigma_t.shape
 
     return np.array([xx, yy,
                      z,
@@ -207,63 +222,75 @@ def getSimulateStiffnessMeas(surface, sample_points):
 
     """
     xx,yy,z = SimulateStiffnessMeas(surface, sample_points)
+
     # we assume Gaussian measurement noise:
     noise=.001
     sigma_t = np.full(z.shape, noise)
-
     return np.array([xx, yy,
                      z,
                      sigma_t]).T
 
 
 ########################## Plot Scripts
-
-def plot_error(surface, GP, rangeX,rangeY, data=None, gridSize=50):
+def plot_error(surface, workspace, mean, sigma, meas, dirname, data=None,iternum=0):
     # choose points to compare
-
-    x = np.linspace(rangeX[0], rangeX[1], num = gridSize)
-    y = np.linspace(rangeY[0], rangeY[1], num = gridSize)
+    rangeX=workspace.bounds[0]
+    rangeY=workspace.bounds[1]
+    x = workspace.xlin
+    y = workspace.ylin
 
     xx, yy = np.meshgrid(x, y)
 
     # evaluate surface ground truth:
     #GroundTruth = surface(xx,yy)
-    GroundTruth = getObservationModel(surface)
-
+    interp=getInterpolatedGTSurface(surface, workspace)
+    # interp=getInterpolatedObservationModel(surface)
+    GroundTruth = interp(x,y).flatten()#getObservationModel(surface)
+    # GroundTruth=GroundTruth.reshape(xx.shape)
     # evaluate the Gaussian Process mean at the same points
-    EstimateMean = eval_GP(GP, rangeX, rangeY, res=gridSize)[2]
 
     # evaluate the RMSerror
-    error =np.sqrt((GroundTruth-EstimateMean)**2)
+    error =np.sqrt((GroundTruth-np.squeeze(mean))**2)
+
     if data is None:
-        fig = plt.figure(figsize=(12, 4))
-        ax1 = fig.add_subplot(131, projection='3d')
-        ax2 = fig.add_subplot(132, projection='3d')
-        ax3 = fig.add_subplot(133, projection='3d')
+        fig = plt.figure(figsize=(16, 4))
+        ax1 = fig.add_subplot(141, projection='3d')
+        ax2 = fig.add_subplot(142, projection='3d')
+        ax3 = fig.add_subplot(143, projection='3d')
+        ax4 = fig.add_subplot(144, projection='3d')
+        fig.canvas.draw()
         fig.canvas.draw()
         plt.show(block=False)
-        data = [fig, ax1, ax2, ax3]
+        data = [fig, ax1, ax2, ax3, ax4]
     data[1].clear()
     data[2].clear()
     data[3].clear()
+    data[4].clear()
 
     # plot the ground truth
-    data[1].plot_surface(xx, yy, GroundTruth, rstride=1, cstride=1,
+    data[1].plot_surface(xx, yy, GroundTruth.reshape(workspace.res,workspace.res), rstride=1, cstride=1,
                     cmap=cm.coolwarm, linewidth=0,
                     antialiased=False)
+
     data[1].set_title("Ground Truth")
         
     # plot the estimate
-    data[2].plot_surface(xx, yy, EstimateMean, rstride=1, cstride=1,
+    data[2].plot_surface(xx, yy, mean.reshape(workspace.res,workspace.res), rstride=1, cstride=1,
                          cmap=cm.coolwarm, linewidth=0, antialiased=False)
     data[2].set_title("Estimate Mean")
 
+    # plot the variance
+    data[3].plot_surface(xx, yy, sigma.reshape(workspace.res,workspace.res), rstride=1, cstride=1,
+                         cmap=cm.coolwarm, linewidth=0, antialiased=False)
+    data[3].set_title("Estimate Variance")
+
     # plot the error
-    data[3].plot_surface(xx, yy, error, rstride=1, cstride=1,
+    data[4].plot_surface(xx, yy, error.reshape(workspace.res,workspace.res), rstride=1, cstride=1,
                          cmap=cm.Greys, linewidth=0, antialiased=False)
-    data[3].set_title("Error")
+    data[4].set_title("Error from GT")
     
     data[0].canvas.draw()
+    data[0].savefig(dirname + '/' + str(iternum) + ".pdf" ,bbox_inches='tight')
 
     return data
 
@@ -295,45 +322,48 @@ def plot_belief(GPdata):
     plt.colorbar(cs1)
     plt.show()
 
-def plot_beliefGPIS(poly,GPdata,GPISdata, meas, data=None, thresh=.4, projection3D=False):
+def plot_beliefGPIS(poly,workspace,mean,variance,GPIS,aq,meas,dirname,data=None, iternum=0, level=.4, projection3D=False):
     # parse locations, measurements, noise from data
-    #gp data
-    xx=GPdata[0]
-    yy=GPdata[1]
-    mean=GPdata[2]
-    variance=GPdata[3]
-
-    #GPIS data
-    xx=GPISdata[0]
-    yy=GPISdata[1]
-    GPISvar=GPISdata[2]
+    # gp data
+    xx=workspace.xx
+    yy=workspace.yy
+    mean=gridreshape(mean,workspace)
+    variance=gridreshape(variance,workspace)
+    aq=gridreshape(aq,workspace)
+    GPIS=gridreshape(GPIS,workspace)
 
     # for plotting, add first point to end
     GroundTruth = np.vstack((poly,poly[0]))
     if data is None:
         fig = plt.figure(figsize=(16, 4))
         if projection3D==True:
-            ax1 = fig.add_subplot(131, projection='3d')
-            ax2 = fig.add_subplot(132, projection='3d')
+            ax1 = fig.add_subplot(141, projection='3d')
+            ax2 = fig.add_subplot(142, projection='3d')
         else:
-            ax1 = fig.add_subplot(131)
-            ax2 = fig.add_subplot(132)
-        ax3 = fig.add_subplot(133)
+            ax1 = fig.add_subplot(141)
+            ax2 = fig.add_subplot(142)
+        ax3 = fig.add_subplot(143)
+        ax4 = fig.add_subplot(144)
+
         fig.canvas.draw()
         plt.show(block=False)
-        data = [fig, ax1, ax2, ax3]
+        data = [fig, ax1, ax2, ax3, ax4]
     data[1].clear()
     data[2].clear()
     data[3].clear()
+    data[4].clear()
 
     # plot the mean
     if projection3D==True:
         data[1].plot_surface(xx, yy, mean, rstride=1, cstride=1,
-                        cmap=cm.coolwarm, linewidth=0,
-                        antialiased=False)
+                             cmap=cm.coolwarm, linewidth=0,
+                             antialiased=False)
+
     else:
-        data[1].imshow(mean, cmap=cm.coolwarm,  extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
-        data[1].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=20, cmap=cm.coolwarm)
+        data[1].imshow(np.flipud(mean), cmap=cm.coolwarm,
+                       extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
+        data[1].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=20,
+                        cmap=cm.coolwarm)
     data[1].set_title("Data and GP Mean: Stiffness map")
     data[1].set_xlabel('x')
     data[1].set_ylabel('y')
@@ -342,40 +372,47 @@ def plot_beliefGPIS(poly,GPdata,GPISdata, meas, data=None, thresh=.4, projection
     if projection3D==True:
         #lim=1
         cs1=data[2].plot_surface(xx, yy, variance, rstride=1, cstride=1,
-                             cmap=cm.Greys, linewidth=0, antialiased=False)
+                                 cmap=cm.Greys, linewidth=0,
+                                 antialiased=False)
     else:
-        data[2].imshow(variance, cmap=cm.Greys,  extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
+        data[2].imshow(np.flipud(variance), cmap=cm.Greys,
+                       extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
+        data[2].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=20,
+                        cmap=cm.coolwarm)
     
     data[2].set_title("GP Uncertainty: Stiffness map")  
     data[2].set_xlabel('x')
     data[2].set_ylabel('y')
-    # plot the uncertainty
-    # ax2 = fig.add_subplot(133, projection='3d')
-    # lim=1
-    # cs2=ax2.plot_surface(xx, yy, np.abs(GPISvar), rstride=1, cstride=1,
-    #                      cmap=cm.Greys, linewidth=0, antialiased=False)
-    # ax1.set_title("GP Uncertainty")  
-    
-    data[3].set_title("GPIS")
-    #cs = pl.contour(xx, yy, mean, [thresh], colors='k', linestyles='dashdot')
-    data[3].contour(xx, yy, GPdata[2], [thresh], colors='r',  linewidth=1, linestyles='dashdot')
-    # ax2.contour(xx, yy, GroundTruth, [thresh], colors='g', linestyles='dashdot')
-    data[3].plot(GroundTruth.T[0], GroundTruth.T[1], '-.',color='g',
-             linewidth=1, solid_capstyle='round', zorder=2)
-    data[3].set_xlabel('x')
-    data[3].set_ylabel('y')  
-    cs2=data[3].imshow(GPISvar, cmap=cm.Greys,
-                       extent=(xx.min(), xx.max(), yy.min(),yy.max())
+
+    data[3].set_title("acquisition function")
+    cs=data[3].imshow(np.flipud(aq), cmap=cm.jet, extent=(xx.min(),
+                                                            xx.max(),
+                                                            yy.min(),yy.max())
     )
-    norm = plt.matplotlib.colors.Normalize(vmin=0., vmax=GPISvar.max())
-    if (len(data) > 4):
-        data[4].remove()
-        data = data[:4]
-    cb2 = plt.colorbar(cs2, norm=norm)
-    cb2.set_label('${\\rm \mathbb{P}}\left[\widehat{G}(\mathbf{x}) = 0\\right]$')# # Define
-    data.append(cb2)
+    data[3].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=20,
+                    cmap=cm.coolwarm)
+    
+    data[4].set_title("GPIS")
+
+    cs1 = data[4].contour(xx, yy, mean, [level], colors='r',
+                        linewidth=1, linestyles='dashdot')
+    data[4].plot(GroundTruth.T[0], GroundTruth.T[1], '-.',color='g',
+                 linewidth=1, solid_capstyle='round', zorder=2)
+
+    data[4].legend( loc='upper right' )
+    data[4].set_xlabel('x')
+    data[4].set_ylabel('y')  
+    cs2=data[4].imshow(np.flipud(GPIS), cmap=cm.Greys,
+                       extent=(xx.min(), xx.max(), yy.min(),yy.max()))
+    norm = plt.matplotlib.colors.Normalize(vmin=0., vmax=GPIS.max())
+    if (len(data) > 5):
+        data[5].remove()
+        data = data[:5]
+    # cb2 = plt.colorbar(cs2, norm=norm)
+    # cb2.set_label('${\\rm \mathbb{P}}\left[\widehat{G}(\mathbf{x}) = 0\\right]$')# # Define
+    # data.append(cb2)
     
     data[0].canvas.draw()
-
+    data[0].savefig(dirname + '/' + str(iternum) + ".pdf" ,bbox_inches='tight')
     return data
 
