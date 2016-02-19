@@ -186,13 +186,14 @@ def getSimulatedStereoMeas(surface, workspace, plot = True):
     #xgrid = np.vstack([xx.flatten(), yy.flatten()]).T
     grad = np.gradient(z)
     dx,dy = grad
-    sigma_fd = (dx**2+dy**2)
+    
+    sigma_fd = np.sqrt(dx**2+dy**2)  
     sigma_fd[np.isinf(sigma_fd)]=0
 
     # todo: noise due to  offset uncertainty
     sigma_offset=(yy-focalplane)**2
     # weighted total noise for measurements
-    sigma_total = sigma_g + 1*sigma_fd  + .0001*sigma_offset
+    sigma_total = sigma_g + sigma_fd  + .0001*sigma_offset
 
     if plot==True:
         # plot the surface from disparity
