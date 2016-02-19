@@ -38,7 +38,7 @@ IMG_SIZE = 50
 
 def getInterpolatedGTSurface(surface, workspace):
     z = getObservationModel(surface)
-    res=z.shape[0]
+    res = z.shape[0]
     x = np.linspace(workspace.bounds[0][0], workspace.bounds[0][1], num = res)
     y = np.linspace(workspace.bounds[1][0], workspace.bounds[1][1], num = res)
     f = interpolate.interp2d(x, y, z, kind='linear')
@@ -47,8 +47,11 @@ def getInterpolatedGTSurface(surface, workspace):
     return f
 
 def getInterpolatedStereoMeas(surface, workspace):
-    z = getStereoDepthMap(surface) 
-    res=z.shape[0]
+    z = getStereoDepthMap(surface)[5:45,5:45]
+    z = np.pad(z,((5,5),(5,5)),mode='edge')
+    z[z<0]=0
+    z[z>20]=20
+    res = z.shape[0]
     x = np.linspace(workspace.bounds[0][0], workspace.bounds[0][1], num = res)
     y = np.linspace(workspace.bounds[1][0], workspace.bounds[1][1], num = res)
     f = interpolate.interp2d(x, y, z, kind='linear')
@@ -79,7 +82,8 @@ def SimulateStereoMeas(surface, workspace, sensornoise=.001, subsample=True, num
     # z = surface(xx,yy)
 
     if subsample==False:
-        z = getStereoDepthMap(surface)
+        z = getStereoDepthMap(surface)[:40,:40]
+        z = np.pad(z,((0,10),(0,10)),mode='edge')
     else:
         interpf = getInterpolatedStereoMeas(surface,workspace)
         # xx, yy = np.meshgrid(x, y)

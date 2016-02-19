@@ -89,7 +89,6 @@ for j in range (1,100,1):
 
     # select next sampling points. for now, just use Mac--dMax and Erg need work.
     if control=='Max':     
-        print control       
         next_samples_points = maxAcquisition(workspace, AqcuisFunction,
                                            numpoints=1)
     elif control=='dMax':            

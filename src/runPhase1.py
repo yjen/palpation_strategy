@@ -30,7 +30,7 @@ gridres = 100
 workspace = Workspace(bounds,gridres)
 
 # select surface to simulate
-surfacename="smooth7"
+surfacename="smooth1"
 surface = "image_pairs/"+ surfacename 
 
 planner=''
@@ -57,7 +57,7 @@ while i<100:
     if i==0:
         # initialize measurement from stereo data
         meas = getSimulatedStereoMeas(surface,workspace)
-        next_samples_points =  randompoints(bounds, 10)
+        next_samples_points =  randompoints(bounds, 1)
         meastouchonly = getSimulatedProbeMeas(surface, workspace, next_samples_points)
     else:
         # add new measurements to old measurements
@@ -75,14 +75,14 @@ while i<100:
     xgrid, AqcuisFunction = AcFunction(gpmodel, workspace)
 
     next_samples_points = maxAcquisition(workspace, AqcuisFunction,
-                                           numpoints=3)
+                                           numpoints=10)
     # sample surface at points
     measnew = getSimulatedProbeMeas(surface, workspace, next_samples_points)
 
     # Plot everything
     time.sleep(0.0001)
     plt.pause(0.0001) 
-    plot_data = plot_error(surface, workspace, mean, sigma, AqcuisFunction,  meas, directory, plot_data, projection3D=True, iternum=i)
+    plot_data = plot_error(surface, workspace, mean, sigma, AqcuisFunction,  meastouchonly, directory, plot_data, projection3D=True, iternum=i)
     
     i=i+1
 

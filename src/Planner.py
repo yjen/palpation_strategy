@@ -64,7 +64,6 @@ def MaxVar_plus_gradient(model, workspace , level=0, acquisition_par=0):
     dx,dy = grad
     sigma_fd = (dx**2+dy**2)
     sigma_fd[np.isinf(sigma_fd)]=0
-    print sigma_fd.shape
 
     buffx=.02*workspace.bounds[0][1]
     buffy=.02*workspace.bounds[1][1]
@@ -113,11 +112,9 @@ def dmaxAcquisition(workspace, model, acfun, xinit=[.2,.3], numpoints=1, level=0
         i=0
         ind = np.argpartition(new_acqu.flatten(), -1)[-1-i]
         newpt = allpts[ind]
-        print newpt
         while (newpt[0]>workspace.bounds[0][1] or newpt[0]<workspace.bounds[0][0] or 
                 newpt[1]>workspace.bounds[1][1] or newpt[1]<workspace.bounds[1][0]):
             i = i+1
-            print np.argpartition(new_acqu.flatten(), -1)
             ind = np.argpartition(new_acqu.flatten(), -1)[-1-i]
             newpt = allpts[ind]
         x.append(newpt)

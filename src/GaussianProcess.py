@@ -79,7 +79,7 @@ def update_GP(measurements,method='nonhet'):
     else:
         kern = GPy.kern.RBF(2)+ GPy.kern.White(2)
         m = GPy.models.GPRegression(X,Y,kern)
-        m.optimize_restarts(num_restarts = 10)
+        # m.optimize_restarts(num_restarts = 10)
     m.optimize()
     # xgrid = np.vstack([self.x1.reshape(self.x1.size),
     #                    self.x2.reshape(self.x2.size)]).T
@@ -179,28 +179,30 @@ def getSimulatedStereoMeas(surface, workspace, plot = True):
     xx, yy, z = SimulateStereoMeas(surface, workspace)
 
     # we assume Gaussian measurement noise:
-    sigma_g = .01
+    sigma_g = .1
     focalplane=workspace.bounds[1][1]/2.0
     # noise component due to curvature:
     # finite differencing
     #xgrid = np.vstack([xx.flatten(), yy.flatten()]).T
     grad = np.gradient(z)
     dx,dy = grad
-    sigma_fd = (dx**2+dy**2)
+    sigma_fd = np.sqrt(dx**2+dy**2)
     sigma_fd[np.isinf(sigma_fd)]=0
 
     # todo: noise due to  offset uncertainty
     sigma_offset=(yy-focalplane)**2
     # weighted total noise for measurements
-    sigma_total = sigma_g + 1*sigma_fd  + .0001*sigma_offset
+    sigma_total = sigma_g + 0*sigma_fd  + .001*sigma_offset
 
     if plot==True:
         # plot the surface from disparity
         fig = plt.figure(figsize=(4, 4))
         ax = fig.gca(projection='3d')
         ax.plot_surface(xx, yy, z, rstride=1, cstride=1,
-                        cmap=cm.coolwarm, linewidth=0, antialiased=False)
+                    cmap=cm.coolwarm, linewidth=0,
+                    antialiased=False)
         ax.set_title("Depth from Disparity")
+        ax.set_zlim3d(0,20)
         plt.xlabel('x')
         plt.ylabel('y')
         plt.show()
@@ -216,13 +218,9 @@ def getSimulatedProbeMeas(surface, workspace, sample_points):
     standard stationary kernel doesn't need this
     """
     xx,yy,z = SimulateProbeMeas(surface, workspace, sample_points)
-    print xx.shape
-    print yy.shape
-    print z.shape
     # we assume Gaussian measurement noise:
-    noise=.0001
+    noise=.000001
     sigma_t = np.full(z.shape, noise)
-    print   sigma_t.shape
 
     return np.array([xx, yy,
                      z,
@@ -249,8 +247,7 @@ def plot_error(surface, workspace, mean, sigma, aq, meas, dirname, data=None,ite
     # choose points to compare
     xx=workspace.xx
     yy=workspace.yy
-    print mean.shape
-    print aq.shape
+
     mean = gridreshape(mean,workspace)
     sigma = gridreshape(sigma,workspace)
     x = workspace.xlin
@@ -263,8 +260,7 @@ def plot_error(surface, workspace, mean, sigma, aq, meas, dirname, data=None,ite
     # interp=getInterpolatedObservationModel(surface)
 
     GroundTruth = interp(x,y)
-    print GroundTruth.shape
-    print mean.shape
+
     # GroundTruth=GroundTruth.reshape(xx.shape)
     # evaluate the Gaussian Process mean at the same points
 
@@ -300,6 +296,7 @@ def plot_error(surface, workspace, mean, sigma, aq, meas, dirname, data=None,ite
         data[1].plot_surface(xx, yy, GroundTruth.reshape(workspace.res,workspace.res), rstride=1, cstride=1,
                     cmap=cm.coolwarm, linewidth=0,
                     antialiased=False)
+        data[1].set_zlim3d(0,20)
     else:
         data[1].imshow(np.flipud(GroundTruth), cmap=cm.coolwarm,
                        extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
@@ -313,6 +310,7 @@ def plot_error(surface, workspace, mean, sigma, aq, meas, dirname, data=None,ite
     if projection3D==True:
         data[2].plot_surface(xx, yy, mean.reshape(workspace.res,workspace.res), rstride=1, cstride=1,
                          cmap=cm.coolwarm, linewidth=0, antialiased=False)
+        data[2].set_zlim3d(0,20)
     else:
         data[2].imshow(np.flipud(mean), cmap=cm.coolwarm,
                        extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
