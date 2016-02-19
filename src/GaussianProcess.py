@@ -187,6 +187,7 @@ def getSimulatedStereoMeas(surface, workspace, plot = True):
     grad = np.gradient(z)
     dx,dy = grad
     sigma_fd = np.sqrt(dx**2+dy**2)
+    
     sigma_fd[np.isinf(sigma_fd)]=0
 
     # todo: noise due to  offset uncertainty
