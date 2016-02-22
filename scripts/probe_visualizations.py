@@ -11,6 +11,8 @@ import matplotlib.pyplot as plt
 
 
 def stiffness_map(probe_data):
+	""" Displays a 3D scatter plot where x,y are points on the tissue surface and z is the probe measurement """
+
 	positions_3d = np.array([np.array(a[1][0:3, 3].flatten())[0] for a in probe_data])
 	positions_3d -= np.mean(positions_3d,0)
 	U, s, V = np.linalg.svd(np.transpose(positions_3d), full_matrices = False)
@@ -33,6 +35,8 @@ def stiffness_map(probe_data):
 	plt.show()
 
 def single_row_stiffness_map(probe_data):
+	""" Displays a 2D scatter plot where x is postion along the x axis of the tissue and z is the probe measurement """
+	
 	positions_3d = np.array([np.array(a[1][0:3, 3].flatten())[0] for a in probe_data])
 	positions_3d -= np.mean(positions_3d,0)
 	U, s, V = np.linalg.svd(np.transpose(positions_3d), full_matrices = False)
@@ -59,5 +63,5 @@ def single_row_stiffness_map(probe_data):
 
 if __name__ == '__main__':
 	# load data
-	probe_data = pickle.load(open("saved_palpation_data/single_row_raster_100x.p", "rb"))
-	single_row_stiffness_map(probe_data)
+	probe_data = pickle.load(open("probe_data.p", "rb"))
+	stiffness_map(probe_data)
