@@ -41,7 +41,7 @@ def getInterpolatedGTSurface(surface, workspace):
     res = z.shape[0]
     x = np.linspace(workspace.bounds[0][0], workspace.bounds[0][1], num = res)
     y = np.linspace(workspace.bounds[1][0], workspace.bounds[1][1], num = res)
-    f = interpolate.interp2d(x, y, z, kind='linear')
+    f = interpolate.interp2d(x, y, z, kind='cubic')
     # f=getInterpolatedObservationModel(surface)
 
     return f
@@ -54,7 +54,7 @@ def getInterpolatedStereoMeas(surface, workspace):
     res = z.shape[0]
     x = np.linspace(workspace.bounds[0][0], workspace.bounds[0][1], num = res)
     y = np.linspace(workspace.bounds[1][0], workspace.bounds[1][1], num = res)
-    f = interpolate.interp2d(x, y, z, kind='linear')
+    f = interpolate.interp2d(x, y, z, kind='cubic')
     return f
 
 def SimulateStereoMeas(surface, workspace, sensornoise=.001, subsample=True, numstereo=20):
