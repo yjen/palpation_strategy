@@ -59,5 +59,5 @@ def single_row_stiffness_map(probe_data):
 
 if __name__ == '__main__':
 	# load data
-	probe_data = pickle.load(open("save_data/single_row_20x_raster.p", "rb"))
+	probe_data = pickle.load(open("saved_palpation_data/single_row_raster_100x.p", "rb"))
 	single_row_stiffness_map(probe_data)

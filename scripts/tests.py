@@ -33,6 +33,18 @@ def test_raster_single_row():
     raw_input("Will now execute raster single row test. Press any key to continue")
     palp.execute_raster_single_row(100, False)
 
+def test_raster_single_row_reverse():
+    """ Rasters a single row on the tissue 30 times in the reverse direction"""
+
+    palp = Palpation()
+    try:
+        palp.load_environment_registration("env_registration.p")
+    except Exception as e:
+        palp.register_environment("env_registration.p")
+
+    raw_input("Will now execute raster single row reverse test. Press any key to continue")
+    palp.execute_raster_single_row_reverse(30, False)
+
 
 if __name__ == '__main__':
-    test_raster_single_row()
+    test_raster_single_row_reverse()
