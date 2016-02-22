@@ -67,8 +67,9 @@ def update_GP(measurements,method='nonhet'):
     if method=="het":
         # use heteroskedactic kernel
         noise = np.array([measurements[:,3]]).T
-
-        kern = GPy.kern.RBF(2) 
+        var = 1. # variance
+        theta = 4 # lengthscale
+        kern = GPy.kern.RBF(2, var, theta) 
         m = GPy.models.GPHeteroscedasticRegression(X,Y,kern)
         # m = GPy.models.GPRegression(X,Y,kern)
         m['.*het_Gauss.variance'] = abs(noise)
@@ -77,6 +78,7 @@ def update_GP(measurements,method='nonhet'):
         # m['.*het_Gauss.variance'] = abs(noise)
         # m.het_Gauss.variance.fix() # We can fix the noise term, since we already know it
     else:
+
         kern = GPy.kern.RBF(2)+ GPy.kern.White(2)
         m = GPy.models.GPRegression(X,Y,kern)
         # m.optimize_restarts(num_restarts = 10)
@@ -212,6 +214,15 @@ def getSimulatedStereoMeas(surface, workspace, plot = True):
                      z.flatten(),
                      sigma_total.flatten()]).T
 
+def getExperimentalStereoMeas(surface, workspace, plot = True):
+    """
+    needs to be written
+    """
+    # z needs to be read from robot
+    # should return: np.array([xx, yy,
+    #                 z]).T
+    pass
+
 def getSimulatedProbeMeas(surface, workspace, sample_points):
     """
     wrapper function for SimulateProbeMeas
@@ -242,6 +253,14 @@ def getSimulateStiffnessMeas(surface, sample_points):
                      z,
                      sigma_t]).T
 
+def getExperimentalStiffnessMeas(sample_points):
+    """
+    needs to be written
+    """
+    # z needs to be read from robot
+    # should return: np.array([xx, yy,
+    #                 z]).T
+    pass
 
 ########################## Plot Scripts
 def plot_error(surface, workspace, mean, sigma, aq, meas, dirname, data=None,iternum=0, projection3D=False, plotmeas=True):
