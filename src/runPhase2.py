@@ -12,6 +12,10 @@ from Planner import *
 ##############################
 # Phase 2
 ###############################
+#TODO:
+# To run Phase 2 on the robot, the function getExperimentalStiffnessMeas, 
+# in Gaussian Process.py, needs to be written to command the robot and collect measurements
+
 
 # set workspace boundary
 bounds = ((0,4),(0,4))
@@ -70,7 +74,8 @@ for j in range (1,100,1):
     # collect measurements
     measnew = getSimulateStiffnessMeas(tumorpoly,
                                        next_samples_points)
-    
+    # to run experiment instead of simulation:
+    # measnew = getExperimentalStiffnessMeas(next_samples_points)
     # concatenate measurements to prior measurements
     meas = np.append(meas,measnew,axis=0)
     

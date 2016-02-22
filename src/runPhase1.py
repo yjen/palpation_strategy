@@ -57,7 +57,7 @@ while i<100:
     if i==0:
         # initialize measurement from stereo data
         meas = getSimulatedStereoMeas(surface,workspace)
-        next_samples_points =  randompoints(bounds, 1)
+        next_samples_points =  randompoints(bounds, 10)
         meastouchonly = getSimulatedProbeMeas(surface, workspace, next_samples_points)
     else:
         # add new measurements to old measurements
