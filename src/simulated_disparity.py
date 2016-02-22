@@ -1,9 +1,9 @@
 import numpy as np
-import cv2, os, sys
+import cv2, os, sys, IPython
 import matplotlib.pyplot as plt
 from scipy.interpolate import RegularGridInterpolator as RGI
 from scipy.io import savemat
-from observations import _observationModel
+from observations import _observationModel, calibration
 
 LEFT = '/scene1.001.png'
 RIGHT = '/scene1.002.png'
@@ -60,7 +60,8 @@ def interp_function(image, rangeX=None, rangeY=None):
 
 # Crops the center plane we want, reshapes into IMG_SIZExIMG_SIZE matrix
 def project(image):
-        im1_pts = np.array([[210, 630], [300, 210], [770, 210], [870, 630]])
+        #im1_pts = np.array([[210, 630], [300, 210], [770, 210], [870, 630]])
+        im1_pts = np.array([[215, 600], [310, 220], [760, 220], [850, 600]])
         im2_pts = np.array([[0, IMG_SIZE-1], [0, 0], [IMG_SIZE-1, 0], [IMG_SIZE-1, IMG_SIZE-1]])
 
         H = computeH(im1_pts, im2_pts)
@@ -138,7 +139,6 @@ def getStereoDepthMap(folder, shouldPlot=False):
     # belief = getDefaultBelief()
     # plt.imsave(folder+ "/belief.png", np.dstack([belief, belief, belief]))
 
-
     projected_disp = project(disparity)
     projected_disp = projected_disp.astype(np.float32)
     if shouldPlot:
@@ -167,7 +167,7 @@ def getStereoDepthMap(folder, shouldPlot=False):
     # plt.hist(projected_disp.flatten())
     # plt.show()
 
-    F = 1200 #995.603 is the value we get from the equation, but 120 more closely matches geometric model & ground truth
+    F = 1200 #995.603 is the value we get from the equation, but 1200 more closely matches geometric model & ground truth
     T = 20
     depth = compute_depth(F, T, projected_disp)
     if shouldPlot:
@@ -177,9 +177,9 @@ def getStereoDepthMap(folder, shouldPlot=False):
     # plt.show()
     # plt.imsave(folder + "/depth.mat", depth)
 
-    size = 20.0 #200.0
-    x = 25 #250
-    y = 30 #300
+    size = 200.0
+    x = 250
+    y = 300
     x1 = compute_topdown_height(depth, size, x, y)
     values = sorted(x1.flatten())
     floor = values[int(0.01*len(values))]
@@ -328,7 +328,7 @@ def getStereoDepthMap(folder, shouldPlot=False):
         # output_name = folder[(len('image_pairs/')):] + '_depth_grad_maps.mat'
         # savemat(output_name, {'height':x1_smoothed, 'ygrad':ygrad, 'xgrad':xgrad})
 
-    return x1_smoothed
+    return x1_smoothed - calibration
 
 
 if __name__ == "__main__":
@@ -336,4 +336,4 @@ if __name__ == "__main__":
         if folder == 'image_pairs/exp' or folder == 'image_pairs/halved' or folder == 'image_pairs/plain_random' or folder == 'image_pairs/squaredDiffs':
             continue
         getStereoDepthMap(folder, True);
-    # getStereoDepthMap("image_pairs/smooth3", True);
+    # getStereoDepthMap("image_pairs/smooth_sin1", True);
