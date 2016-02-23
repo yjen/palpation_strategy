@@ -1,6 +1,8 @@
 import rospy
 import robot
 from std_msgs.msg import String, Float64
+from geometry_msgs.msg import Point
+from palpation_strategy.msg import Points, FloatList
 import numpy as np
 import PyKDL
 from numpy.linalg import norm
@@ -25,6 +27,10 @@ class Palpation():
 
         # subscribe to probe data
         rospy.Subscriber("/probe/measurement", Float64, self.probe_callback)
+
+        rospy.Subscriber("/gaussian_process/pts_to_probe", Points, self.probe_points_callback)
+        self.measurements_pub = rospy.Publisher("/palpation/measurements", FloatList)
+
 
 
     ##################################################################################
@@ -478,6 +484,53 @@ class Palpation():
         self.probe_save("probe_data.p")
         # self.drop_off_tool()
 
+
+    def probe_points_callback(self, data):
+        measurements = execute_point_probes(data.x, data.y)
+        m = FloatList()
+        m.data = measurements
+        self.measurements_pub.publish(m)
+
+    def execute_point_probes(self, points_x, points_y):
+        measurements = []
+        for i in range(len(points_x)):
+            measurements.append(execute_point_probe(points_x[i], points_y[i]))
+        return measurements
+
+
+    def execute_point_probe(self, x, y):
+        #assuming points given are fractions (0-1) of tissue width/length
+        speed = 0.05
+
+        origin = np.hstack(np.array(self.tissue_pose.position))
+        frame = np.array(self.tissue_pose.orientation.matrix)
+
+        u, v, w = frame.T[0], frame.T[1], frame.T[2]
+
+        rotation_matrix = np.array([v, u, -w]).transpose()
+
+        dy = self.tissue_width
+        dx = self.tissue_length
+        z = self.probe_offset
+
+        offset = np.dot(frame, np.array([x*dx, y*dy, z+0.01]))
+        pose = tfx.pose(origin+offset, rotation_matrix, frame=self.tissue_pose.frame)
+        self.psm1.move_cartesian_frame_linear_interpolation(pose, self.speed, False)
+
+        offset = np.dot(frame, np.array([x*dx, y*dy, z]))
+        pose = tfx.pose(origin+offset, rotation_matrix, frame=self.tissue_pose.frame)
+        self.psm1.move_cartesian_frame_linear_interpolation(pose, 0.01, False)
+        
+        rospy.sleep(0.4)
+        measurement = self.probe_single_point_record()
+        rospy.sleep(0.4)
+        
+        offset = np.dot(frame, np.array([x*dx, y*dy, z+0.01]))
+        pose = tfx.pose(origin+offset, rotation_matrix, frame=self.tissue_pose.frame)
+        self.psm1.move_cartesian_frame_linear_interpolation(pose, self.speed, False)
+        return measurement
+
+
     def execute_point_probe_grid(self, m, n, k):
         """ Point probes on an m x n grid.
             Iterates over grid k times
@@ -520,3 +573,4 @@ class Palpation():
 
         self.probe_save("probe_data.p")
         # self.drop_off_tool()
+

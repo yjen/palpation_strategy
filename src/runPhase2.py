@@ -72,10 +72,10 @@ meas = getSimulateStiffnessMeas(tumorpoly, next_samples_points)
 for j in range (1,100,1):
     print "iteration = ", j
     # collect measurements
-    measnew = getSimulateStiffnessMeas(tumorpoly,
-                                       next_samples_points)
+    # measnew = getSimulateStiffnessMeas(tumorpoly,
+    #                                    next_samples_points)
     # to run experiment instead of simulation:
-    # measnew = getExperimentalStiffnessMeas(next_samples_points)
+    measnew = getExperimentalStiffnessMeas(next_samples_points)
     # concatenate measurements to prior measurements
     meas = np.append(meas,measnew,axis=0)
     
