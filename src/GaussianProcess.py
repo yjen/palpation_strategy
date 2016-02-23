@@ -288,7 +288,10 @@ def getExperimentalStiffnessMeas(sample_points):
     y = sample_points[:, 1]
     p = Points()
     p.x, p.y = x, y
+    rospy.sleep(0.2)
     pts_publisher.publish(p)
+    # import IPython; IPython.embed()
+    # print("bro")
 
 
     while not flagSTOPSPINNING:
