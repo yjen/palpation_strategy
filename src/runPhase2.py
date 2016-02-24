@@ -8,6 +8,8 @@ from utils import *
 from GaussianProcess import *
 import ErgodicPlanner
 from Planner import *
+import rospy
+import pickle
 
 ##############################
 # Phase 2
@@ -17,8 +19,32 @@ from Planner import *
 # in Gaussian Process.py, needs to be written to command the robot and collect measurements
 
 
+def calculate_boundary(filename):
+    data_dict = None
+    try:
+        data_dict = pickle.load(open(filename, "rb"))
+    except Exception as e:
+        print "Exception: ", e
+        rospy.logerror("Error: %s", e)
+        rospy.logerror("Failed to load saved tissue registration.")
+
+    # compute tissue frame
+    nw = data_dict['nw']
+    ne = data_dict['ne']
+    sw = data_dict['sw']
+    nw_position = np.hstack(np.array(nw.position))
+    ne_position = np.hstack(np.array(ne.position))
+    sw_position = np.hstack(np.array(sw.position))
+    u = sw_position - nw_position
+    v = ne_position - nw_position
+    tissue_length = np.linalg.norm(u)
+    tissue_width = np.linalg.norm(v)
+    return ((0, tissue_length), (0, tissue_width))
+
+
 # set workspace boundary
-bounds = ((0,4),(0,4))
+bounds = calculate_boundary("../scripts/env_registration.p")
+print(bounds)
 
 # grid resolution: should be same for plots, ergodic stuff
 gridres = 200
@@ -26,8 +52,8 @@ gridres = 200
 # initialize workspace object
 workspace = Workspace(bounds,gridres)
 
-# set level set to look for-- this should correspond to somehting, max FI?
-level=.5
+# set level set to look for-- this should correspond to something, max FI?
+level=2000 #pick something between min/max deflection
 
 # initialize probe state--only needed for ergodic
 xinit=np.array([0.01,.011])
@@ -67,16 +93,19 @@ else:
     next_samples_points = randompoints(bounds, 10)
     
     # collect initial meausrements
-meas = getSimulateStiffnessMeas(tumorpoly, next_samples_points)
+# meas = getSimulateStiffnessMeas(tumorpoly, next_samples_points)
+    meas = getExperimentalStiffnessMeas(next_samples_points)
 
-for j in range (1,100,1):
+
+for j in range (10): #(1,100,1)
     print "iteration = ", j
     # collect measurements
-    measnew = getSimulateStiffnessMeas(tumorpoly,
-                                       next_samples_points)
+    # measnew = getSimulateStiffnessMeas(tumorpoly,
+    #                                    next_samples_points)
     # to run experiment instead of simulation:
-    # measnew = getExperimentalStiffnessMeas(next_samples_points)
+    measnew = getExperimentalStiffnessMeas(next_samples_points)
     # concatenate measurements to prior measurements
+    import IPython; IPython.embed()
     meas = np.append(meas,measnew,axis=0)
     
     # update the GP model    

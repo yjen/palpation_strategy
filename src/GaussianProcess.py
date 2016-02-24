@@ -16,6 +16,7 @@ import numpy as np
 from simUtils import *
 from utils import *
 from scipy import stats
+
 # from simulated_disparity import getObservationModel
 
 
@@ -220,6 +221,8 @@ def getExperimentalStereoMeas(surface, workspace, plot = True):
     """
     needs to be written
     """
+
+
     # z needs to be read from robot
     # should return: np.array([xx, yy,
     #                 z]).T
@@ -255,14 +258,58 @@ def getSimulateStiffnessMeas(surface, sample_points):
                      z,
                      sigma_t]).T
 
+
 def getExperimentalStiffnessMeas(sample_points):
     """
     needs to be written
     """
+    print(len(sample_points))
+    import rospy
+    from palpation_strategy.msg import Points, FloatList
+    rospy.init_node('gaussian_process', anonymous=True)
+    
+    global flagSTOPSPINNING
+    flagSTOPSPINNING = False
+    global measurementsNOC
+    measurementsNOC = None
+
+
+    def probe_callback(data):
+        global flagSTOPSPINNING
+        global measurementsNOC
+        print('hi')
+        print(data)
+        measurementsNOC = data.data
+        
+        flagSTOPSPINNING = True
+        print("CALLBACK: " + str(flagSTOPSPINNING))
+
+    rospy.Subscriber("/palpation/measurements", FloatList, probe_callback)
+    pts_publisher = rospy.Publisher("/gaussian_process/pts_to_probe", Points)
+    x = sample_points[:, 0]
+    y = sample_points[:, 1]
+    p = Points()
+    p.x, p.y = x, y
+    rospy.sleep(0.2)
+    pts_publisher.publish(p)
+    # import IPython; IPython.embed()
+    # print("bro")
+
+
+    while not flagSTOPSPINNING:
+        print("spin")
+        print("WHILE: " + str(flagSTOPSPINNING))
+        rospy.sleep(0.1)
+    print('done')
+    stiffness = []
+    for i in range(len(measurementsNOC)):
+        stiffness.append([x[i], y[i], measurementsNOC[i]])
+    return np.array(stiffness).T
+
+
     # z needs to be read from robot
     # should return: np.array([xx, yy,
     #                 z]).T
-    pass
 
 ########################## Plot Scripts
 def plot_error(surface, workspace, mean, sigma, aq, meas, dirname, data=None,iternum=0, projection3D=False, plotmeas=True):

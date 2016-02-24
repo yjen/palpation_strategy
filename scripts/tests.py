@@ -57,7 +57,15 @@ def test_point_probe_grid():
     raw_input("Will now execute point probe grid test. Press any key to continue")
     palp.execute_point_probe_grid(20, 40, 1)
 
-
+def test_point_probe():
+    palp = Palpation()
+    try:
+        palp.load_environment_registration("env_registration.p")
+    except Exception as e:
+        palp.register_environment("env_registration.p")
+    # palp.pick_up_tool()
+    raw_input("Will now listen to runPhase2.py. Press Enter to continue")
+    rospy.spin()    
 
 if __name__ == '__main__':
-    test_point_probe_grid()
+    test_point_probe()
