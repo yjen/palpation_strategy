@@ -41,8 +41,8 @@ tumorpoly = rantumor
 control='Max'
 
 # acquisition functions:  MaxVar_GP, UCB_GP, EI_GP, UCB_GPIS, EI_IS
-AcFunction=UCB_GPIS
-Acfunctionname="UCB_GPIS"
+AcFunction=MaxVar_plus_gradient
+Acfunctionname="MaxVar_plus_gradient"
 
 plot_data = None
 

@@ -62,8 +62,9 @@ def MaxVar_plus_gradient(model, workspace , level=0, acquisition_par=0):
 
     grad = np.gradient(meansq)
     dx,dy = grad
-    sigma_fd = (dx**2+dy**2)
-    sigma_fd[np.isinf(sigma_fd)]=0
+    fd = np.sqrt((dx**2+dy**2))
+    fd=fd/np.max(fd)
+    fd[np.isinf(fd)]=0
 
     buffx=.02*workspace.bounds[0][1]
     buffy=.02*workspace.bounds[1][1]
@@ -72,7 +73,7 @@ def MaxVar_plus_gradient(model, workspace , level=0, acquisition_par=0):
     sigma[workspace.x[:,1]<buffy]=0
     sigma[workspace.x[:,0]>workspace.bounds[0][1]-buffx]=0
     sigma[workspace.x[:,1]>workspace.bounds[1][1]-buffy]=0
-    f_acqu = sigma.flatten()+.1*sigma_fd.flatten()
+    f_acqu = sigma.flatten()+.35*fd.flatten()
     f_acqu=np.array([f_acqu]).T
     return workspace.x, f_acqu  # note: returns negative value for posterior minimization
 

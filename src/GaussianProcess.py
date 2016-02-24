@@ -79,7 +79,9 @@ def update_GP(measurements,method='nonhet'):
         # m.het_Gauss.variance.fix() # We can fix the noise term, since we already know it
     else:
 
-        kern = GPy.kern.RBF(2)+ GPy.kern.White(2)
+        # var = 10. # variance
+        # theta = .0015 # lengthscale
+        kern = GPy.kern.RBF(2)
         m = GPy.models.GPRegression(X,Y,kern)
         # m.optimize_restarts(num_restarts = 10)
     m.optimize()
@@ -378,14 +380,12 @@ def plot_error(surface, workspace, mean, sigma, aq, meas, dirname, data=None,ite
     return data
 
 
-def plot_belief(GPdata):
+def plot_belief(mean,sigma,workspace):
     # parse locations, measurements, noise from data
-    xx=GPdata[0]
-    yy=GPdata[1]
-    mean=GPdata[2]
-    
-    variance=GPdata[3]
-    
+    xx=workspace.xx
+    yy=workspace.yy
+    mean=gridreshape(mean,workspace)
+    sigma=gridreshape(sigma,workspace)
     fig = plt.figure(figsize=(16, 4))
 
     # plot the mean
@@ -398,7 +398,7 @@ def plot_belief(GPdata):
     # plot the uncertainty
     ax1 = fig.add_subplot(122, projection='3d')
     lim=1
-    cs1=ax1.plot_surface(xx, yy, variance, rstride=1, cstride=1,
+    cs1=ax1.plot_surface(xx, yy, sigma, rstride=1, cstride=1,
                          cmap=cm.Greys, linewidth=0, antialiased=False)
     ax1.set_title("GP Uncertainty")  
 
