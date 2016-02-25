@@ -20,6 +20,13 @@ from simulated_disparity import getStereoDepthMap, getObservationModel,getInterp
 #######################################
 IMG_SIZE = 50
 
+#######################################
+# polygon test functions for simulating phase2: 
+#######################################
+squaretumor=np.array([[1.25,1.25],[2.75,1.25],[2.75,2.75],[1.25,2.75]])
+thintumor=np.array([[2.25,0.25],[2.75,2.25],[2.75,2.75],[2.25,2.75]])
+rantumor=np.array([[2.25,0.75],[3.25,1.25],[2.75,2.25],[2.75,2.75],[2.25,2.75],[2.,1.25]])
+
 # def interp_function(image, workspace):
 #     # creating interpolation functions
 #     x = np.array(range(image.shape[0]))
@@ -96,6 +103,54 @@ def SimulateStereoMeas(surface, workspace, sensornoise=.001, subsample=True, num
 
     return xx, yy, z
 
+
+def getSimulatedStereoMeas(surface, workspace, plot = True):
+    """
+    wrapper function for SimulateStereoMeas
+    hetero. GP model requires defining the variance for each measurement 
+    standard stationary kernel doesn't need this
+
+    should fix these functions so they're not necessary by default...
+    """
+    xx, yy, z = SimulateStereoMeas(surface, workspace)
+
+    # we assume Gaussian measurement noise:
+    sigma_g = .1
+    focalplane=workspace.bounds[1][1]/2.0
+    # noise component due to curvature:
+    # finite differencing
+    #xgrid = np.vstack([xx.flatten(), yy.flatten()]).T
+    grad = np.gradient(z)
+    dx,dy = grad
+    sigma_fd = np.sqrt(dx**2+dy**2)
+    
+    sigma_fd[np.isinf(sigma_fd)]=0
+
+    # todo: noise due to  offset uncertainty
+    sigma_offset=(yy-focalplane)**2
+    # weighted total noise for measurements
+    sigma_total = sigma_g + 0*sigma_fd  + .001*sigma_offset
+
+    if plot==True:
+        # plot the surface from disparity
+        fig = plt.figure(figsize=(4, 4))
+        ax = fig.gca(projection='3d')
+        ax.plot_surface(xx, yy, z, rstride=1, cstride=1,
+                    cmap=cm.coolwarm, linewidth=0,
+                    antialiased=False)
+        ax.set_title("Depth from Disparity")
+        ax.set_zlim3d(0,20)
+        plt.xlabel('x')
+        plt.ylabel('y')
+        plt.show()
+
+    return np.array([xx.flatten(), yy.flatten(),
+                     z.flatten(),
+                     sigma_total.flatten()]).T
+
+
+
+
 def SimulateProbeMeas(surface, workspace, sample_locations, sensornoise = .00001):
     """
     Simulate measurements from palpation (tapping mode) for the test functions above
@@ -120,6 +175,21 @@ def SimulateProbeMeas(surface, workspace, sample_locations, sensornoise = .00001
 
     return xx, yy, z
 
+def getSimulatedProbeMeas(surface, workspace, sample_points):
+    """
+    wrapper function for SimulateProbeMeas
+    hetero. GP model requires defining the variance for each measurement 
+    standard stationary kernel doesn't need this
+    """
+    xx,yy,z = SimulateProbeMeas(surface, workspace, sample_points)
+    # we assume Gaussian measurement noise:
+    noise=.000001
+    sigma_t = np.full(z.shape, noise)
+
+    return np.array([xx, yy,
+                     z,
+                     sigma_t]).T
+
 def SimulateStiffnessMeas(poly, sample_locations, sensornoise = .01):
     """Simulate measurements from palpation (tapping mode) for the test
     functions above inputs: *surface: a function defining a test surface
@@ -139,17 +209,42 @@ def SimulateStiffnessMeas(poly, sample_locations, sensornoise = .01):
 
     return xx, yy, z
 
+def plotSimulatedStiffnessMeas(poly, workspace, ypos, sensornoise = 50.):
+    x = np.arange(workspace.bounds[0][0], workspace.bounds[0][1], 1/float(100))
+    y = np.zeros(x.shape)+ypos
+    sample_locations = np.array([x,y]).T
+
+    meas = SimulateStiffnessMeas(poly, sample_locations, sensornoise=sensornoise)
+    meas=meas[2]
+    plt.plot(x.flatten(), meas.flatten(), linewidth=3.0)
+    plt.show()
+
+def getSimulateStiffnessMeas(surface, sample_points):
+    """wrapper function for SimulateProbeMeas hetero. GP model requires
+    defining the variance for each measurement standard stationary
+    kernel doesn't need this
+
+    """
+    xx,yy,z = SimulateStiffnessMeas(surface, sample_points)
+
+    # we assume Gaussian measurement noise:
+    noise=.001
+    sigma_t = np.full(z.shape, noise)
+    return np.array([xx, yy,
+                     z,
+                     sigma_t]).T
+
 #######################################
 # LM question: this function was already in here--not sure if it does anything?
 #######################################
 
-def getActualHeight (pos, modality=0):
-    """
-    Get actual surface height at a point 'pos'
-    """
-    x,y,xx,yy,z = getMap(modality) 
-    h = z (pos[0], pos[1])
-    return h
+# def getActualHeight (pos, modality=0):
+#     """
+#     Get actual surface height at a point 'pos'
+#     """
+#     x,y,xx,yy,z = getMap(modality) 
+#     h = z (pos[0], pos[1])
+#     return h
 
 #######################################
 # Curved surface functions for simulating phase1: don't delete, but these
@@ -213,19 +308,14 @@ def SixhumpcamelSurface(xx,yy):
 
     return z
 
-#######################################
-# polygon test functions for simulating phase2: 
-#######################################
-squaretumor=np.array([[1.25,1.25],[2.75,1.25],[2.75,2.75],[1.25,2.75]])
-thintumor=np.array([[2.25,0.25],[2.75,2.25],[2.75,2.75],[2.25,2.75]])
-rantumor=np.array([[2.25,0.75],[3.25,1.25],[2.75,2.25],[2.75,2.75],[2.25,2.75],[2.,1.25]])
+
 
 
 #######################################
 # Functions for simulating deflection measurements
 #######################################
 
-def sigmoid(dist, alpha=15, a=0, b=1, c=-0.1):
+def sigmoid(dist, alpha=20, a=0, b=1000, c=-.5):
     """  
     a, b: base and max readings of the probe with and without tumor
     dist = xProbe-xEdge

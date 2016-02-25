@@ -6,6 +6,7 @@ from matplotlib import cm #colormap
 from scipy.special import erfc
 from scipy.spatial.distance import cdist
 import GPy
+import pickle
 
 
 def plotBelief (xx,yy,z):
@@ -174,6 +175,12 @@ def distanceBetweenCurves(C1, C2):
     H2 = np.max(np.min(D, axis=0))
 
     return (H1 + H2) / 2.
+
+def save_p2_data(dat, filename):
+        try:
+            pickle.dump(dat, open(filename, "wb"))
+        except Exception as e:
+            print "Exception: ", e
 
 class Workspace(object):
     def __init__(self, bounds, res):

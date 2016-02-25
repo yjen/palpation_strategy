@@ -20,40 +20,6 @@ from scipy import stats
 # from simulated_disparity import getObservationModel
 
 
-        
-# def update_GP_het(measurements,method='nonhet'):
-#     """
-#     GP for phase1:
-#     Update the GP using heteroskedactic noise model
-#     Inputs: data=[x position, y position, measurement, measurement noise]
-#     """
-#     sensornoise = .01
-
-#     # parse locations, measurements, noise from data
-#     X = measurements[:,0:2]
-#     Y = np.array([measurements[:,2]]).T
-
-#     # set up the Gaussian Process
-
-#     if method=="het":
-#         # use heteroskedactic kernel
-#         noise = np.array([measurements[:,3]]).T
-
-#         kern = GPy.kern.RBF(2) + GPy.kern.Fixed(2, GPy.util.linalg.tdot(noise))
-#         m = GPy.models.GPHeteroscedasticRegression(X,Y,kern)
-#         m = GPy.models.GPRegression(X,Y,kern)
-
-#         # m['.*het_Gauss.variance'] = abs(noise)
-#         # m.het_Gauss.variance.fix() # We can fix the noise term, since we already know it
-#     else:
-#         # use stationary kernel
-#         kern = GPy.kern.RBF(2 #variance=1., lengthscale=.05
-#         ) #GPy.kern.Bias(1)
-#         m = GPy.models.GPRegression(X,Y,kern)
-#     m.optimize()
-
-#     return m
-
 def update_GP(measurements,method='nonhet'):
     """
     GP for phase2:
@@ -132,184 +98,20 @@ def implicitsurface(mean,sigma,level):
     """
     not sure bout this one...
     """
-    #xx=GPdata[0]
-
-    #yy=GPdata[1]
-
-    #mean=GPdata[2]
-    #sigma=GPdata[3]
     phi = stats.distributions.norm.pdf
     GPIS=phi(mean,loc=level,scale=(sigma))
     GPIS=GPIS/GPIS.max()
     return  GPIS
 
 
-def eval_GP(m, bounds, res=100):
-    """
-    evaluate the GP on a grid
-    """
-    rangeX=bounds[0]
-    rangeY=bounds[1]
-    # parse locations, measurements, noise from data
-   
-    xx, yy = np.meshgrid(np.linspace(rangeX[0], rangeX[1], res),
-                  np.linspace(rangeY[0],  rangeY[1], res))
-    xgrid = np.vstack([xx.flatten(), yy.flatten()]).T
-    
-    z_pred, sigma = m._raw_predict(xgrid)
-    z_pred = z_pred.reshape(xx.shape)
-    sigma = sigma.reshape(xx.shape)
-
-    return [xx, yy, z_pred, sigma]
-
 def predict_GP(m, pts):
     """
     evaluate GP at specific points
     """
     z_pred, sigma = m._raw_predict(pts)
-    # z_pred = z_pred.reshape(xx.shape)
-    # sigma = sigma.reshape(xx.shape)
 
     return [pts, z_pred, sigma]
 
-
-def getSimulatedStereoMeas(surface, workspace, plot = True):
-    """
-    wrapper function for SimulateStereoMeas
-    hetero. GP model requires defining the variance for each measurement 
-    standard stationary kernel doesn't need this
-
-    should fix these functions so they're not necessary by default...
-    """
-    xx, yy, z = SimulateStereoMeas(surface, workspace)
-
-    # we assume Gaussian measurement noise:
-    sigma_g = .1
-    focalplane=workspace.bounds[1][1]/2.0
-    # noise component due to curvature:
-    # finite differencing
-    #xgrid = np.vstack([xx.flatten(), yy.flatten()]).T
-    grad = np.gradient(z)
-    dx,dy = grad
-    sigma_fd = np.sqrt(dx**2+dy**2)
-    
-    sigma_fd[np.isinf(sigma_fd)]=0
-
-    # todo: noise due to  offset uncertainty
-    sigma_offset=(yy-focalplane)**2
-    # weighted total noise for measurements
-    sigma_total = sigma_g + 0*sigma_fd  + .001*sigma_offset
-
-    if plot==True:
-        # plot the surface from disparity
-        fig = plt.figure(figsize=(4, 4))
-        ax = fig.gca(projection='3d')
-        ax.plot_surface(xx, yy, z, rstride=1, cstride=1,
-                    cmap=cm.coolwarm, linewidth=0,
-                    antialiased=False)
-        ax.set_title("Depth from Disparity")
-        ax.set_zlim3d(0,20)
-        plt.xlabel('x')
-        plt.ylabel('y')
-        plt.show()
-
-    return np.array([xx.flatten(), yy.flatten(),
-                     z.flatten(),
-                     sigma_total.flatten()]).T
-
-def getExperimentalStereoMeas(surface, workspace, plot = True):
-    """
-    needs to be written
-    """
-
-
-    # z needs to be read from robot
-    # should return: np.array([xx, yy,
-    #                 z]).T
-    pass
-
-def getSimulatedProbeMeas(surface, workspace, sample_points):
-    """
-    wrapper function for SimulateProbeMeas
-    hetero. GP model requires defining the variance for each measurement 
-    standard stationary kernel doesn't need this
-    """
-    xx,yy,z = SimulateProbeMeas(surface, workspace, sample_points)
-    # we assume Gaussian measurement noise:
-    noise=.000001
-    sigma_t = np.full(z.shape, noise)
-
-    return np.array([xx, yy,
-                     z,
-                     sigma_t]).T
-
-def getSimulateStiffnessMeas(surface, sample_points):
-    """wrapper function for SimulateProbeMeas hetero. GP model requires
-    defining the variance for each measurement standard stationary
-    kernel doesn't need this
-
-    """
-    xx,yy,z = SimulateStiffnessMeas(surface, sample_points)
-
-    # we assume Gaussian measurement noise:
-    noise=.001
-    sigma_t = np.full(z.shape, noise)
-    return np.array([xx, yy,
-                     z,
-                     sigma_t]).T
-
-
-def getExperimentalStiffnessMeas(sample_points):
-    """
-    needs to be written
-    """
-    print(len(sample_points))
-    import rospy
-    from palpation_strategy.msg import Points, FloatList
-    rospy.init_node('gaussian_process', anonymous=True)
-    
-    global flagSTOPSPINNING
-    flagSTOPSPINNING = False
-    global measurementsNOC
-    measurementsNOC = None
-
-
-    def probe_callback(data):
-        global flagSTOPSPINNING
-        global measurementsNOC
-        print('hi')
-        print(data)
-        measurementsNOC = data.data
-        
-        flagSTOPSPINNING = True
-        print("CALLBACK: " + str(flagSTOPSPINNING))
-
-    rospy.Subscriber("/palpation/measurements", FloatList, probe_callback)
-    pts_publisher = rospy.Publisher("/gaussian_process/pts_to_probe", Points)
-    x = sample_points[:, 0]
-    y = sample_points[:, 1]
-    p = Points()
-    p.x, p.y = x, y
-    rospy.sleep(0.2)
-    pts_publisher.publish(p)
-    # import IPython; IPython.embed()
-    # print("bro")
-
-
-    while not flagSTOPSPINNING:
-        print("spin")
-        print("WHILE: " + str(flagSTOPSPINNING))
-        rospy.sleep(0.1)
-    print('done')
-    stiffness = []
-    for i in range(len(measurementsNOC)):
-        stiffness.append([x[i], y[i], measurementsNOC[i]])
-    return np.array(stiffness).T
-
-
-    # z needs to be read from robot
-    # should return: np.array([xx, yy,
-    #                 z]).T
 
 ########################## Plot Scripts
 def plot_error(surface, workspace, mean, sigma, aq, meas, dirname, data=None,iternum=0, projection3D=False, plotmeas=True):
@@ -452,7 +254,18 @@ def plot_belief(mean,sigma,workspace):
     plt.colorbar(cs1)
     plt.show()
 
-def plot_beliefGPIS(poly,workspace,mean,variance,GPIS,aq,meas,dirname,data=None, iternum=0, level=.4, projection3D=False):
+def calcCurveErr(mean,sigma,poly):
+    # see: http://toblerity.org/shapely/manual.html
+    boundaryestimate = getLevelSet (workspace, mean, level)
+    GroundTruth = np.vstack((poly,poly[0]))
+    mislabeled=boundaryestimate.symmetric_difference(GroundTruth) # mislabeled data ()
+    boundaryestimate.difference(GroundTruth) #mislabeled as tumor--extra that would be removed
+    GroundTruth.difference(boundaryestimate) # mislbaled as not-tumor--would be missed and should be cut out
+    correct=boundaryestimate.intersection(GroundTruth) #correctly labeled as tumor
+    return correct,mislabeled
+    
+
+def plot_beliefGPIS(poly,workspace,mean,variance,aq,meas,dirname,data=None, iternum=0, level=.4, projection3D=False):
     # parse locations, measurements, noise from data
     # gp data
     xx=workspace.xx
@@ -460,6 +273,9 @@ def plot_beliefGPIS(poly,workspace,mean,variance,GPIS,aq,meas,dirname,data=None,
     mean=gridreshape(mean,workspace)
     variance=gridreshape(variance,workspace)
     aq=gridreshape(aq,workspace)
+
+    GPIS = implicitsurface(mean,variance,level)
+    print GPIS.shape
     GPIS=gridreshape(GPIS,workspace)
 
     # for plotting, add first point to end
@@ -546,3 +362,20 @@ def plot_beliefGPIS(poly,workspace,mean,variance,GPIS,aq,meas,dirname,data=None,
     data[0].savefig(dirname + '/' + str(iternum) + ".pdf" ,bbox_inches='tight')
     return data
 
+# def eval_GP(m, bounds, res=100):
+#     """
+#     evaluate the GP on a grid
+#     """
+#     rangeX=bounds[0]
+#     rangeY=bounds[1]
+#     # parse locations, measurements, noise from data
+   
+#     xx, yy = np.meshgrid(np.linspace(rangeX[0], rangeX[1], res),
+#                   np.linspace(rangeY[0],  rangeY[1], res))
+#     xgrid = np.vstack([xx.flatten(), yy.flatten()]).T
+    
+#     z_pred, sigma = m._raw_predict(xgrid)
+#     z_pred = z_pred.reshape(xx.shape)
+#     sigma = sigma.reshape(xx.shape)
+
+#     return [xx, yy, z_pred, sigma]
