@@ -25,7 +25,7 @@ IMG_SIZE = 50
 #######################################
 squaretumor=np.array([[1.25,1.25],[2.75,1.25],[2.75,2.75],[1.25,2.75]])
 thintumor=np.array([[2.25,0.25],[2.75,2.25],[2.75,2.75],[2.25,2.75]])
-rantumor=np.array([[2.25,0.75],[3.25,1.25],[2.75,2.25],[2.75,2.75],[2.25,2.75],[2.,1.25]])
+rantumor=.02*np.array([[2.25,0.75],[3.25,1.25],[2.75,2.25],[2.75,2.75],[2.25,2.75],[2.,1.25]])-.04
 
 # def interp_function(image, workspace):
 #     # creating interpolation functions
@@ -209,13 +209,18 @@ def SimulateStiffnessMeas(poly, sample_locations, sensornoise = .01):
 
     return xx, yy, z
 
-def plotSimulatedStiffnessMeas(poly, workspace, ypos, sensornoise = 50.):
-    x = np.arange(workspace.bounds[0][0], workspace.bounds[0][1], 1/float(100))
+def plotSimulatedStiffnessMeas(poly, workspace, ypos=None, sensornoise = .03):
+    if ypos==None:
+       ypos=(workspace.bounds[1][1]-workspace.bounds[1][0])/2.0+workspace.bounds[1][0]
+       print ypos
+    x = np.arange(workspace.bounds[0][0], workspace.bounds[0][1], 1/float(10000))
     y = np.zeros(x.shape)+ypos
     sample_locations = np.array([x,y]).T
 
     meas = SimulateStiffnessMeas(poly, sample_locations, sensornoise=sensornoise)
-    meas=meas[2]
+    meas = meas[2]
+    print sample_locations
+    print meas
     plt.plot(x.flatten(), meas.flatten(), linewidth=3.0)
     plt.show()
 
@@ -315,7 +320,7 @@ def SixhumpcamelSurface(xx,yy):
 # Functions for simulating deflection measurements
 #######################################
 
-def sigmoid(dist, alpha=20, a=0, b=1000, c=-.5):
+def sigmoid(dist, alpha=1000, a=0.0, b=1.0, c=-0.004):
     """  
     a, b: base and max readings of the probe with and without tumor
     dist = xProbe-xEdge
