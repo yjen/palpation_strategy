@@ -193,6 +193,104 @@ class Palpation():
     ##################################################################################
     # PROBING METHODS
     ##################################################################################
+    def execute_raster_tilted(self, theta):
+        """ Linearly interpolates through a series of palpation points """
+        #theta currently unused
+        print('hi')
+        steps = 12
+        poses = []
+
+        origin = np.hstack(np.array(self.tissue_pose.position))
+        frame_og = np.array(self.tissue_pose.orientation.matrix)
+
+        u, v, w = frame_og.T[0], frame_og.T[1], frame_og.T[2]
+        rotation_matrix = np.array([v, u, -w]).transpose()
+        
+
+        frame = tfx.pose(tfx.pose(frame_og).as_tf()*tfx.transform(tfx.tb_angles(roll=10, pitch=0, yaw=0))).rotation.matrix
+        u, v, w = frame.T[0], frame.T[1], frame.T[2]
+        rot1 = np.array([v, u, -w]).transpose()
+        frame = tfx.pose(tfx.pose(frame_og).as_tf()*tfx.transform(tfx.tb_angles(roll=0, pitch=10, yaw=0))).rotation.matrix
+        u, v, w = frame.T[0], frame.T[1], frame.T[2]
+        rot2 = np.array([v, u, -w]).transpose()
+        frame = tfx.pose(tfx.pose(frame_og).as_tf()*tfx.transform(tfx.tb_angles(roll=0, pitch=0, yaw=10))).rotation.matrix
+        u, v, w = frame.T[0], frame.T[1], frame.T[2]
+        rot3 = np.array([v, u, -w]).transpose()
+        
+
+
+        import IPython; IPython.embed()
+        dy = self.tissue_length/(steps)
+        z = self.probe_offset
+
+        print('what"s')
+        # pick up tool
+        # self.pick_up_tool()
+        print('up')
+
+        self.probe_stop_reset()
+        for i in range(steps-3):
+            if i == 0:
+                continue
+            offset = np.dot(frame, np.array([i*dy, 0.0, z+0.02]))
+            pose = tfx.pose(origin+offset, rotation_matrix, frame=self.tissue_pose.frame)
+            pose1 = tfx.pose(pose.as_tf()*tfx.transform(tfx.tb_angles(roll=15, pitch=0, yaw=0))) #apparently this tilts head of probe toward base of arms. wait no apparently this tilts head of probe toward monitors? (to the right) this is probably the direction that the probe constrains rotation in
+            pose2 = tfx.pose(pose.as_tf()*tfx.transform(tfx.tb_angles(roll=0, pitch=15, yaw=0))) #tilted even more toward monitors? what? also a bit towards base. why are roll & pitch the same o.o joint limits? moves more than pose1. 
+            pose3 = tfx.pose(pose.as_tf()*tfx.transform(tfx.tb_angles(roll=0, pitch=0, yaw=20))) #away from arms and to the left
+            pose4 = tfx.pose(origin+offset, rot1) #so apparently these don't work
+            pose5 = tfx.pose(origin+offset, rot2)
+            pose6 = tfx.pose(origin+offset, rot3)
+
+            print('og pose')
+            self.psm1.move_cartesian_frame_linear_interpolation(pose, 0.01, False)
+            import IPython; IPython.embed()
+            print('pose 1')
+            self.psm1.move_cartesian_frame_linear_interpolation(pose1, 0.005, False)
+            IPython.embed()
+            print('pose 2')
+            self.psm1.move_cartesian_frame_linear_interpolation(pose2, 0.005, False)
+            IPython.embed()
+            print('pose 3')
+            self.psm1.move_cartesian_frame_linear_interpolation(pose3, 0.005, False)
+            IPython.embed()
+            # print('pose 4')
+            # self.psm1.move_cartesian_frame_linear_interpolation(pose4, 0.005, False)
+            # IPython.embed()
+            # print('pose 5')
+            # self.psm1.move_cartesian_frame_linear_interpolation(pose5, 0.005, False)
+            # IPython.embed()
+            # print('pose 6')
+            # self.psm1.move_cartesian_frame_linear_interpolation(pose6, 0.005, False)
+            # IPython.embed()
+
+
+            offset = np.dot(frame, np.array([i*dy, 0.0, z]))
+            pose = tfx.pose(origin+offset, rotation_matrix, frame=self.tissue_pose.frame)
+            self.psm1.move_cartesian_frame_linear_interpolation(pose, 0.01, False)
+
+            # start recording data
+            rospy.sleep(0.2)
+            self.probe_start()
+
+            offset = np.dot(frame, np.array([i*dy, self.tissue_width*0.95, z]))
+            pose = tfx.pose(origin+offset, rotation_matrix, frame=self.tissue_pose.frame)
+            self.psm1.move_cartesian_frame_linear_interpolation(pose, 0.01, False)
+
+            # pause recording data
+            rospy.sleep(0.2)
+            self.probe_pause()
+
+            offset = np.dot(frame, np.array([i*dy, self.tissue_width*0.95, z+0.02]))
+            pose = tfx.pose(origin+offset, rotation_matrix, frame=self.tissue_pose.frame)
+            self.psm1.move_cartesian_frame_linear_interpolation(pose, 0.01, False)
+
+
+        self.probe_save("probe_data.p")
+        # self.drop_off_tool()
+
+
+
+
     def execute_raster(self):
         """ Linearly interpolates through a series of palpation points """
 
@@ -493,6 +591,7 @@ class Palpation():
 
     def execute_point_probes(self, points_x, points_y):
         print("a")
+        print("numpoints: " + str(len(points_x)))
         measurements = []
         rospy.sleep(1)
         for i in range(len(points_x)):

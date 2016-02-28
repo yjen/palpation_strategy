@@ -20,17 +20,18 @@ import pickle
 # To run Phase 2 on the robot, the function getExperimentalStiffnessMeas, 
 # in Gaussian Process.py, needs to be written to command the robot and collect measurements
 
-Sim=True
+Sim=False
 phantomnamed='rantumor'
 phantomname = rantumor
 
-if Sim==True:
+if Sim:
     # set workspace boundary
     bounds=((-.04,.04),(-.04,.04))
 else: #experiment
+    from expUtils import *
     bounds = calculate_boundary("../scripts/env_registration.p")
 
-    from expUtils import *
+    
 
 print(bounds)
 
@@ -60,19 +61,19 @@ if not os.path.exists(directory):
 ###############
 #Initializing
 ###############
-next_samples_points = randompoints(bounds, 100)
+next_samples_points = randompoints(bounds, 5) #randompoints(bounds, 100)
 
 # collect initial meausrements
 
-if Sim==True:
+if Sim:
     meas = getSimulateStiffnessMeas(phantomname, next_samples_points)
 else:
     meas = getExperimentalStiffnessMeas(next_samples_points)
 
-for j in range (30): #(1,100,1)
+for j in range (5): #(1,100,1)
     print "iteration = ", j
     # collect measurements
-    if Sim==True:
+    if Sim:
         measnew = getSimulateStiffnessMeas(phantomname, next_samples_points)
     else:
         # to run experiment instead of simulation:
