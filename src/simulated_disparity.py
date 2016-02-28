@@ -117,7 +117,7 @@ def getObservationModel(planeName):
     return obs*10 #convert to mm
 
 # returns a function that interpolates a vector of continuous (x, y) coords,
-# expects x and y values from [0, 21]
+# expects x and y values from [0, IMG_SIZE]
 def getInterpolatedObservationModel(planeName):
     model = getObservationModel(planeName)
     if model is None:
@@ -328,7 +328,7 @@ def getStereoDepthMap(folder, shouldPlot=False):
         # output_name = folder[(len('image_pairs/')):] + '_depth_grad_maps.mat'
         # savemat(output_name, {'height':x1_smoothed, 'ygrad':ygrad, 'xgrad':xgrad})
 
-    return x1_smoothed - calibration
+    return x1_smoothed - calibration + 1.00000001
 
 
 if __name__ == "__main__":
