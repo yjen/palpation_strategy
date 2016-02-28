@@ -16,6 +16,7 @@ import numpy as np
 from simUtils import *
 from utils import *
 from scipy import stats
+from shapely.geometry import Point, Polygon #to calculate point-polygon distances
 
 # from simulated_disparity import getObservationModel
 
@@ -31,6 +32,7 @@ def update_GP(measurements,method='nonhet'):
     # parse locations, measurements, noise from data
     X = measurements[:,0:2]
     Y = np.array([measurements[:,2]]).T
+    # Y=Y/10000.0
     if method=="het":
         # use heteroskedactic kernel
         noise = np.array([measurements[:,3]]).T
@@ -42,8 +44,8 @@ def update_GP(measurements,method='nonhet'):
         m['.*het_Gauss.variance'] = abs(noise)
         m.het_Gauss.variance.fix() # We can fix the noise term, since we already know it
     else:
-        # var = 10. # variance
-        # theta = .0015 # lengthscale
+        # var = 100 # variance
+        # theta = .001 # lengthscale
         kern = GPy.kern.RBF(2)
         m = GPy.models.GPRegression(X,Y,kern)
         # m.optimize_restarts(num_restarts = 10)
@@ -250,15 +252,20 @@ def plot_belief(mean,sigma,workspace):
     plt.colorbar(cs1)
     plt.show()
 
-def calcCurveErr(mean,sigma,poly):
+def calcCurveErr(workspace,poly,mean,sigma,level):
     # see: http://toblerity.org/shapely/manual.html
     boundaryestimate = getLevelSet (workspace, mean, level)
     GroundTruth = np.vstack((poly,poly[0]))
+    print boundaryestimate
+    print GroundTruth
+    GroundTruth=Polygon(GroundTruth)
+    boundaryestimate=Polygon(boundaryestimate)
+
     mislabeled=boundaryestimate.symmetric_difference(GroundTruth) # mislabeled data ()
     boundaryestimate.difference(GroundTruth) #mislabeled as tumor--extra that would be removed
     GroundTruth.difference(boundaryestimate) # mislbaled as not-tumor--would be missed and should be cut out
     correct=boundaryestimate.intersection(GroundTruth) #correctly labeled as tumor
-    return correct,mislabeled
+    return correct.area, mislabeled.area
     
 
 def plot_beliefGPIS(poly,workspace,mean,variance,aq,meas,dirname,data=None, iternum=0, level=.4, projection3D=False):
@@ -266,16 +273,18 @@ def plot_beliefGPIS(poly,workspace,mean,variance,aq,meas,dirname,data=None, iter
     # gp data
     xx=workspace.xx
     yy=workspace.yy
+    GPIS = implicitsurface(mean,variance,level)
+    boundaryestimate = getLevelSet (workspace, mean, level)
+
     mean=gridreshape(mean,workspace)
     variance=gridreshape(variance,workspace)
     aq=gridreshape(aq,workspace)
-
-    GPIS = implicitsurface(mean,variance,level)
-    print GPIS.shape
-    GPIS=gridreshape(GPIS,workspace)
+    GPIS = gridreshape(GPIS,workspace)
 
     # for plotting, add first point to end
     GroundTruth = np.vstack((poly,poly[0]))
+    # GroundTruth = np.vstack((boundaryestimate,boundaryestimate[0]))
+
     if data is None:
         fig = plt.figure(figsize=(16, 4))
         if projection3D==True:
@@ -336,8 +345,9 @@ def plot_beliefGPIS(poly,workspace,mean,variance,aq,meas,dirname,data=None, iter
     
     data[4].set_title("GPIS")
 
-    cs1 = data[4].contour(xx, yy, mean, [level], colors='r',
-                        linewidth=1, linestyles='dashdot')
+    data[4].plot(boundaryestimate.T[0], boundaryestimate.T[1], '-.',color='r',
+                 linewidth=1, solid_capstyle='round', zorder=2)
+    
     data[4].plot(GroundTruth.T[0], GroundTruth.T[1], '-.',color='g',
                  linewidth=1, solid_capstyle='round', zorder=2)
 

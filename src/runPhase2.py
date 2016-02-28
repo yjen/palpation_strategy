@@ -41,14 +41,14 @@ gridres = 200
 workspace = Workspace(bounds,gridres)
 
 # set level set to look for-- this should correspond to something, max FI?
-level=2000 #pick something between min/max deflection
+level=.5 #pick something between min/max deflection
 
 # control choices: Max or Erg or dMax. Erg and dMax are still in development.
 control='Max'
 
 # acquisition functions:  MaxVar_GP, UCB_GP, EI_GP, UCB_GPIS, EI_IS,MaxVar_plus_gradient
-AcFunction=MaxVar_GP
-Acfunctionname="MaxVar_GP"
+AcFunction=UCB_GPIS
+Acfunctionname="UCB_GPIS"
 
 plot_data = None
 
@@ -60,7 +60,7 @@ if not os.path.exists(directory):
 ###############
 #Initializing
 ###############
-next_samples_points = randompoints(bounds, 10)
+next_samples_points = randompoints(bounds, 100)
 
 # collect initial meausrements
 
@@ -69,7 +69,7 @@ if Sim==True:
 else:
     meas = getExperimentalStiffnessMeas(next_samples_points)
 
-for j in range (10): #(1,100,1)
+for j in range (30): #(1,100,1)
     print "iteration = ", j
     # collect measurements
     if Sim==True:
@@ -81,6 +81,7 @@ for j in range (10): #(1,100,1)
 
     # import IPython; IPython.embed()
     meas = np.append(meas,measnew,axis=0)
+
     # update the GP model    
     gpmodel = update_GP(meas)
 
@@ -93,11 +94,13 @@ for j in range (10): #(1,100,1)
     # select next sampling points. for now, just use Mac--dMax and Erg need work.
     if control=='Max':            
        next_samples_points = maxAcquisition(workspace, AqcuisFunction,
-                                           numpoints=1)
+                                           numpoints=3)
     else:
         print 'RANDOM'
         next_samples_points=randompoints(bounds,1)
-        
+    
+    # if next_samples_points.shape[0]>1:
+
     time.sleep(0.0001)
     plt.pause(0.0001)  
 
@@ -105,7 +108,7 @@ for j in range (10): #(1,100,1)
     plot_data = plot_beliefGPIS(phantomname,workspace,mean,sigma,
                                 AqcuisFunction,meas,
                                 directory,plot_data,level=level,
-                                iternum=j)
+                                iternum=j,projection3D=False)
     # Save everything--this needs to be debugged
     # prename=directory+'/'
     # save_p2_data(prename+'mean'+str(j),mean)

@@ -10,11 +10,11 @@ stops = [[6.4, 0.01, 3.6, 0.0],
          [0.0, 0.36, 0.0, 0.0]]                 # TODO change 0.0's (variance is not monotonically decreasing)
 textures = ["_lam", "_text", "_spec", "_st"]
     # lambert, texture, specular, specular + texture
-methods = ["random", "maxAcquisition"][::-1]
+methods = ["random", "maxAcquisition"]
 
 
 def save_data(arr, name, surface_name):
-    f = open("image_pairs/"+surface_name+name, 'w')
+    f = open("image_pairs/"+surface_name+'/'+name, 'w')
     f.write(str(arr))
     f.close()
     return
@@ -22,8 +22,8 @@ def save_data(arr, name, surface_name):
 def run_phase1_full():
     for i, surf in enumerate(surfaces):
         for j, text in enumerate(textures):
-            if i*len(textures) + j != 7:        # Use this to run only the nth surface
-                continue
+            # if i*len(textures) + j != 0:        # Use this to run only the nth surface
+            #     continue
             its = [0.0, 0.0]
             for k in range(5): # repeat experiment 5 times
                 disparityMeas = None
@@ -42,7 +42,7 @@ def run_phase1_full():
 
 if __name__ == "__main__":
     run_phase1_full()
-    #IPython.embed()
+    # IPython.embed()
 
 
 
