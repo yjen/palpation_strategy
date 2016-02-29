@@ -10,7 +10,7 @@ from palpation import Palpation
 
 from probe_visualizations import stiffness_map
 
-def test_raster_scan_tilted():
+def test_raster_scan_tilted_L2R():
     palp = Palpation()
     try:
         palp.load_environment_registration("env_registration.p")
@@ -18,7 +18,18 @@ def test_raster_scan_tilted():
         palp.register_environment("env_registration.p")
 
     raw_input("Will now execute raster test. Press any key to continue")
-    palp.execute_raster_tilted(0)
+    palp.execute_raster_tilted(5, 1)
+
+def test_raster_scan_tilted_R2L():
+    palp = Palpation()
+    try:
+        palp.load_environment_registration("env_registration.p")
+    except Exception as e:
+        palp.register_environment("env_registration.p")
+
+    raw_input("Will now execute raster test. Press any key to continue")
+    palp.execute_raster_tilted(5, -1)
+
 
 def test_raster_scan():
     palp = Palpation()
@@ -78,4 +89,5 @@ def test_point_probe():
     rospy.spin()    
 
 if __name__ == '__main__':
-    test_point_probe()
+    test_raster_scan_tilted_L2R()
+    test_raster_scan_tilted_R2L()
