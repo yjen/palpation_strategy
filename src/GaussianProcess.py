@@ -260,8 +260,6 @@ def calcCurveErr(workspace,poly,mean,sigma,level):
     # see: http://toblerity.org/shapely/manual.html
     boundaryestimate = getLevelSet (workspace, mean, level)
     GroundTruth = np.vstack((poly,poly[0]))
-    print boundaryestimate
-    print GroundTruth
     GroundTruth=Polygon(GroundTruth)
     boundaryestimate=Polygon(boundaryestimate)
 
@@ -348,10 +346,11 @@ def plot_beliefGPIS(poly,workspace,mean,variance,aq,meas,dirname,data=None, iter
                     cmap=cm.coolwarm)
     
     data[4].set_title("GPIS")
-
+    print boundaryestimate.T
     data[4].plot(boundaryestimate.T[0], boundaryestimate.T[1], '-.',color='r',
                  linewidth=1, solid_capstyle='round', zorder=2)
-    
+    print GroundTruth
+
     data[4].plot(GroundTruth.T[0], GroundTruth.T[1], '-.',color='g',
                  linewidth=1, solid_capstyle='round', zorder=2)
 
