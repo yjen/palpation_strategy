@@ -25,6 +25,12 @@ class Palpation():
         self.speed = 0.02
         self.curr_probe_value = None
 
+        self.record_point_palpation_data = False
+        self.locations = []
+        self.baseline = float("-inf")
+        self.num_points = 0
+        self.cooldown = 0
+
         # subscribe to probe data
         rospy.Subscriber("/probe/measurement", Float64, self.probe_callback)
 
@@ -38,6 +44,20 @@ class Palpation():
     ##################################################################################
     def probe_callback(self, msg):
         self.curr_probe_value = msg.data
+        
+        if self.record_point_palpation_data:
+            if self.cooldown == 0:
+                if self.baseline == float("-inf"):
+                    self.baseline = msg.data
+                elif msg.data - self.baseline > 100:
+                    self.locations.append(self.psm1.get_current_cartesian_position().matrix)
+                    self.num_points += 1
+                    print("location recorded! points recorded: " + str(self.num_points))
+                    self.cooldown = 100
+                else:
+                    self.baseline = 0.5*self.baseline + 0.5*msg.data
+            else:
+                self.cooldown -= 1
 
         if self.record_data:
             self.probe_data.append([msg.data, self.psm1.get_current_cartesian_position().matrix])
@@ -62,6 +82,12 @@ class Palpation():
             print "Exception: ", e
             rospy.logwarn('Failed to save probe data')
 
+    def probe_save_locations(self, filename):
+        try:
+            pickle.dump(self.locations, open(filename, "wb"))
+        except Exception as e:
+            print("Exception: " + str(e))
+            rospy.logwarn('Failed to save probe data')
 
 
     ##################################################################################
@@ -193,10 +219,54 @@ class Palpation():
     ##################################################################################
     # PROBING METHODS
     ##################################################################################
+    def execute_scan_points_continuous(self, n):
+        poses = []
+
+        frame = np.array(self.tissue_pose.orientation.matrix)
+
+        u, v, w = frame.T[0], frame.T[1], frame.T[2]
+
+        rotation_matrix = np.array([v, u, -w]).transpose()
+
+        dy = self.tissue_length/(steps)
+        z = self.probe_offset
+
+        # pick up tool
+        # self.pick_up_tool()
+
+        randoms = np.random.random((n-1)*2)
+
+        offset = np.dot(frame, np.array([np.random.random()*self.tissue_length, np.random.random()*self.tissue_width, z+0.02]))
+        pose = tfx.pose(origin+offset, rotation_matrix, frame=self.tissue_pose.frame)
+        self.psm1.move_cartesian_frame_linear_interpolation(pose, 0.01, False)
+
+        offset = np.dot(frame, np.array([np.random.random()*self.tissue_length, np.random.random()*self.tissue_width, z]))
+        pose = tfx.pose(origin+offset, rotation_matrix, frame=self.tissue_pose.frame)
+        self.psm1.move_cartesian_frame_linear_interpolation(pose, 0.01, False)
+
+        self.probe_stop_reset()
+        rospy.sleep(0.2)
+        self.probe_start()
+
+        for i in range(n-1):
+            offset = np.dot(frame, np.array([randoms[2*i]*self.tissue_length, randoms[2*i+1]*self.tissue_width, z]))
+            pose = tfx.pose(origin+offset, rotation_matrix, frame=self.tissue_pose.frame)
+            self.psm1.move_cartesian_frame_linear_interpolation(pose, 0.01, False)
+
+        rospy.sleep(0.2)
+        self.probe_pause()
+
+        self.probe_save("probe_data_scan_points_continuous.p")
+
+        offset = np.dot(frame, np.array([randoms[-2]*self.tissue_length, randoms[-1]*self.tissue_width, z+0.02]))
+        pose = tfx.pose(origin+offset, rotation_matrix, frame=self.tissue_pose.frame)
+        self.psm1.move_cartesian_frame_linear_interpolation(pose, 0.01, False)
+        # self.drop_off_tool()
+
     def execute_raster_tilted(self, theta, direction):
-        """ Direction should be 1 for L2R and -1 for R2L)"""
+        """ Direction should be 1 for L2R and -1 for R2L"""
         """ Linearly interpolates through a series of palpation points """
-        #theta currently unused
+        
         print('hi')
         steps = 12
         poses = []
@@ -234,7 +304,7 @@ class Palpation():
         rotation_matrix = tfx.pose(pose.as_tf()*tfx.transform(tfx.tb_angles(roll=0, pitch=theta*direction, yaw=0))).rotation.matrix
 
         SPEED = 0.01
-        
+
         for i in range(steps-3):
             if i == 0:
                 continue
@@ -718,4 +788,12 @@ class Palpation():
 
         self.probe_save("probe_data.p")
         # self.drop_off_tool()
+
+    def register_surface(self, n):
+        raw_input("Make sure probe is not touching anything. Press enter when ready")
+        print("Palpate " + str(n) + " points")
+        self.record_point_palpation_data = True
+        while self.num_points < n:
+            rospy.sleep(0.1)
+        self.probe_save_locations("probe_locations.p")
 

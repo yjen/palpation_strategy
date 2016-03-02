@@ -88,6 +88,23 @@ def test_point_probe():
     raw_input("Will now listen to runPhase2.py. Press Enter to continue")
     rospy.spin()    
 
+def test_register_surface():
+    palp = Palpation()
+    try:
+        palp.load_environment_registration("env_registration.p")
+    except Exeption as e:
+        palp.register_environment("env_registration.p")
+    raw_input("Will now register surface. Press enter to continue")
+    palp.register_surface(5)
+
+def test_scan_random_points():
+    palp = Palpation()
+    try:
+        palp.load_environment_registration("env_registration.p")
+    except Exeption as e:
+        palp.register_environment("env_registration.p")
+    raw_input("Will now register surface. Press enter to continue")
+    palp.execute_scan_points_continuous(8)
+
 if __name__ == '__main__':
-    test_raster_scan_tilted_L2R()
-    test_raster_scan_tilted_R2L()
+    test_register_surface()
