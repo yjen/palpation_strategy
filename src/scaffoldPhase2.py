@@ -137,10 +137,3 @@ if __name__ == "__main__":
     # IPython.embed()
 
 
-
-"""
-termination condition
-save data
-fill out chart
-create image pairs of models
-"""
