@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 from runPhase1 import *
 
 
+NUM_EXPERIMENTS = 5
+
 surfaces = ["flat", "smooth_sin1"]              # add another model ?
 stops = [[6.4, 0.01, 3.6, 0.0],
          [0.0, 0.36, 0.0, 0.0]]                 # TODO change 0.0's (variance is not monotonically decreasing)
@@ -43,7 +45,7 @@ def run_phase1_full():
         for j, text in enumerate(textures):
             # if i*len(textures) + j != 0:        # Use this to run only the nth surface
             #     continue
-            for k in range(5): # repeat experiment 5 times
+            for k in range(NUM_EXPERIMENTS): # repeat experiment number of times
                 disparityMeas = None
                 for l, method in enumerate(methods):
                     start = time.time()
@@ -51,7 +53,8 @@ def run_phase1_full():
                     end = time.time()
                     time_elapsed = end - start # in seconds
                     # plot or save/record everything
-                    table[i*len(textures) + j][l] += num_iters / 5.0
+
+                    table[i*len(textures) + j][l] += num_iters / float(NUM_EXPERIMENTS)
                     save_data([means, sigmas, sampled_points, measures, errors, num_iters, time_elapsed], '_exp'+str(l), surf+text)
                     save_table(table)
     return
