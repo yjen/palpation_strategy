@@ -47,12 +47,12 @@ def run_phase1_full():
                 disparityMeas = None
                 for l, method in enumerate(methods):
                     start = time.time()
-                    disparityMeas, means, sigmas, sampled_points, measures, num_iters = run_single_phase1_experiment(surf+text, method, disparityMeas, False, stops[i][j])
+                    disparityMeas, means, sigmas, sampled_points, measures, errors, num_iters = run_single_phase1_experiment(surf+text, method, disparityMeas, False, stops[i][j])
                     end = time.time()
                     time_elapsed = end - start # in seconds
                     # plot or save/record everything
                     table[i*len(textures) + j][l] += num_iters / 5.0
-                    save_data([means, sigmas, sampled_points, measures, num_iters, time_elapsed], '_exp'+str(l), surf+text)
+                    save_data([means, sigmas, sampled_points, measures, errors, num_iters, time_elapsed], '_exp'+str(l), surf+text)
                     save_table(table)
     return
 

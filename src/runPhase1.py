@@ -18,7 +18,23 @@ from GaussianProcess import *
 from Planner import *
 
 ##############################
+def RMS_error(surface, workspace, mean):
+    # choose points to compare
+    xx=workspace.xx
+    yy=workspace.yy
 
+    mean = gridreshape(mean,workspace)
+    x = workspace.xlin
+    y = workspace.ylin
+
+    interp=getInterpolatedGTSurface(surface, workspace)
+    # interp=getInterpolatedObservationModel(surface)
+
+    GroundTruth = interp(x,y)
+
+    # evaluate the RMSerror
+    error =np.sqrt((GroundTruth-np.squeeze(mean))**2)
+    return error
 
 def run_single_phase1_experiment(surfacename, method, disparityMeas=None, block=False, stops=0.38):
     # set workspace boundary
@@ -54,6 +70,7 @@ def run_single_phase1_experiment(surfacename, method, disparityMeas=None, block=
     sigmas = []
     sampled_points = []
     measures = []
+    errors=[]
     sigma = 1000.0
 
 
@@ -100,7 +117,8 @@ def run_single_phase1_experiment(surfacename, method, disparityMeas=None, block=
         sampled_points.append(next_samples_points)
         measnew = getSimulatedProbeMeas(surface, workspace, next_samples_points)
         measures.append(measnew)
-
+        error=RMS_error(surface, workspace, mean)
+        errors.append(error)
         # Plot everything
         time.sleep(0.0001)
         plt.pause(0.0001) 
@@ -112,7 +130,8 @@ def run_single_phase1_experiment(surfacename, method, disparityMeas=None, block=
     if disparityMeas is not None:
         plt.close()
 
-    return disparityMeas, means, sigmas, sampled_points, measures, i
+    
+    return disparityMeas, means, sigmas, sampled_points, measures, errors, i
 
 
 
