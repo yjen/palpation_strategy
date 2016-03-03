@@ -66,7 +66,7 @@ def run_single_phase1_experiment(surfacename, method, disparityMeas=None, block=
             if disparityMeas is None:
                 disparityMeas = getSimulatedStereoMeas(surface, workspace, block)
             meas = np.copy(disparityMeas)
-            next_samples_points = randompoints(bounds, 10)
+            next_samples_points = randompoints(bounds, 1)
             sampled_points.append(next_samples_points)
             meastouchonly = getSimulatedProbeMeas(surface, workspace, next_samples_points)
             measures.append(meastouchonly)
@@ -77,7 +77,7 @@ def run_single_phase1_experiment(surfacename, method, disparityMeas=None, block=
             meas = np.append(meas,measnew,axis=0)
        
         # update Gaussian process
-        gpmodel = update_GP(meas, method='het')
+        gpmodel = update_GP(meas, method='nonhet')
 
         # evaluate mean, sigma on a grid
         mean, sigma = get_moments(gpmodel, workspace.x)
@@ -89,9 +89,9 @@ def run_single_phase1_experiment(surfacename, method, disparityMeas=None, block=
 
         if method == "maxAcquisition":
             next_samples_points = maxAcquisition(workspace, AqcuisFunction,
-                                                   numpoints=10)
+                                                   numpoints=1)
         elif method == "random":
-            next_samples_points =  randompoints(bounds, 10)
+            next_samples_points =  randompoints(bounds, 1)
         else:
             print "ERROR: invalid method in runPhase1.py!"
             sys.exit(1)
