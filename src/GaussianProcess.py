@@ -111,7 +111,23 @@ def predict_GP(m, pts):
     return [pts, z_pred, sigma]
 
 
-d
+def RMS_error(surface, workspace, mean):
+    # choose points to compare
+    xx=workspace.xx
+    yy=workspace.yy
+
+    mean = gridreshape(mean,workspace)
+    x = workspace.xlin
+    y = workspace.ylin
+
+    interp=getInterpolatedGTSurface(surface, workspace)
+    # interp=getInterpolatedObservationModel(surface)
+
+    GroundTruth = interp(x,y)
+
+    # evaluate the RMSerror
+    error =np.sqrt((GroundTruth-np.squeeze(mean))**2)
+    return error
 
 ########################## Plot Scripts
 def plot_error(surface, workspace, mean, sigma, aq, meas, dirname, data=None,iternum=0, projection3D=False, plotmeas=True):
