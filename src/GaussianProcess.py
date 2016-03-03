@@ -111,6 +111,8 @@ def predict_GP(m, pts):
     return [pts, z_pred, sigma]
 
 
+d
+
 ########################## Plot Scripts
 def plot_error(surface, workspace, mean, sigma, aq, meas, dirname, data=None,iternum=0, projection3D=False, plotmeas=True):
     # choose points to compare
