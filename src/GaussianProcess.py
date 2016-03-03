@@ -342,11 +342,11 @@ def plot_beliefGPIS(poly,workspace,mean,variance,aq,meas,dirname,data=None, iter
                     cmap=cm.coolwarm)
     
     data[4].set_title("GPIS")
-    print boundaryestimate.T
-    data[4].plot(boundaryestimate.T[0], boundaryestimate.T[1], '-.',color='r',
-                 linewidth=1, solid_capstyle='round', zorder=2)
-    print GroundTruth
 
+    if boundaryestimate.shape[0]>0:
+        data[4].plot(boundaryestimate.T[0], boundaryestimate.T[1], '-.',color='r',
+                     linewidth=1, solid_capstyle='round', zorder=2)
+        
     data[4].plot(GroundTruth.T[0], GroundTruth.T[1], '-.',color='g',
                  linewidth=1, solid_capstyle='round', zorder=2)
 
@@ -364,7 +364,7 @@ def plot_beliefGPIS(poly,workspace,mean,variance,aq,meas,dirname,data=None, iter
     # data.append(cb2)
     
     data[0].canvas.draw()
-    data[0].savefig(dirname + '/' + str(iternum) + ".pdf" ,bbox_inches='tight')
+    data[0].savefig(dirname + '/' + str(iternum) + ".pdf", bbox_inches='tight')
     return data
 
 # def eval_GP(m, bounds, res=100):

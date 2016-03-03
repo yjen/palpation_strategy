@@ -53,7 +53,7 @@ from itertools import combinations
 ##########################
 #Acuisition functions
 ##########################
-def MaxVar_plus_gradient(model, workspace , level=0, acquisition_par=0):
+def MaxVar_plus_gradient(model, workspace, level=0, x=None, acquisition_par=0):
     """
     choose next sample points based on maximizing prior variance
     """
@@ -78,37 +78,39 @@ def MaxVar_plus_gradient(model, workspace , level=0, acquisition_par=0):
     f_acqu=np.array([f_acqu]).T
     return workspace.x, f_acqu  # note: returns negative value for posterior minimization
 
-def MaxVar_GP(model, workspace , level=0, acquisition_par=0):
+def MaxVar_GP(model, workspace, level=0,x=None, acquisition_par=0):
     """
     choose next sample points based on maximizing prior variance
     """
-    x=workspace.x
+    if x==None:
+        x=workspace.x
     #x = multigrid(bounds, res)
     mean, sigma = get_moments(model, x)     
     f_acqu = sigma
     return x, f_acqu  # note: returns negative value for posterior minimization
 
-def UCB_GP(model, workspace, level=0, acquisition_par=.4 ):
+def UCB_GP(model, workspace, level=0, x=None, acquisition_par=.8 ):
     """
     Upper Confidence Band
     """
-    x=workspace.x
+    if x==None:
+        x=workspace.x
     #x = multigrid(bounds, res)
     mean, sigma = get_moments(model, x)     
     f_acqu = acquisition_par * (mean) +  sigma
     return x, f_acqu  # note: returns negative value for posterior 
 
-def dmaxAcquisition(workspace, model, acfun, xinit=[.2,.3], numpoints=1, level=0):
+def dmaxAcquisition(model, workspace, acfun, xinit=[.2,.3], numpoints=1, level=0):
     """
     Selects numpoints number of points that are maximal from the list of AcquisitionFunctionVals
     """
     dx=.1
     x=[xinit]
     for n in range(numpoints):
-        _, current_ac = acfun(model, x[n], level=level)
+        _, current_ac = acfun(model, workspace, x=x[n], level=level)
         testpts=x[n]+np.array([[dx,0],[-dx,0],[-dx,-dx],[0,dx],[dx,dx],[dx,-dx],[-dx,dx],[0,-dx]])
         allpts=np.vstack((x[n],testpts))
-        allpts, new_acqu = MaxVar_GP(model, allpts)
+        allpts, new_acqu = acfun(model, workspace, x= allpts,level=level)
 
         grad=new_acqu-current_ac  
         i=0
@@ -129,16 +131,23 @@ def dmaxAcquisition(workspace, model, acfun, xinit=[.2,.3], numpoints=1, level=0
 #     df_acqu = acquisition_par * dmdx +  dsdx
 #     return df_acqu
 
-def UCB_GPIS(model, workspace, level, acquisition_par=0 ):
+def UCB_GPIS(model, workspace, level=0, x=None, acquisition_par=.1 ):
     """
     Upper Confidence Band
     """
     x=workspace.x
     #x = multigrid(bounds, res)
-    mean, sigma = get_moments(model, x)   
-    sdf=abs(mean-level)
-    f_acqu = - sdf +  acquisition_par*sigma
-    return x, f_acqu+abs(min(f_acqu))  # note: returns negative value for posterior minimization
+
+    mean, sigma = get_moments(model, x)  
+    bound=getLevelSet (workspace, mean, level)
+    if bound.shape[0]>0:
+        sdf=abs(mean-level)
+        f_acqu = - sdf +  acquisition_par*sigma
+        f_acqu=f_acqu+abs(min(f_acqu)) 
+    else: 
+        f_acqu=sigma
+
+    return x, f_acqu  # note: returns negative value for posterior minimization
 
 
 
@@ -150,22 +159,24 @@ def UCB_GPIS(model, workspace, level, acquisition_par=0 ):
 #     df_acqu = acquisition_par * dmdx +  dsdx
 #     return df_acqu
 
-def EI_GP(model, workspace, level=0, acquisition_par = 0 ):
+def EI_GP(model, workspace, level=0, x=None, acquisition_par = 0 ):
     """
     Expected Improvement
     """
-    x=workspace.x
+    if x==None:
+        x=workspace.x
     mean, sigma = get_moments(model, x)     
     fmax = max(model.predict(model.X)[0])
     phi, Phi, _ = get_quantiles(fmax, mean, sigma, acquisition_par=acquisition_par)    
     f_acqu = (-fmax + mean - acquisition_par) * Phi + sigma * phi
     return x, f_acqu  # note: returns negative value for posterior minimization 
 
-def EI_GPIS(model, workspace,  level, acquisition_par =0):
+def EI_GPIS(model, workspace,  level=0, x=None, acquisition_par =0):
     """
     Expected Improvement
     """
-    x=workspace.x
+    if x==None:
+        x=workspace.x
     mean, sigma = get_moments(model, x)     
     sdf=abs(mean-level)
     fmin = min(abs(model.predict(model.X)[0]-level))

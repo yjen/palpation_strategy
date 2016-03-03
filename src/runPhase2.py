@@ -19,111 +19,104 @@ import pickle
 #TODO:
 # To run Phase 2 on the robot, the function getExperimentalStiffnessMeas, 
 # in Gaussian Process.py, needs to be written to command the robot and collect measurements
+from expUtils import *
 
-Sim=False
-phantomnamed='rantumor'
-phantomname = rantumor
-
-if Sim:
-    # set workspace boundary
-    bounds=((-.04,.04),(-.04,.04))
-else: #experiment
-    from expUtils import *
+def run_single_phase2_simulation(AcFunction, dirname, control='Max', block=False, stops=0.38, plot=False):
+    
     bounds = calculate_boundary("../scripts/env_registration.p")
 
-    
+    # grid resolution: should be same for plots, ergodic stuff
+    gridres = 200
 
-print(bounds)
+    # initialize workspace object
+    workspace = Workspace(bounds,gridres)
 
-# grid resolution: should be same for plots, ergodic stuff
-gridres = 200
+    # set level set to look for-- this should correspond to something, max FI?
+    level=.8 #pick something between min/max deflection
 
-# initialize workspace object
-workspace = Workspace(bounds,gridres)
+    # acquisition functions:  MaxVar_GP, UCB_GP, EI_GP, UCB_GPIS, EI_IS,MaxVar_plus_gradient
+    # AcFunction=UCB_GPIS
+    # Acfunctionname="UCB_GPIS"
 
-# set level set to look for-- this should correspond to something, max FI?
-level=.5 #pick something between min/max deflection
+    plot_data = None
+    means = []
+    sigmas = []
+    acqvals = []
+    sampled_points = []
+    measures = []
+    directory = dirname #phase2_'+'_'+control+'_'+Acfunctionname
 
-# control choices: Max or Erg or dMax. Erg and dMax are still in development.
-control='Max'
+    if not os.path.exists(directory):
+        os.makedirs(directory)
 
-# acquisition functions:  MaxVar_GP, UCB_GP, EI_GP, UCB_GPIS, EI_IS,MaxVar_plus_gradient
-AcFunction=UCB_GPIS
-Acfunctionname="UCB_GPIS"
-
-plot_data = None
-
-directory='phase2_'+phantomnamed+'_'+control+'_'+Acfunctionname
-
-if not os.path.exists(directory):
-    os.makedirs(directory)
-
-###############
-#Initializing
-###############
-next_samples_points = randompoints(bounds, 5) #randompoints(bounds, 100)
-
-# collect initial meausrements
-
-if Sim:
-    meas = getSimulateStiffnessMeas(phantomname, next_samples_points)
-else:
+    ###############
+    #   Initializing
+    ###############
+    next_samples_points = randompoints(bounds, 5) 
+    # collect initial meausrements
     meas = getExperimentalStiffnessMeas(next_samples_points)
 
-for j in range (5): #(1,100,1)
-    print "iteration = ", j
-    # collect measurements
-    if Sim:
-        measnew = getSimulateStiffnessMeas(phantomname, next_samples_points)
-    else:
-        # to run experiment instead of simulation:
+    for j in range (50): #(1,100,1)
+        print "iteration = ", j
+        # collect measurements
+       
         measnew = getExperimentalStiffnessMeas(next_samples_points)
-    # concatenate measurements to prior measurements
+        # concatenate measurements to prior measurements
 
-    # import IPython; IPython.embed()
-    meas = np.append(meas,measnew,axis=0)
+        # import IPython; IPython.embed()
+        meas = np.append(meas,measnew,axis=0)
 
-    # update the GP model    
-    gpmodel = update_GP(meas)
+        # update the GP model    
+        gpmodel = update_GP(meas)
 
-    # use GP to predict mean, sigma on a grid
-    mean, sigma = get_moments(gpmodel, workspace.x)
+        # use GP to predict mean, sigma on a grid
+        mean, sigma = get_moments(gpmodel, workspace.x)
+        means.append(np.mean(mean))
+        sigmas.append(np.max(sigma))
+        # evaluate selected aqcuisition function over the grid
+        xgrid, AqcuisFunction = AcFunction(gpmodel, workspace, level)
+        acqvals.append(AqcuisFunction)
 
-    # evaluate selected aqcuisition function over the grid
-    xgrid, AqcuisFunction = AcFunction(gpmodel, workspace, level)
+        # select next sampling points. for now, just use Mac--dMax and Erg need work.
+        if control=='Max':            
+            next_samples_points = maxAcquisition(workspace, AqcuisFunction,
+                                                 numpoints=3, level=level)
+        if control=='dMax':
+           next_samples_points = dmaxAcquisition(gpmodel, workspace, AcFunction, meas[-1][0:2],
+                                               numpoints=3, level=level)
+        else:
+            print 'RANDOM'
+            next_samples_points=randompoints(bounds,1)
+        
+        # if next_samples_points.shape[0]>1:
 
-    # select next sampling points. for now, just use Mac--dMax and Erg need work.
-    if control=='Max':            
-       next_samples_points = maxAcquisition(workspace, AqcuisFunction,
-                                           numpoints=3)
-    else:
-        print 'RANDOM'
-        next_samples_points=randompoints(bounds,1)
-    
-    # if next_samples_points.shape[0]>1:
+        time.sleep(0.0001)
+        plt.pause(0.0001)  
 
-    time.sleep(0.0001)
-    plt.pause(0.0001)  
+        # Plot everything
+        plot_data = plot_beliefGPIS(phantomname,workspace,mean,sigma,
+                                    AqcuisFunction,meas,
+                                    directory,plot_data,level=level,
+                                    iternum=j,projection3D=False)
+        # Save everything--this needs to be debugged
+        # prename=directory+'/'
+        # save_p2_data(prename+'mean'+str(j),mean)
+        # save_p2_data(prename+'sigma'+str(j),sigma)
+        # save_p2_data(prename+'AqcuisFunction'+str(j),AqcuisFunction)
+        # save_p2_data(prename+'meas'+str(j),meas)
 
-    # Plot everything
-    plot_data = plot_beliefGPIS(phantomname,workspace,mean,sigma,
-                                AqcuisFunction,meas,
-                                directory,plot_data,level=level,
-                                iternum=j,projection3D=False)
-    # Save everything--this needs to be debugged
-    # prename=directory+'/'
-    # save_p2_data(prename+'mean'+str(j),mean)
-    # save_p2_data(prename+'sigma'+str(j),sigma)
-    # save_p2_data(prename+'AqcuisFunction'+str(j),AqcuisFunction)
-    # save_p2_data(prename+'meas'+str(j),meas)
-
-plt.show(block=True)
+    plt.show(block=True)
+    return means, sigmas, acqvals, measures, j
 
 # if __name__ == "__main__":
 #     planning(verbose=True)
 
 
 
+
+if __name__ == "__main__":
+    # run_single_phase2_simulation("rantumor", "maxAcquisition", block=True, plot=True,dirname='test')
+    run_single_phase2_experiment(UCB, dirname='exp', plot=True)
 
 # ##############
 # #Initializing

@@ -376,7 +376,7 @@ def getLevelSet (workspace, mean, level):
         poly = segments[0]
     else:
         poly=[]
-    return poly
+    return np.array(poly)
 
 def makeMeasurement_LS(xProbe, boundaryEstimate):
     """
