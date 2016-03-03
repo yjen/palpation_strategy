@@ -10,6 +10,27 @@ from palpation import Palpation
 
 from probe_visualizations import stiffness_map
 
+def test_raster_scan_tilted_L2R():
+    palp = Palpation()
+    try:
+        palp.load_environment_registration("env_registration.p")
+    except Exception as e:
+        palp.register_environment("env_registration.p")
+
+    raw_input("Will now execute raster test. Press any key to continue")
+    palp.execute_raster_tilted(5, 1)
+
+def test_raster_scan_tilted_R2L():
+    palp = Palpation()
+    try:
+        palp.load_environment_registration("env_registration.p")
+    except Exception as e:
+        palp.register_environment("env_registration.p")
+
+    raw_input("Will now execute raster test. Press any key to continue")
+    palp.execute_raster_tilted(5, -1)
+
+
 def test_raster_scan():
     palp = Palpation()
     try:
@@ -67,5 +88,23 @@ def test_point_probe():
     raw_input("Will now listen to runPhase2.py. Press Enter to continue")
     rospy.spin()    
 
+def test_register_surface():
+    palp = Palpation()
+    try:
+        palp.load_environment_registration("env_registration.p")
+    except Exeption as e:
+        palp.register_environment("env_registration.p")
+    raw_input("Will now register surface. Press enter to continue")
+    palp.register_surface(5)
+
+def test_scan_random_points():
+    palp = Palpation()
+    try:
+        palp.load_environment_registration("env_registration.p")
+    except Exeption as e:
+        palp.register_environment("env_registration.p")
+    raw_input("Will now register surface. Press enter to continue")
+    palp.execute_scan_points_continuous(8)
+
 if __name__ == '__main__':
-    test_point_probe()
+    test_register_surface()
