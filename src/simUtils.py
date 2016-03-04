@@ -55,10 +55,12 @@ def getInterpolatedGTSurface(surface, workspace):
     return f
 
 def getInterpolatedStereoMeas(surface, workspace):
-    z = getStereoDepthMap(surface)[5:45,5:45]
-    z = np.pad(z,((5,5),(5,5)),mode='edge')
+    #z = getStereoDepthMap(surface)[5:45,5:45]
+    #z = np.pad(z,((5,5),(5,5)),mode='edge')
+    z = getStereoDepthMap(surface)
+    #z = np.pad(z,((5,5),(5,5)),mode='edge')
     z[z<0]=0
-    z[z>20]=20
+    z[z>30]=30
     res = z.shape[0]
     x = np.linspace(workspace.bounds[0][0], workspace.bounds[0][1], num = res)
     y = np.linspace(workspace.bounds[1][0], workspace.bounds[1][1], num = res)
@@ -114,9 +116,8 @@ def getSimulatedStereoMeas(surface, workspace, plot = False):
     should fix these functions so they're not necessary by default...
     """
     xx, yy, z = SimulateStereoMeas(surface, workspace)
-
     # we assume Gaussian measurement noise:
-    sigma_g = .1
+    sigma_g = 1
     focalplane=workspace.bounds[1][1]/2.0
     # noise component due to curvature:
     # finite differencing
@@ -130,7 +131,7 @@ def getSimulatedStereoMeas(surface, workspace, plot = False):
     # todo: noise due to  offset uncertainty
     sigma_offset=(yy-focalplane)**2
     # weighted total noise for measurements
-    sigma_total = sigma_g + 0*sigma_fd  + .001*sigma_offset
+    sigma_total = sigma_g + 0*sigma_fd  + .0005*sigma_offset
 
     if plot==True:
         # plot the surface from disparity
@@ -184,7 +185,7 @@ def getSimulatedProbeMeas(surface, workspace, sample_points):
     """
     xx,yy,z = SimulateProbeMeas(surface, workspace, sample_points)
     # we assume Gaussian measurement noise:
-    noise=.000001
+    noise=100
     sigma_t = np.full(z.shape, noise)
 
     return np.array([xx, yy,
@@ -259,7 +260,7 @@ def getSimulateStiffnessMeas(surface, sample_points):
     xx,yy,z = SimulateStiffnessMeas(surface, sample_points)
 
     # we assume Gaussian measurement noise:
-    noise=.001
+    noise=.000000001
     sigma_t = np.full(z.shape, noise)
     return np.array([xx, yy,
                      z,
@@ -446,6 +447,6 @@ def probeMeasure(xProbe, Pts, z, level):
         Z : values at each of the points 1-D numpy array length N
         level: find the polygon at level
     """
-    poly = getLevelSet(Pts, z, level)
+    poly = getMapLevelSet(Pts, z, level)
     z = makeMeasurement_LS(xProbe, poly)
     return z

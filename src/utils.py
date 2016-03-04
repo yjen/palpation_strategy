@@ -117,7 +117,7 @@ def get_moments(model,x):
     except TypeError:
         k1=GPy.kern.RBF(2)
         m, v = model._raw_predict(x)
-        v += model.likelihood.variance[-1]
+        v += model.likelihood.variance[0]
     s = np.sqrt(np.clip(v, 0, np.inf))
     return (m,s)
 

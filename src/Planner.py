@@ -53,7 +53,7 @@ from itertools import combinations
 ##########################
 #Acuisition functions
 ##########################
-def MaxVar_plus_gradient(model, workspace, level=0, x=None, acquisition_par=0):
+def MaxVar_plus_gradient(model, workspace, level=0, x=None, acquisition_par=0,numpoints=1):
     """
     choose next sample points based on maximizing prior variance
     """
@@ -74,7 +74,7 @@ def MaxVar_plus_gradient(model, workspace, level=0, x=None, acquisition_par=0):
     sigma[workspace.x[:,1]<buffy]=0
     sigma[workspace.x[:,0]>workspace.bounds[0][1]-buffx]=0
     sigma[workspace.x[:,1]>workspace.bounds[1][1]-buffy]=0
-    f_acqu = sigma.flatten()+.35*fd.flatten()
+    f_acqu = 1*sigma.flatten()+.3*fd.flatten()
     f_acqu=np.array([f_acqu]).T
     return workspace.x, f_acqu  # note: returns negative value for posterior minimization
 

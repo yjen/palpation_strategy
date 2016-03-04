@@ -12,7 +12,7 @@ stops = [[6.4, 0.01, 3.6, 0.0],
          [0.0, 0.36, 0.0, 0.0]]                 # TODO change 0.0's (variance is not monotonically decreasing)
 textures = ["_lam", "_text", "_spec", "_st"]
     # lambert, texture, specular, specular + texture
-methods = ["random", "maxAcquisition"]
+methods = ["random", "maxVar","maxVarGrad"]
 
 
 def save_data(arr, name, surface_name):

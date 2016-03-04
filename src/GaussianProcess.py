@@ -35,8 +35,8 @@ def update_GP_ph1(measurements,method='nonhet'):
     if method=="het":
         # use heteroskedactic kernel
         noise = np.array([measurements[:,3]]).T
-        var = 4. # variance
-        theta = 5 # lengthscale
+        var = .001 # variance
+        theta = 4 # lengthscale
         kern = GPy.kern.RBF(2, variance=var,lengthscale=theta) 
         m = GPy.models.GPHeteroscedasticRegression(X,Y,kern)
         # m = GPy.models.GPRegression(X,Y,kern)
@@ -44,11 +44,11 @@ def update_GP_ph1(measurements,method='nonhet'):
         m.het_Gauss.variance.fix() # We can fix the noise term, since we already know it
     else:
         # var = 100 # variance
-        var=4
-        theta = 7# lengthscale
+        var = 50
+        theta = 25# lengthscale
         kern = GPy.kern.RBF(2, variance=var,lengthscale=theta)
         m = GPy.models.GPRegression(X,Y,kern)
-        # m.optimize_restarts(num_restarts = 10)
+        #m.optimize_restarts(num_restarts = 5)
     #m.optimize()
     # xgrid = np.vstack([self.x1.reshape(self.x1.size),
     #                    self.x2.reshape(self.x2.size)]).T
@@ -86,7 +86,7 @@ def update_GP(measurements,method='nonhet'):
         kern = GPy.kern.RBF(2)
         m = GPy.models.GPRegression(X,Y,kern)
         # m.optimize_restarts(num_restarts = 10)
-    m.optimize()
+    #m.optimize()
     # xgrid = np.vstack([self.x1.reshape(self.x1.size),
     #                    self.x2.reshape(self.x2.size)]).T
     # y_pred=m.predict(self.xgrid)[0]
@@ -160,7 +160,7 @@ def plot_error(surface, workspace, mean, sigma, aq, meas, dirname, data=None,ite
     sigma = gridreshape(sigma,workspace)
     x = workspace.xlin
     y = workspace.ylin
-    # aq = gridreshape(aq,workspace)
+    aq = gridreshape(aq,workspace)
 
     interpf = getInterpolatedStereoMeas(surface,workspace)
     disparity = getStereoDepthMap(surface)
@@ -184,7 +184,7 @@ def plot_error(surface, workspace, mean, sigma, aq, meas, dirname, data=None,ite
     # GroundTruth = gridreshape(GroundTruth,workspace)
     # error = gridreshape(error,workspace)
     if data is None:
-        fig = plt.figure(figsize=(20, 4))
+        fig = plt.figure(figsize=(24, 4))
         if projection3D==True:
             ax1 = fig.add_subplot(151, projection='3d')
             ax2 = fig.add_subplot(152, projection='3d')
@@ -192,29 +192,32 @@ def plot_error(surface, workspace, mean, sigma, aq, meas, dirname, data=None,ite
             # ax4 = fig.add_subplot(154, projection='3d')
             # ax5 = fig.add_subplot(155, projection='3d')
         else:
-            ax1 = fig.add_subplot(151)
-            ax2 = fig.add_subplot(152)
-        ax3 = fig.add_subplot(153)
-        ax4 = fig.add_subplot(154)
-        ax5 = fig.add_subplot(155)
+            ax1 = fig.add_subplot(161)
+            ax2 = fig.add_subplot(162)
+        ax3 = fig.add_subplot(163)
+        ax4 = fig.add_subplot(164)
+        ax5 = fig.add_subplot(165)
+        ax6 = fig.add_subplot(166)
         fig.canvas.draw()
         fig.canvas.draw()
         plt.show(block=False)
-        data = [fig, ax1, ax2, ax3, ax4,ax5]
+        data = [fig, ax1, ax2, ax3, ax4,ax5,ax6]
     data[1].clear()
     data[2].clear()
     data[3].clear()
     data[4].clear()
     data[5].clear()
+    data[6].clear()
+
 
     # plot the disparity
     if projection3D==True:
         data[1].plot_surface(xx, yy, disparity, rstride=1, cstride=1,
                     cmap=cm.coolwarm, linewidth=0,
                     antialiased=False)
-        data[1].set_zlim3d(0,20)
+        data[1].set_zlim3d(0,30)
     else:
-        data[1].imshow(np.flipud(disparity), cmap=cm.coolwarm,vmin=0, vmax=20,
+        data[1].imshow(np.flipud(disparity), cmap=cm.coolwarm,vmin=0, vmax=30,
                        extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
         if plotmeas==True:
             data[1].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=20,
@@ -226,12 +229,12 @@ def plot_error(surface, workspace, mean, sigma, aq, meas, dirname, data=None,ite
         data[2].plot_surface(xx, yy, np.flipud(GroundTruth), rstride=1, cstride=1,
                     cmap=cm.coolwarm, linewidth=0,
                     antialiased=False)
-        data[2].set_zlim3d(0,20)
+        data[2].set_zlim3d(0,30)
     else:
-        data[2].imshow(np.flipud(GroundTruth), cmap=cm.coolwarm,vmin=0, vmax=20,
+        data[2].imshow(np.flipud(GroundTruth), cmap=cm.coolwarm,vmin=0, vmax=30,
                        extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
         if plotmeas==True:
-            data[2].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=20,
+            data[2].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=30,
                         cmap=cm.coolwarm)
     
     data[2].set_title("Ground Truth")
@@ -240,12 +243,12 @@ def plot_error(surface, workspace, mean, sigma, aq, meas, dirname, data=None,ite
     if projection3D==True:
         data[3].plot_surface(xx, yy, mean.reshape(workspace.res,workspace.res), rstride=1, cstride=1,
                          cmap=cm.coolwarm, linewidth=0, antialiased=False)
-        data[3].set_zlim3d(0,20)
+        data[3].set_zlim3d(0,30)
     else:
-        data[3].imshow(np.flipud(mean), cmap=cm.coolwarm,vmin=0, vmax=20,
+        data[3].imshow(np.flipud(mean), cmap=cm.coolwarm,vmin=0, vmax=30,
                        extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
         if plotmeas==True:
-            data[3].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=20,
+            data[3].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=30,
                         cmap=cm.coolwarm)
     data[3].set_title("Estimate (mean)")
 
@@ -257,9 +260,16 @@ def plot_error(surface, workspace, mean, sigma, aq, meas, dirname, data=None,ite
     data[4].imshow(np.flipud(sigma), cmap=cm.coolwarm, 
                        extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
     if plotmeas==True:
-        data[4].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=20,
+        data[4].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=30,
                     cmap=cm.coolwarm)
     data[4].set_title("Estimate Variance")
+
+    data[5].imshow(np.flipud(aq), cmap=cm.coolwarm, 
+                       extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
+    if plotmeas==True:
+        data[5].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=30,
+                    cmap=cm.coolwarm)
+    data[5].set_title("Acquisition function")
 
     # plot the aquis function
     # if projection3D==True:
@@ -278,9 +288,9 @@ def plot_error(surface, workspace, mean, sigma, aq, meas, dirname, data=None,ite
         # data[5].plot_surface(xx, yy, error.reshape(workspace.res,workspace.res), rstride=1, cstride=1,
                            # cmap=cm.Greys, linewidth=0, antialiased=False)
     # else:
-    data[5].imshow(np.flipud(error), cmap=cm.coolwarm,vmin=0, vmax=10,
+    data[6].imshow(np.flipud(error), cmap=cm.coolwarm,vmin=0, vmax=10,
                        extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
-    data[5].set_title("Error from GT")
+    data[6].set_title("Error from GT")
     
     data[0].canvas.draw()
     data[0].savefig(dirname + '/' + str(iternum) + ".pdf" ,bbox_inches='tight')
