@@ -11,7 +11,7 @@ from shapely.geometry import asShape, Point, Polygon #to calculate point-polygon
 from scipy.optimize import curve_fit
 import pylab
 
-from simulated_disparity import getStereoDepthMap, getObservationModel,getInterpolatedObservationModel
+from simulated_disparity import getStereoDepthMap, getObservationModel, getInterpolatedObservationModel
 
 
 
@@ -51,7 +51,6 @@ def getInterpolatedGTSurface(surface, workspace):
     x = np.linspace(workspace.bounds[0][0], workspace.bounds[0][1], num = res)
     y = np.linspace(workspace.bounds[1][0], workspace.bounds[1][1], num = res)
     f = interpolate.interp2d(x, y, z, kind='cubic')
-    # f=getInterpolatedObservationModel(surface)
 
     return f
 
@@ -106,7 +105,7 @@ def SimulateStereoMeas(surface, workspace, sensornoise=.001, subsample=True, num
     return xx, yy, z
 
 
-def getSimulatedStereoMeas(surface, workspace, plot = True):
+def getSimulatedStereoMeas(surface, workspace, plot = False):
     """
     wrapper function for SimulateStereoMeas
     hetero. GP model requires defining the variance for each measurement 

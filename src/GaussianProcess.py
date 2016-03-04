@@ -20,6 +20,43 @@ from shapely.geometry import Point, Polygon #to calculate point-polygon distance
 
 # from simulated_disparity import getObservationModel
 
+def update_GP_ph1(measurements,method='nonhet'):
+    """
+    GP for phase2:
+    Inputs: data=[x position, y position, measurement, measurement noise]
+    TODO: maybe combine with updateGP above
+    """
+    sensornoise=.01
+
+    # parse locations, measurements, noise from data
+    X = measurements[:,0:2]
+    Y = np.array([measurements[:,2]]).T
+    # Y=Y/10000.0
+    if method=="het":
+        # use heteroskedactic kernel
+        noise = np.array([measurements[:,3]]).T
+        var = 4. # variance
+        theta = 5 # lengthscale
+        kern = GPy.kern.RBF(2, variance=var,lengthscale=theta) 
+        m = GPy.models.GPHeteroscedasticRegression(X,Y,kern)
+        # m = GPy.models.GPRegression(X,Y,kern)
+        m['.*het_Gauss.variance'] = abs(noise)
+        m.het_Gauss.variance.fix() # We can fix the noise term, since we already know it
+    else:
+        # var = 100 # variance
+        var=4
+        theta = 7# lengthscale
+        kern = GPy.kern.RBF(2, variance=var,lengthscale=theta)
+        m = GPy.models.GPRegression(X,Y,kern)
+        # m.optimize_restarts(num_restarts = 10)
+    #m.optimize()
+    # xgrid = np.vstack([self.x1.reshape(self.x1.size),
+    #                    self.x2.reshape(self.x2.size)]).T
+    # y_pred=m.predict(self.xgrid)[0]
+    # y_pred=y_pred.reshape(self.x1.shape)
+    # sigma=m.predict(self.xgrid)[1]
+    # sigma=sigma.reshape(self.x1.shape)
+    return m
 
 def update_GP(measurements,method='nonhet'):
     """
@@ -123,21 +160,29 @@ def plot_error(surface, workspace, mean, sigma, aq, meas, dirname, data=None,ite
     sigma = gridreshape(sigma,workspace)
     x = workspace.xlin
     y = workspace.ylin
-    aq = gridreshape(aq,workspace)
+    # aq = gridreshape(aq,workspace)
 
+    interpf = getInterpolatedStereoMeas(surface,workspace)
+    disparity = getStereoDepthMap(surface)
+    # disparity = gridreshape(disparity,workspace)
+    #disparity = SimulateStereoMeas(surface, workspace)
     # xx, yy = np.meshgrid(x, y)
 
-    interp=getInterpolatedGTSurface(surface, workspace)
+    interp = getInterpolatedGTSurface(surface, workspace)
     # interp=getInterpolatedObservationModel(surface)
+    GroundTruth = getObservationModel(surface)
+    # GroundTruth = gridreshape(GroundTruth,workspace)
 
     GroundTruth = interp(x,y)
+    disparity = interpf(x,y)
 
     # GroundTruth=GroundTruth.reshape(xx.shape)
     # evaluate the Gaussian Process mean at the same points
 
     # evaluate the RMSerror
     error =np.sqrt((GroundTruth-np.squeeze(mean))**2)
-
+    # GroundTruth = gridreshape(GroundTruth,workspace)
+    # error = gridreshape(error,workspace)
     if data is None:
         fig = plt.figure(figsize=(20, 4))
         if projection3D==True:
@@ -162,64 +207,78 @@ def plot_error(surface, workspace, mean, sigma, aq, meas, dirname, data=None,ite
     data[4].clear()
     data[5].clear()
 
-    # plot the ground truth
+    # plot the disparity
     if projection3D==True:
-        data[1].plot_surface(xx, yy, GroundTruth.reshape(workspace.res,workspace.res), rstride=1, cstride=1,
+        data[1].plot_surface(xx, yy, disparity, rstride=1, cstride=1,
                     cmap=cm.coolwarm, linewidth=0,
                     antialiased=False)
         data[1].set_zlim3d(0,20)
     else:
-        data[1].imshow(np.flipud(GroundTruth), cmap=cm.coolwarm,
+        data[1].imshow(np.flipud(disparity), cmap=cm.coolwarm,vmin=0, vmax=20,
                        extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
         if plotmeas==True:
             data[1].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=20,
                         cmap=cm.coolwarm)
-    
-    data[1].set_title("Ground Truth")
-        
-    # plot the estimate
+    data[1].set_title("Disparity")
+
+    # plot the ground truth
     if projection3D==True:
-        data[2].plot_surface(xx, yy, mean.reshape(workspace.res,workspace.res), rstride=1, cstride=1,
-                         cmap=cm.coolwarm, linewidth=0, antialiased=False)
+        data[2].plot_surface(xx, yy, np.flipud(GroundTruth), rstride=1, cstride=1,
+                    cmap=cm.coolwarm, linewidth=0,
+                    antialiased=False)
         data[2].set_zlim3d(0,20)
     else:
-        data[2].imshow(np.flipud(mean), cmap=cm.coolwarm,
+        data[2].imshow(np.flipud(GroundTruth), cmap=cm.coolwarm,vmin=0, vmax=20,
                        extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
         if plotmeas==True:
             data[2].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=20,
                         cmap=cm.coolwarm)
-    data[2].set_title("Estimate Mean")
+    
+    data[2].set_title("Ground Truth")
+        
+    # plot the estimate
+    if projection3D==True:
+        data[3].plot_surface(xx, yy, mean.reshape(workspace.res,workspace.res), rstride=1, cstride=1,
+                         cmap=cm.coolwarm, linewidth=0, antialiased=False)
+        data[3].set_zlim3d(0,20)
+    else:
+        data[3].imshow(np.flipud(mean), cmap=cm.coolwarm,vmin=0, vmax=20,
+                       extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
+        if plotmeas==True:
+            data[3].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=20,
+                        cmap=cm.coolwarm)
+    data[3].set_title("Estimate (mean)")
 
     # plot the variance
     # if projection3D==True:
        # data[3].plot_surface(xx, yy, sigma.reshape(workspace.res,workspace.res), rstride=1, cstride=1,
                          # cmap=cm.coolwarm, linewidth=0, antialiased=False)
     # else:
-    data[3].imshow(np.flipud(sigma.reshape(workspace.res,workspace.res)), cmap=cm.coolwarm,
+    data[4].imshow(np.flipud(sigma), cmap=cm.coolwarm, 
                        extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
     if plotmeas==True:
-        data[3].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=20,
+        data[4].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=20,
                     cmap=cm.coolwarm)
-    data[3].set_title("Estimate Variance")
+    data[4].set_title("Estimate Variance")
 
     # plot the aquis function
     # if projection3D==True:
         # data[4].plot_surface(xx, yy, aq.reshape(workspace.res,workspace.res), rstride=1, cstride=1,
                          # cmap=cm.coolwarm, linewidth=0, antialiased=False)
-    # else:
-    data[4].imshow(np.flipud(aq.reshape(workspace.res,workspace.res)), cmap=cm.coolwarm,
-                   extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
-    if plotmeas==True:
-        data[4].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=20,
-                        cmap=cm.coolwarm)
-    data[4].set_title("Estimate Variance")
+    # # else:
+    # data[4].imshow(np.flipud(aq), cmap=cm.coolwarm, 
+    #                extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
+    # if plotmeas==True:
+    #     data[4].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=20,
+    #                     cmap=cm.coolwarm)
+    # data[4].set_title("Estimate Variance")
 
     # plot the error
     # if projection3D==True:
         # data[5].plot_surface(xx, yy, error.reshape(workspace.res,workspace.res), rstride=1, cstride=1,
                            # cmap=cm.Greys, linewidth=0, antialiased=False)
     # else:
-    data[5].imshow(np.flipud(error.reshape(workspace.res,workspace.res)), cmap=cm.coolwarm,
+    data[5].imshow(np.flipud(error), cmap=cm.coolwarm,vmin=0, vmax=10,
                        extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
     data[5].set_title("Error from GT")
     
@@ -283,7 +342,7 @@ def plot_beliefGPIS(poly,workspace,mean,variance,aq,meas,dirname,data=None, iter
 
     # for plotting, add first point to end
     GroundTruth = np.vstack((poly,poly[0]))
-    # GroundTruth = np.vstack((boundaryestimate,boundaryestimate[0]))
+    #GroundTruth = np.vstack((boundaryestimate,boundaryestimate[0]))
 
     if data is None:
         fig = plt.figure(figsize=(16, 4))

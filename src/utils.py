@@ -61,13 +61,13 @@ class Params():
 
 def stereo_pad(x,y,z,rangeX,rangeY):
         # pad the stereo measurements by a fixed amount. Necessary to avoid weird undertainty at the edges of the region when using Gaussian Processes
-        percentpad=0 #.1
+        percentpad=.1
 
         padbyX = percentpad*(rangeX[1]-rangeX[0])
         padbyY = percentpad*(rangeY[1]-rangeY[0])
 
         # how many extra points to add in each direction
-        gridSize=20
+        gridSize=40
         numpads=np.int(gridSize*percentpad)
 
         # pad grid arrays

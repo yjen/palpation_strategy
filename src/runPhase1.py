@@ -18,7 +18,7 @@ from GaussianProcess import *
 from Planner import *
 
 ##############################
-def RMS_error(surface, workspace, mean):
+def evalerror(surface, workspace, mean):
     # choose points to compare
     xx=workspace.xx
     yy=workspace.yy
@@ -31,9 +31,9 @@ def RMS_error(surface, workspace, mean):
     # interp=getInterpolatedObservationModel(surface)
 
     GroundTruth = interp(x,y)
-
-    # evaluate the RMSerror
-    error =np.sqrt((GroundTruth-np.squeeze(mean))**2)
+    # integrate error
+    dx = workspace.bounds[0][1]/np.float(workspace.res)
+    error = np.sum(np.sqrt((GroundTruth-np.squeeze(mean))**2))*dx**2
     return error
 
 def run_single_phase1_experiment(surfacename, method, disparityMeas=None, block=False, stops=0.38):
@@ -83,7 +83,7 @@ def run_single_phase1_experiment(surfacename, method, disparityMeas=None, block=
             if disparityMeas is None:
                 disparityMeas = getSimulatedStereoMeas(surface, workspace, block)
             meas = np.copy(disparityMeas)
-            next_samples_points = randompoints(bounds, 1)
+            next_samples_points = randompoints(bounds, 100)
             sampled_points.append(next_samples_points)
             meastouchonly = getSimulatedProbeMeas(surface, workspace, next_samples_points)
             measures.append(meastouchonly)
@@ -94,7 +94,7 @@ def run_single_phase1_experiment(surfacename, method, disparityMeas=None, block=
             meas = np.append(meas,measnew,axis=0)
        
         # update Gaussian process
-        gpmodel = update_GP(meas, method='nonhet')
+        gpmodel = update_GP_ph1(meas, method='nonhet')
 
         # evaluate mean, sigma on a grid
         mean, sigma = get_moments(gpmodel, workspace.x)
@@ -117,12 +117,12 @@ def run_single_phase1_experiment(surfacename, method, disparityMeas=None, block=
         sampled_points.append(next_samples_points)
         measnew = getSimulatedProbeMeas(surface, workspace, next_samples_points)
         measures.append(measnew)
-        error=RMS_error(surface, workspace, mean)
+        error = evalerror(surface, workspace, mean)
         errors.append(error)
         # Plot everything
         time.sleep(0.0001)
         plt.pause(0.0001) 
-        plot_data = plot_error(surface, workspace, mean, sigma, AqcuisFunction, meastouchonly, directory, plot_data, projection3D=True, iternum=i)
+        plot_data = plot_error(surface, workspace, mean, sigma, AqcuisFunction, meas, directory, plot_data, projection3D=False, iternum=i)
         
         i=i+1
 
@@ -136,6 +136,6 @@ def run_single_phase1_experiment(surfacename, method, disparityMeas=None, block=
 
 
 if __name__ == "__main__":
-    run_single_phase1_experiment("smooth1", "maxAcquisition", block=True)
+    run_single_phase1_experiment("smooth_sin1_text", "maxAcquisition", block=True)
 
 
