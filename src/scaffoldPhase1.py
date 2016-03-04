@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from runPhase1 import *
 
 
-NUM_EXPERIMENTS = 5
+NUM_EXPERIMENTS = 1
 
 surfaces = ["flat", "smooth_sin1"]              # add another model ?
 stops = [[6.4, 0.01, 3.6, 0.0],
@@ -21,8 +21,8 @@ def save_data(arr, name, surface_name):
     f.close()
     return
 
-def save_table(table):
-    f = open("phase1_table.csv", 'wb')
+def save_table(table, name):
+    f = open(name + ".csv", 'wb')
     # header
     f.write(",,Random Probings,Max Acquisition\n")
     # data in table
@@ -40,7 +40,8 @@ def save_table(table):
     return
 
 def run_phase1_full():
-    table = np.zeros((8, 2))
+    iter_table = np.zeros((8, 2))
+    error_table = np.zeros((8, 2))
     for i, surf in enumerate(surfaces):
         for j, text in enumerate(textures):
             # if i*len(textures) + j != 0:        # Use this to run only the nth surface
@@ -54,9 +55,11 @@ def run_phase1_full():
                     time_elapsed = end - start # in seconds
                     # plot or save/record everything
 
-                    table[i*len(textures) + j][l] += num_iters / float(NUM_EXPERIMENTS)
+                    iter_table[i*len(textures) + j][l] += num_iters / float(NUM_EXPERIMENTS)
+                    error_table[i*len(textures) + j][l] += errors[-1] / float(NUM_EXPERIMENTS)
                     save_data([means, sigmas, sampled_points, measures, errors, num_iters, time_elapsed], '_exp'+str(l), surf+text)
-                    save_table(table)
+                    save_table(iter_table, "phase1_iterations")
+                    save_table(error_table, "phase1_errors")
     return
 
 
