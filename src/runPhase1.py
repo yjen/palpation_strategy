@@ -106,6 +106,7 @@ def run_single_phase1_experiment(surfacename, method, disparityMeas=None, block=
         mean, sigma = get_moments(gpmodel, workspace.x)
         means.append(np.mean(mean))
         sigmas.append(np.max(sigma))
+        # print np.max(sigma)
 
         # choose points to probe based on max uncertainty
         xgrid, AqcuisFunction = AcFunction(gpmodel, workspace)
