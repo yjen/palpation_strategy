@@ -1,9 +1,1 @@
-,,Random Probings,Max Acquisition
-flat,lam,26.0,10.0,0.0
-,text,0.0,0.0,0.0
-,spec,0.0,0.0,0.0
-,st,0.0,0.0,0.0
-S,lam,0.0,0.0,0.0
-,text,0.0,0.0,0.0
-,spec,0.0,0.0,0.0
-,st,0.0,0.0,0.0
+,,Random Probings,Max Variance,Max Variance Gradientflat,lam,19,9,34,text,29,9,15,spec,18,9,20,st,26,8,16S,lam,16,9,34,text,13,10,39,spec,11,10,39,st,19,10,49

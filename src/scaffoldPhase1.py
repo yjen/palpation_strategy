@@ -8,8 +8,8 @@ from runPhase1 import *
 NUM_EXPERIMENTS = 1
 
 surfaces = ["flat", "smooth_sin1"]              # add another model ?
-stops = [[1.343, 0.01, 3.6, 0.0],
-         [0.0, 0.36, 0.0, 0.0]]                 # TODO change 0.0's (variance is not monotonically decreasing)
+stops = [[1.343, 1.343, 1.343, 1.343],
+         [1.343, 1.343, 1.343, 1.343]]
 textures = ["_lam", "_text", "_spec", "_st"]
     # lambert, texture, specular, specular + texture
 methods = ["random", "maxVar","maxVarGrad"]
@@ -24,7 +24,7 @@ def save_data(arr, name, surface_name):
 def save_table(table, name):
     f = open(name + ".csv", 'wb')
     # header
-    f.write(",,Random Probings,Max Acquisition, max var\n")
+    f.write(",,Random Probings,Max Variance,Max Variance Gradient\n")
     # data in table
     f.write("flat,lam,{},{},{}\n".format(*table[0]))
     f.write(",text,{},{},{}\n".format(*table[1]))
@@ -42,6 +42,7 @@ def save_table(table, name):
 def plot_error(errors, name, surface_name):
     plt.plot(errors)
     plt.xlabel("Iterations")
+    plt.xlim(0, 30)
     plt.ylabel("RMS Error")
     plt.title("Integrated Error between Estimate and Ground Truth - Phase 1")
     plt.savefig("image_pairs/"+surface_name+'/'+name)
@@ -59,6 +60,7 @@ def run_phase1_full():
             for k in range(NUM_EXPERIMENTS): # repeat experiment number of times
                 disparityMeas = None
                 for l, method in enumerate(methods):
+                    print "Running " + surf+text + " "+ method + ":"
                     start = time.time()
                     disparityMeas, means, sigmas, sampled_points, measures, errors, num_iters = run_single_phase1_experiment(surf+text, method, disparityMeas, False, stops[i][j])
                     end = time.time()

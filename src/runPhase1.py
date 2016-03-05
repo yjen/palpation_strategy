@@ -82,7 +82,7 @@ def run_single_phase1_experiment(surfacename, method, disparityMeas=None, block=
     # TODO: add termination criterion instead of counting i (when estimate stops changing)
 
     while np.max(sigma) > stops: #i < 10:
-        print "iteration = ", i
+        print "iteration =", i
         if i==0:
             # initialize measurement from stereo data
             if disparityMeas is None:
