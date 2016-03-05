@@ -38,8 +38,8 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, con
     means = []
     sigmas = []
     acqvals = []
-    errors=[]
-    errors1=[]
+    healthyremoveds=[]
+    tumorlefts=[]
     sampled_points = []
     measures = []
 
@@ -56,7 +56,7 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, con
 
     meas = getSimulateStiffnessMeas(phantomname, next_samples_points)
 
-    for j in range (100): #(1,100,1)
+    for j in range (10): #(1,100,1)
         # print "iteration = ", j
         # collect measurements
         measnew = getSimulateStiffnessMeas(phantomname, next_samples_points)
@@ -77,9 +77,9 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, con
         means.append(mean)
         sigmas.append(sigma)
         measures.append(meas)
-        error,error1= evalerror(phantomname, workspace, mean,level)
-        errors.append(error)
-        errors1.append(error1)
+        healthyremoved,tumorleft= evalerror(phantomname, workspace, mean,level)
+        healthyremoveds.append(healthyremoved)
+        tumorlefts.append(tumorleft)
 
         # select next sampling points. for now, just use Mac--dMax and Erg need work.
         bnd=getLevelSet (workspace, mean, level)
@@ -158,8 +158,11 @@ def save_table(table, name):
     f.write(",,MaxVar_GP,UCB_GB,UCB_GBIS\n")
     # data in table
     # f.write("flat,lam,{},{}\n".format(table[0][0], table[0][1]))
-    f.write(",tumor1,{},{},{}\n".format(table[0][0], table[0][1],table[0][2]))
-    f.write(",tumor2,{},{},{}\n".format(table[1][0], table[1][1],table[1][2]))
+    f.write(",tumor1: healthy tissue removed,{},{},{}\n".format(table[0][0], table[0][1],table[0][2]))
+    f.write(",tumor1: tumor left behind,{},{},{}\n".format(table[1][0], table[1][1],table[1][2]))
+
+    f.write(",tumor2: healthy tissue removed,{},{},{}\n".format(table[2][0], table[2][1],table[2][2]))
+    f.write(",tumor2: tumor left behind,{},{},{}\n".format(table[3][0], table[3][1],table[3][2]))
 
     # f.write(",st,{},{}\n".format(table[0][0], table[0][1]))
 
@@ -176,9 +179,9 @@ def save_table(table, name):
 
 
 def run_phase2_full():
-    iter_table = np.zeros((2, 3))
-    error_table = np.zeros((2, 3))
-    error_table1 = np.zeros((2, 3))
+    iter_table = np.zeros((len(tumors), len(aqfunctions)+len(controls)))
+    error_table = np.zeros((len(tumors)*2, len(aqfunctions)+len(controls)))
+    # error_table1 = np.zeros((2, len(aqfunctions)+len(controls)))
 
     for i, tumor in enumerate(tumors):
         for j, acq in enumerate(aqfunctions):
@@ -192,21 +195,21 @@ def run_phase2_full():
                     start = time.time()
                     dirname = str(i) + '_' + aqfunctionsnames[j] + '_' + cont
                     print dirname
-                    means, sigmas, acqvals, measures, errors, errors1, num_iters = run_single_phase2_simulation(tumor, dirname, AcFunction=acq, control=cont, plot=True)
+                    means, sigmas, acqvals, measures, healthyremoved,tumorleft, num_iters = run_single_phase2_simulation(tumor, dirname, AcFunction=acq, control=cont, plot=True)
                     plt.close() 
                     end = time.time()
                     time_elapsed = end - start # in seconds
                     # plot or save/record everything
                     # its[k] += num_iters / 5.0
-                    save_data([means, sigmas, acqvals, measures, errors, num_iters], dirname, str(k))
+                    save_data([means, sigmas, acqvals, measures, healthyremoved, tumorleft, num_iters], dirname, str(k))
                     iter_table[i][j + m]+= num_iters / float(NUM_EXPERIMENTS)
-                    error_table[i][j+ m]+= errors[-1] / float(NUM_EXPERIMENTS)
-                    error_table1[i][j + m]+= errors1[-1] / float(NUM_EXPERIMENTS)
+                    error_table[i][j+ m]+= healthyremoved[-1] / float(NUM_EXPERIMENTS)
+                    error_table[i+len(tumors)][j + m]+= tumorleft[-1] / float(NUM_EXPERIMENTS)
                     print k
 
                 save_table(iter_table, "phase2_iterations")
                 save_table(error_table, "phase2_errors")
-                save_table(error_table1, "phase2_errors1")
+                # save_table(error_table1, "phase2_errors1")
 
     return
 
