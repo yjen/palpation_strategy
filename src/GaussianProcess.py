@@ -17,6 +17,7 @@ from simUtils import *
 from utils import *
 from scipy import stats
 from shapely.geometry import Point, Polygon #to calculate point-polygon distances
+from descartes import PolygonPatch
 
 # from simulated_disparity import getObservationModel
 
@@ -81,12 +82,12 @@ def update_GP(measurements,method='nonhet'):
         m['.*het_Gauss.variance'] = abs(noise)
         m.het_Gauss.variance.fix() # We can fix the noise term, since we already know it
     else:
-        # var = 100 # variance
-        # theta = .001 # lengthscale
+        #var = 100000 # variance
+        #theta = .00000001 # lengthscale
         kern = GPy.kern.RBF(2)
         m = GPy.models.GPRegression(X,Y,kern)
         # m.optimize_restarts(num_restarts = 10)
-    #m.optimize()
+    m.optimize()
     # xgrid = np.vstack([self.x1.reshape(self.x1.size),
     #                    self.x2.reshape(self.x2.size)]).T
     # y_pred=m.predict(self.xgrid)[0]
@@ -427,6 +428,32 @@ def plot_beliefGPIS(poly,workspace,mean,variance,aq,meas,dirname,data=None, iter
     cs2=data[4].imshow(np.flipud(GPIS), cmap=cm.Greys,
                        extent=(xx.min(), xx.max(), yy.min(),yy.max()))
     norm = plt.matplotlib.colors.Normalize(vmin=0., vmax=GPIS.max())
+
+    if len(boundaryestimate)>0:
+        a=Polygon(GroundTruth)
+        b=Polygon(boundaryestimate)
+        patch1 = PolygonPatch(a, alpha=0.2, zorder=1)
+        data[4].add_patch(patch1)
+        patch2 = PolygonPatch(b, fc='gray', ec='gray', alpha=0.2, zorder=1)
+        data[4].add_patch(patch2)
+        c1 = a.difference(b)
+        c2 = b.difference(a)
+
+        if c1.geom_type == 'Polygon':
+            patchc = PolygonPatch(c1, fc='red', ec='red', alpha=0.5, zorder=2)
+            data[4].add_patch(patchc)
+        elif c1.geom_type == 'MultiPolygon':
+            for p in c1:
+                patchp = PolygonPatch(p, fc='red', ec='red', alpha=0.5, zorder=2)
+                data[4].add_patch(patchp)
+        if c2.geom_type == 'Polygon':
+            patchc = PolygonPatch(c2, fc='blue', ec='blue', alpha=0.5, zorder=2)
+            data[4].add_patch(patchc)
+        elif c2.geom_type == 'MultiPolygon':
+            for p in c2:
+                patchp = PolygonPatch(p, fc='blue', ec='blue', alpha=0.5, zorder=2)
+                data[4].add_patch(patchp)
+
     if (len(data) > 5):
         data[5].remove()
         data = data[:5]
@@ -438,6 +465,61 @@ def plot_beliefGPIS(poly,workspace,mean,variance,aq,meas,dirname,data=None, iter
     data[0].savefig(dirname + '/' + str(iternum) + ".pdf", bbox_inches='tight')
     return data
 
+# def ploterr(a,b,workspace):
+#     fig = pyplot.figure(1, figsize=SIZE, dpi=90)
+
+#     # a = Point(1, 1).buffer(1.5)
+#     # b = Point(2, 1).buffer(1.5)
+
+#     # 1
+#     ax = fig.add_subplot(121)
+
+#     patch1 = PolygonPatch(a, fc=GRAY, ec=GRAY, alpha=0.2, zorder=1)
+#     ax.add_patch(patch1)
+#     patch2 = PolygonPatch(b, fc=GRAY, ec=GRAY, alpha=0.2, zorder=1)
+#     ax.add_patch(patch2)
+#     c = a.intersection(b)
+#     patchc = PolygonPatch(c, fc=BLUE, ec=BLUE, alpha=0.5, zorder=2)
+#     ax.add_patch(patchc)
+
+#     ax.set_title('a.intersection(b)')
+
+#     xrange = [workspace.bounds[0][0], workspace.bounds[0][1]]
+#     yrange = [workspace.bounds[1][0], workspace.bounds[1][1]]
+#     ax.set_xlim(*xrange)
+#     ax.set_xticks(range(*xrange) + [xrange[-1]])
+#     ax.set_ylim(*yrange)
+#     ax.set_yticks(range(*yrange) + [yrange[-1]])
+#     ax.set_aspect(1)
+
+#     #2
+#     ax = fig.add_subplot(122)
+
+#     patch1 = PolygonPatch(a, fc=GRAY, ec=GRAY, alpha=0.2, zorder=1)
+#     ax.add_patch(patch1)
+#     patch2 = PolygonPatch(b, fc=GRAY, ec=GRAY, alpha=0.2, zorder=1)
+#     ax.add_patch(patch2)
+#     c = a.symmetric_difference(b)
+
+#     if c.geom_type == 'Polygon':
+#         patchc = PolygonPatch(c, fc=BLUE, ec=BLUE, alpha=0.5, zorder=2)
+#         ax.add_patch(patchc)
+#     elif c.geom_type == 'MultiPolygon':
+#         for p in c:
+#             patchp = PolygonPatch(p, fc=BLUE, ec=BLUE, alpha=0.5, zorder=2)
+#             ax.add_patch(patchp)
+
+#     ax.set_title('a.symmetric_difference(b)')
+
+#     xrange = [-1, 4]
+#     yrange = [-1, 3]
+#     ax.set_xlim(*xrange)
+#     ax.set_xticks(range(*xrange) + [xrange[-1]])
+#     ax.set_ylim(*yrange)
+#     ax.set_yticks(range(*yrange) + [yrange[-1]])
+#     ax.set_aspect(1)
+
+#     pyplot.show()
 # def eval_GP(m, bounds, res=100):
 #     """
 #     evaluate the GP on a grid

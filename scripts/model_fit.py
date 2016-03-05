@@ -6,7 +6,7 @@ import pickle
 import matplotlib
 import matplotlib.pyplot as plt
 
-def sigmoid(dist, alpha=1000, a=0.0, b=1.0, c=-0.004):
+def sigmoidfit(dist, alpha=1000, a=0.0, b=1.0, c=-0.004):
     """  
     a, b: base and max readings of the probe with and without tumor
     dist = xProbe-xEdge
@@ -19,27 +19,12 @@ def sigmoid(dist, alpha=1000, a=0.0, b=1.0, c=-0.004):
     y = a + np.divide((b-a),(1+ np.exp(-alpha*(dist-c))))  
     return y
 
-def fit_measmodel(xdata,ydata):
-    # xdata = np.array([0.0,   1.0,  3.0,  4.3,  7.0,   8.0,   8.5, 10.0,  
-    # 12.0, 14.0])
-    # ydata = np.array([0.11, 0.12, 0.14, 0.21, 0.83,  1.45,   1.78,  1.9, 
-    # 1.98, 2.02])
-
-    popt, pcov = curve_fit(sigmoid, xdata, ydata)
-    print "Fit:"
-    print "x0 =", popt[0]
-    print "k  =", popt[1]
-    print "a  =", popt[2]
-    print "c  =", popt[3]
-    print "Asymptotes are", popt[3], "and", popt[3] + popt[2]
-    # x = np.linspace(xdata.min(), xdata.min(), 50)
-    # y = sigmoid(x, *popt)
-    # pylab.plot(xdata, ydata, 'o', label='data')
-    # pylab.plot(x,y, label='fit')
-    # # pylab.ylim(0, 2.05)
-    # pylab.legend(loc='upper left')
-    # pylab.grid(True)
-    # pylab.show()
+def fit_measmodel(xdata,ydata,scale=True):
+	#easnorm=ydata[xdata==xdata.max()]
+	# print measnorm
+	# if scale==True:
+	# 	ydata=ydata/measnorm
+    popt, pcov = curve_fit(sigmoidfit, xdata, ydata)
     return popt
 
 # def single_row_stiffness_map(probe_data1, probe_data2):
@@ -96,13 +81,16 @@ def get_stiffness_data(probe_data):
 	zpoints1=zpoints[xpoints>-.020] 
 	return xpoints1[xpoints1<-.002],zpoints1[xpoints1<-.002] #xpoints[xpoints<-.01],zpoints[xpoints<-.01]
 
-def plot_model(probe_data,model):
+def plot_model(probe_data,model,scale=False):
 	xp,zp=get_stiffness_data(probe_data)
+
+	measnorm=zp[xp==xp.max()]
+	if scale==True:
+		zp=zp/measnorm
+		xp=xp-model[3]
 	# display stiffness map
 	fig = plt.figure()
 	ax = fig.add_subplot(111)
-	# ax.scatter(xp,zp, edgecolors="none",color="blue",alpha=.1)
-	#ax.plot(xp, zp, color="blue", alpha=.1)
 	matplotlib.rcParams.update({'font.size': 20,'font.family':'times'})
 
 	# ax.set_title("Single Row Raster 100x on Baseline Tissue Phantom")
@@ -111,23 +99,31 @@ def plot_model(probe_data,model):
 
 	# ax.scatter(projected_points[:index,0], projected_points[:index,2], marker='.', edgecolors="none")
 	ax.scatter(xp, zp, marker='.', edgecolors="none", color="blue",alpha=.2)
+	if scale==True:
+		model[3]=0
+		model[1:3]=model[1:3]/measnorm
+		x = np.linspace(xp.min(), xp.max(), 50)
+	else:
+		x = np.linspace(xp.min(), xp.max(), 50)
 
-	# ax.set_title("Deflection Tissue Phantom")
-	ax.set_xlabel("Position (meters)")
-	ax.set_ylabel("Probe Measurement")
-
-	x = np.linspace(xp.min(), xp.max(), 50)
-	z = sigmoid(x, *model)
+	z = sigmoidfit(x, *model)
+	errb=200
+	if scale==True:
+		z=z#/measnorm
+		errb=errb/measnorm
 	ax.plot(x, z, color='red',linewidth=4)
-	ax.plot(x, z+200, color='red',alpha=.3)
-	ax.plot(x, z-200, color='red',alpha=.3)
-	ax.set_xlim([-.020,-.002])
-	ax.xaxis.set_ticks(np.arange(-.018,-.002, .006))
-	ax.yaxis.set_ticks(np.arange(5000,8000, 500))
+	ax.plot(x, z+errb, color='red',alpha=.3)
+	ax.plot(x, z-errb, color='red',alpha=.3)
+	# ax.set_xlim([-.020,-.002])
+	# ax.xaxis.set_ticks(np.arange(-.018,-.002, .006))
+	# if scale==True:
+	# 	ax.yaxis.set_ticks(np.arange(5000/,8, .5))
+	# else:	
+	# 	ax.yaxis.set_ticks(np.arange(5000,8000, 500))
 
 	fig.savefig("measmodel.pdf" ,bbox_inches='tight')
 	plt.show()
-
+	return model
 
 
 if __name__ == '__main__':

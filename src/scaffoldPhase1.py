@@ -50,6 +50,7 @@ def plot_error(errors, name, surface_name):
     return
 
 def run_phase1_full():
+
     iter_table = np.zeros((len(surfaces)*len(textures), len(methods)))
     error_table = np.zeros((len(surfaces)*len(textures), len(methods)))
     for i, surf in enumerate(surfaces):

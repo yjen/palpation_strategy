@@ -44,6 +44,7 @@ def run_single_phase2_simulation(AcFunction, dirname, control='Max', block=False
     acqvals = []
     sampled_points = []
     measures = []
+    errors=[]
     directory = dirname #phase2_'+'_'+control+'_'+Acfunctionname
 
     if not os.path.exists(directory):
@@ -106,7 +107,7 @@ def run_single_phase2_simulation(AcFunction, dirname, control='Max', block=False
         # save_p2_data(prename+'meas'+str(j),meas)
 
     plt.show(block=True)
-    return means, sigmas, acqvals, measures, j
+    return means, sigmas, acqvals, measures, errors, j
 
 # if __name__ == "__main__":
 #     planning(verbose=True)

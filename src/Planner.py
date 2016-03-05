@@ -85,8 +85,15 @@ def MaxVar_GP(model, workspace, level=0,x=None, acquisition_par=0):
     if x==None:
         x=workspace.x
     #x = multigrid(bounds, res)
-    mean, sigma = get_moments(model, x)     
-    f_acqu = sigma
+    mean, sigma = get_moments(model, x)   
+    sigmasq = sigma.reshape(workspace.res,workspace.res)
+  
+    sigmasq[:,0:10]=0
+    sigmasq[0:10,:]=0
+    sigmasq[:,-10:]=0
+    sigmasq[-10:,:]=0
+
+    f_acqu = sigmasq.flatten()
     return x, f_acqu  # note: returns negative value for posterior minimization
 
 def UCB_GP(model, workspace, level=0, x=None, acquisition_par=.8 ):
