@@ -53,14 +53,13 @@ def run_single_phase1_experiment(surfacename, method, disparityMeas=None, block=
     planner=''
 
     # acquisition functions:  MaxVar_GP, UCB_GP, EI_GP, UCB_IS, EI_IS
-    if method=='maxVar':
-        AcFunction=MaxVar_GP
-        Acfunctionname="MaxVar_GP"
 
-    elif method=='maxVarGrad':
+    if method=='maxVarGrad':
         AcFunction=MaxVar_plus_gradient
         Acfunctionname="MaxVar_plus_gradient"
-
+    else: #method=='maxVar':
+        AcFunction=MaxVar_GP
+        Acfunctionname="MaxVar_GP"
     
     directory='phase1_'+surfacename+'_'+Acfunctionname
     if not os.path.exists(directory):

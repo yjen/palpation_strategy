@@ -1,6 +1,5 @@
 import numpy as np 
 # from getMap import getMap 
-import numpy as np
 import GPyOpt
 import matplotlib.pyplot as plt
 from matplotlib import cm
@@ -8,8 +7,7 @@ from utils import *
 from scipy import interpolate
 from matplotlib import _cntr as cntr #to get polygon of getLevelSet
 from shapely.geometry import asShape, Point, Polygon #to calculate point-polygon distances
-from scipy.optimize import curve_fit
-import pylab
+
 
 from simulated_disparity import getStereoDepthMap, getObservationModel, getInterpolatedObservationModel
 
