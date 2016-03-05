@@ -190,7 +190,7 @@ def getSimulatedProbeMeas(surface, workspace, sample_points):
                      z,
                      sigma_t]).T
 
-def SimulateStiffnessMeas(poly, sample_locations, sensornoise = .01):
+def SimulateStiffnessMeas(poly, sample_locations, sensornoise = .000005):
     """Simulate measurements from palpation (tapping mode) for the test
     functions above inputs: *surface: a function defining a test surface
     *locations: list of points [[x1,y1],[x2,y2]] outputs: *xx,yy, z,
@@ -209,43 +209,18 @@ def SimulateStiffnessMeas(poly, sample_locations, sensornoise = .01):
 
     return xx, yy, z
 
-def fit_measmodel():
-    xdata = np.array([0.0,   1.0,  3.0,  4.3,  7.0,   8.0,   8.5, 10.0,  
-    12.0, 14.0])
-    ydata = np.array([0.11, 0.12, 0.14, 0.21, 0.83,  1.45,   1.78,  1.9, 
-    1.98, 2.02])
 
-    popt, pcov = curve_fit(sigmoid, xdata, ydata)
-    print "Fit:"
-    print "x0 =", popt[0]
-    print "k  =", popt[1]
-    print "a  =", popt[2]
-    print "c  =", popt[3]
-    print "Asymptotes are", popt[3], "and", popt[3] + popt[2]
-
-    x = np.linspace(-1, 15, 50)
-    y = sigmoid(x, *popt)
-
-
-    pylab.plot(xdata, ydata, 'o', label='data')
-    pylab.plot(x,y, label='fit')
-    pylab.ylim(0, 2.05)
-    pylab.legend(loc='upper left')
-    pylab.grid(True)
-    pylab.show()
 
 def plotSimulatedStiffnessMeas(poly, workspace, ypos=None, sensornoise = .03):
     if ypos==None:
        ypos=(workspace.bounds[1][1]-workspace.bounds[1][0])/2.0+workspace.bounds[1][0]
-       print ypos
     x = np.arange(workspace.bounds[0][0], workspace.bounds[0][1], 1/float(10000))
     y = np.zeros(x.shape)+ypos
     sample_locations = np.array([x,y]).T
 
     meas = SimulateStiffnessMeas(poly, sample_locations, sensornoise=sensornoise)
     meas = meas[2]
-    print sample_locations
-    print meas
+
     plt.plot(x.flatten(), meas.flatten(), linewidth=3.0)
     plt.show()
 
@@ -345,7 +320,7 @@ def SixhumpcamelSurface(xx,yy):
 # Functions for simulating deflection measurements
 #######################################
 
-def sigmoid(dist, alpha=1000, a=0.0, b=1.0, c=-0.004):
+def sigmoid(dist, alpha=1014, a=0.0, b=1.0, c=-0.004):
     """  
     a, b: base and max readings of the probe with and without tumor
     dist = xProbe-xEdge

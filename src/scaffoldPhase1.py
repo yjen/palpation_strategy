@@ -24,7 +24,7 @@ def save_data(arr, name, surface_name):
 def save_table(table, name):
     f = open(name + ".csv", 'wb')
     # header
-    f.write(",,Random Probings,Max Acquisition\n")
+    f.write(",,Random Probings,Max Acquisition, max var\n")
     # data in table
     f.write("flat,lam,{},{}\n".format(table[0][0], table[0][1]))
     f.write(",text,{},{}\n".format(table[0][0], table[0][1]))
@@ -40,8 +40,8 @@ def save_table(table, name):
     return
 
 def run_phase1_full():
-    iter_table = np.zeros((8, 2))
-    error_table = np.zeros((8, 2))
+    iter_table = np.zeros((8, 3))
+    error_table = np.zeros((8, 3))
     for i, surf in enumerate(surfaces):
         for j, text in enumerate(textures):
             # if i*len(textures) + j != 0:        # Use this to run only the nth surface
