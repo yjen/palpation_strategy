@@ -19,11 +19,13 @@ class Palpation():
         self.tissue_pose = None
         self.tissue_length = None
         self.tissue_width = None
-        self.probe_offset = 0.034 #32 gives interesting readings? og 0.038
+        self.probe_offset = 0.032 #32 gives interesting readings? og 0.038
         self.probe_data = []
         self.record_data = False
-        self.speed = 0.02
+        self.speed = 0.01
         self.curr_probe_value = None
+        self.insert_probe_angle = 10
+        self.lock_probe_angle = 36
 
         self.record_point_palpation_data = False
         self.locations = []
@@ -166,7 +168,8 @@ class Palpation():
         w = np.cross(u, v)
         u = np.cross(v, w)  # to ensure that all axes are orthogonal
         rotation_matrix = np.array([u,v,w]).transpose()
-        pose = tfx.pose(origin, rotation_matrix, frame=nw.frame)
+        offset = np.dot(rotation_matrix, np.array([0, 0.11, 0.01]))
+        pose = tfx.pose(origin+offset, rotation_matrix, frame=nw.frame)
         self.tissue_pose = pose
         return pose
 
@@ -181,19 +184,23 @@ class Palpation():
 
         # get gripper position
         origin = np.hstack(np.array(tissue_pose.position))
-        offset = np.dot(frame, np.array([0.02, 0.09, 0.06]))
+        # offset = np.dot(frame, np.array([0.02, 0.09, 0.06]))
+        offset = np.dot(frame, np.array([0.02, 0.0, 0.06]))
+
         pose = tfx.pose(origin + offset, rotation_matrix, frame=tissue_pose.frame)
 
 
         # send arm to appropriate pose
         
         self.psm1.move_cartesian_frame_linear_interpolation(pose, self.speed, False)
-        self.psm1.close_gripper()
-        rospy.sleep(1.0)
+        # self.psm1.close_gripper()
+        # rospy.sleep(1.0)
+        self.psm1.set_gripper_angle(10)
 
         raw_input("Place tool on gripper and press any key to continue: ")
-        self.psm1.set_gripper_angle(70.0)
-        rospy.sleep(1.0)
+        # self.psm1.set_gripper_angle(70.0)
+        # rospy.sleep(1.0)
+        self.psm1.set_gripper_angle(36)
 
     def drop_off_tool(self):
         tissue_pose = self.tissue_pose
@@ -210,7 +217,8 @@ class Palpation():
 
 
         # send arm to appropriate pose
-        self.psm1.close_gripper()
+        # self.psm1.close_gripper()
+        self.psm1.set_gripper_angle(10)
         rospy.sleep(2.0)
         self.psm1.move_cartesian_frame_linear_interpolation(pose, self.speed, False)
         
@@ -240,7 +248,7 @@ class Palpation():
         pose = tfx.pose(origin+offset, rotation_matrix, frame=self.tissue_pose.frame)
         self.psm1.move_cartesian_frame_linear_interpolation(pose, 0.01, False)
 
-        offset = np.dot(frame, np.array([np.random.random()*self.tissue_length, np.random.random()*self.tissue_width, z]))
+        offset = np.dot(frame, np.array([np.raarrayndom.random()*self.tissue_length, np.random.random()*self.tissue_width, z]))
         pose = tfx.pose(origin+offset, rotation_matrix, frame=self.tissue_pose.frame)
         self.psm1.move_cartesian_frame_linear_interpolation(pose, 0.01, False)
 
@@ -294,7 +302,7 @@ class Palpation():
 
         print('what"s')
         # pick up tool
-        # self.pick_up_tool()
+        self.pick_up_tool()
         print('up')
 
         self.probe_stop_reset()
@@ -303,26 +311,45 @@ class Palpation():
         # # pose1 = tfx.pose(pose.as_tf()*tfx.transform(tfx.tb_angles(roll=15, pitch=0, yaw=0))) #apparently this tilts head of probe toward base of arms. wait no apparently this tilts head of probe toward monitors? (to the right) this is probably the direction that the probe constrains rotation in
         rotation_matrix = tfx.pose(pose.as_tf()*tfx.transform(tfx.tb_angles(roll=0, pitch=theta*direction, yaw=0))).rotation.matrix
 
-        SPEED = 0.01
-
+        SPEED = 0.001
+        TEST_OFFSET = 0
+        TEST_OFFSET2 = 0
+        steps = 6
         for i in range(steps-3):
             if i == 0:
                 continue
-            # offset = np.dot(frame, np.array([i*dy, 0.0, z+0.02]))
+            # offset = np.dot(frame, np.array([i*dy, 0.0, z+0.03]))
             # pose = tfx.pose(origin+offset, rotation_matrix, frame=self.tissue_pose.frame)
             # # # pose1 = tfx.pose(pose.as_tf()*tfx.transform(tfx.tb_angles(roll=15, pitch=0, yaw=0))) #apparently this tilts head of probe toward base of arms. wait no apparently this tilts head of probe toward monitors? (to the right) this is probably the direction that the probe constrains rotation in
             # rotation_matrix = tfx.pose(pose.as_tf()*tfx.transform(tfx.tb_angles(roll=0, pitch=theta*direction, yaw=0))).rotation.matrix #tilted even more toward monitors? what? also a bit towards base. why are roll & pitch the same o.o joint limits? moves more than pose1. 
             # should be done before for loop? lol
-            # pose3 = tfx.pose(pose.as_tf()*tfx.transform(tfx.tb_angles(roll=0, pitch=0, yaw=20))) #away from arms and to the left
+            # pose1 = tfx.pose(pose.as_tf()*tfx.transform(tfx.tb_angles(roll=10, pitch=0, yaw=0))) #away from arms and to the left
+            # pose2 = tfx.pose(pose.as_tf()*tfx.transform(tfx.tb_angles(roll=0, pitch=10, yaw=0))) #away from arms and to the left
+            # pose3 = tfx.pose(pose.as_tf()*tfx.transform(tfx.tb_angles(roll=0, pitch=0, yaw=10))) #away from arms and to the left
+
             # pose4 = tfx.pose(origin+offset, rot1) #so apparently these don't work
             # pose5 = tfx.pose(origin+offset, rot2)
             # pose6 = tfx.pose(origin+offset, rot3)
-
-
+            # print('og pose')
+            # self.psm1.move_cartesian_frame_linear_interpolation(pose, SPEED, False)
+            # import IPython; IPython.embed()
+            # print('pose1')
+            # self.psm1.move_cartesian_frame_linear_interpolation(pose1, SPEED, False)
+            # import IPython; IPython.embed()
+            # print('pose2')
+            # self.psm1.move_cartesian_frame_linear_interpolation(pose2, SPEED, False)
+            # import IPython; IPython.embed()
+            # print('pose3')
+            # self.psm1.move_cartesian_frame_linear_interpolation(pose3, SPEED, False)
+            # import IPython; IPython.embed()
             if direction == 1:
-                offset = np.dot(frame, np.array([i*dy, 0.0, z+0.02]))
+                offset = np.dot(frame, np.array([i*dy, 0.0, z+0.02+TEST_OFFSET]))
                 pose = tfx.pose(origin+offset, rotation_matrix, frame=self.tissue_pose.frame)
                 self.psm1.move_cartesian_frame_linear_interpolation(pose, SPEED, False)
+                
+                a = str(self.psm1.get_current_joint_position())
+                print(a)
+                # import IPython; IPython.embed()
                 # print('og pose')
                 # self.psm1.move_cartesian_frame_linear_interpolation(pose, 0.01, False)
                 # import IPython; IPython.embed()
@@ -346,26 +373,43 @@ class Palpation():
                 # IPython.embed()
 
 
-                offset = np.dot(frame, np.array([i*dy, 0.0, z]))
+                offset = np.dot(frame, np.array([i*dy, 0.0, z+TEST_OFFSET]))
                 pose = tfx.pose(origin+offset, rotation_matrix, frame=self.tissue_pose.frame)
                 self.psm1.move_cartesian_frame_linear_interpolation(pose, SPEED, False)
+                
+                b = str(self.psm1.get_current_joint_position())
+                print(b)
 
                 # start recording data
                 rospy.sleep(0.2)
                 self.probe_start()
 
-                offset = np.dot(frame, np.array([i*dy, self.tissue_width*0.95, z]))
+                offset = np.dot(frame, np.array([i*dy, self.tissue_width*(0.95+TEST_OFFSET2), z+TEST_OFFSET]))
                 pose = tfx.pose(origin+offset, rotation_matrix, frame=self.tissue_pose.frame)
                 self.psm1.move_cartesian_frame_linear_interpolation(pose, SPEED, False)
+                
+                c = str(self.psm1.get_current_joint_position())
+                print(c)
 
                 # pause recording data
                 rospy.sleep(0.2)
                 self.probe_pause()
                 print(self.probe_data)
 
-                offset = np.dot(frame, np.array([i*dy, self.tissue_width*0.95, z+0.02]))
+                offset = np.dot(frame, np.array([i*dy, self.tissue_width*(0.95+TEST_OFFSET2), z+0.02+TEST_OFFSET]))
                 pose = tfx.pose(origin+offset, rotation_matrix, frame=self.tissue_pose.frame)
                 self.psm1.move_cartesian_frame_linear_interpolation(pose, SPEED, False)
+                
+                d = str(self.psm1.get_current_joint_position())
+                print(d)
+
+                # offset = np.dot(frame, np.array([i*dy+0.04, 0, z+0.03]))
+                # pose = tfx.pose(origin+offset, rotation_matrix, frame=self.tissue_pose.frame)
+                # self.psm1.move_cartesian_frame_linear_interpolation(pose, SPEED, False)
+                # e = str(self.psm1.get_current_joint_position())
+                # print(e)
+
+                # import IPython; IPython.embed()
             else:
                 offset = np.dot(frame, np.array([i*dy, self.tissue_width*0.95, z+0.02]))
                 pose = tfx.pose(origin+offset, rotation_matrix, frame=self.tissue_pose.frame)
@@ -714,7 +758,7 @@ class Palpation():
         print("x: " + str(x))
         print("y: " + str(y))
         print("tissue length: " + str(self.tissue_length))
-        print("tissue width: " + str(self.tissue_width))
+        print("tissue width: " + str(self.tissue+_width))
 
         if x < 0 or x > self.tissue_length or y < 0 or y > self.tissue_width:
             return None

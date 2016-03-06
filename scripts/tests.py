@@ -98,6 +98,7 @@ def test_register_surface():
     palp.register_surface(5)
 
 def test_scan_random_points():
+    """Not done"""
     palp = Palpation()
     try:
         palp.load_environment_registration("env_registration.p")
@@ -106,5 +107,9 @@ def test_scan_random_points():
     raw_input("Will now register surface. Press enter to continue")
     palp.execute_scan_points_continuous(8)
 
+def test_register_environment():
+    palp = Palpation()
+    palp.register_environment("env_registration_shifted.p")
+
 if __name__ == '__main__':
-    test_register_surface()
+    test_raster_scan_tilted_L2R()

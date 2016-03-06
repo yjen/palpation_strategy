@@ -7,7 +7,7 @@ from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 # import PyKDL
 from numpy.linalg import norm
-# import tfx
+import tfx
 import pickle
 import matplotlib.pyplot as plt
 import GaussianProcess
@@ -220,10 +220,18 @@ def single_row_stiffness_map(probe_data1, probe_data2, probe_data3):
 	ax.set_ylabel("Probe Measurement")
 	plt.show()
 
-
-	
-
-
+def plot_rotations(probe_data):
+	data = [tfx.pose(i[1]).tb_angles for i in probe_data]
+	roll = [d.roll_deg for d in data]
+	pitch = [d.pitch_deg for d in data]
+	yaw = [d.yaw_deg for d in data]
+	print("roll: max, min: " + str(max(roll)) + ", " + str(min(roll)))
+	print("pitch: max, min: " + str(max(pitch)) + ", " + str(min(pitch)))
+	print("yaw: max, min: " + str(max(yaw)) + ", " + str(min(yaw)))
+	fig = plt.figure()
+	ax = fig.add_subplot(111, projection='3d')
+	ax.scatter(roll, pitch, yaw, marker='o')
+	plt.show()
 
 if __name__ == '__main__':
 	# load data
@@ -232,7 +240,9 @@ if __name__ == '__main__':
 	# probe_data3 = pickle.load(open("saved_palpation_data/point_probe_40x20x1.p"))
 	# single_row_stiffness_map(probe_data1, probe_data2, probe_data3)
         #GPstiffness(probe_data)
-    data1 = pickle.load(open("probe_data_R2L.p", "rb"))
-    data2 = pickle.load(open("probe_data_L2R.p", "rb"))
-    stiffness_map_combined(data1, data2)
+    # data1 = pickle.load(open("probe_data_L2R_old_tool_tilt.p", "rb"))
+    # data2 = pickle.load(open("probe_data_L2R_new_tool_tilt.p", "rb"))
+    # stiffness_map_combined(data1, data2)
+    data = pickle.load(open("probe_data_L2R_old_tool_tilt.p", "rb"))
+    plot_rotations(data)
 

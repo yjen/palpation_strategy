@@ -556,11 +556,9 @@ class robot:
             abs_frame as a list of [X Y Z Roll Pitch Yaw]
             If cubInterpolate = True -> Speed should be (list) [vLow vHigh] -> Implements cubic slerp interpolation 
             If cubInterpolate = False -> Speed should be (float) speed -> Implements linear slerp interpolation
+        """
 
-        :param abs_frame: the absolute `PyKDL.Frame <http://docs.ros.org/diamondback/api/kdl/html/python/geometric_primitives.html>`_
-        :param interpolate: see  :ref:`interpolate <interpolate>`"""
-
-        # convert tfx pose to PyKDL frame
+        # convert tfx pose to list
         a = abs_frame
         abs_frame = [float(a.position.x), float(a.position.y), float(a.position.z), a.rotation.tb_angles.roll_rad, a.rotation.tb_angles.pitch_rad, a.rotation.tb_angles.yaw_rad]
 
