@@ -105,7 +105,7 @@ def SimulateStereoMeas(surface, workspace, sensornoise=.001, subsample=True, num
     return xx, yy, z
 
 
-def getSimulatedStereoMeas(surface, workspace, plot = False):
+def getSimulatedStereoMeas(surface, workspace, plot=False, block=False):
     """
     wrapper function for SimulateStereoMeas
     hetero. GP model requires defining the variance for each measurement 
@@ -142,7 +142,7 @@ def getSimulatedStereoMeas(surface, workspace, plot = False):
         ax.set_zlim3d(0,20)
         plt.xlabel('x')
         plt.ylabel('y')
-        plt.show()
+        plt.show(block=block)
 
     return np.array([xx.flatten(), yy.flatten(),
                      z.flatten(),

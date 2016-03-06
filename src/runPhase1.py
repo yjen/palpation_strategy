@@ -36,7 +36,7 @@ def evalerror(surface, workspace, mean):
     error = np.sum(np.sqrt((GroundTruth-np.squeeze(mean))**2))*dx**2
     return error / 10e6 # error/mm^2 to error/m^2 conversion
 
-def run_single_phase1_experiment(surfacename, method, disparityMeas=None, block=False, stops=0.38):
+def run_single_phase1_experiment(surfacename, method, disparityMeas=None, block=False, stops=1.343, shouldPlot=True):
     # set workspace boundary
     bounds=((0,200),(0,200))
     # choose surface for simulation
@@ -61,9 +61,10 @@ def run_single_phase1_experiment(surfacename, method, disparityMeas=None, block=
         AcFunction=MaxVar_GP
         Acfunctionname="MaxVar_GP"
     
-    directory='phase1_'+surfacename+'_'+Acfunctionname
-    if not os.path.exists(directory):
-        os.makedirs(directory)
+    if shouldPlot:
+        directory='phase1_'+surfacename+'_'+Acfunctionname
+        if not os.path.exists(directory):
+            os.makedirs(directory)
     ##############################
     # Phase 1
     ###############################
@@ -78,15 +79,12 @@ def run_single_phase1_experiment(surfacename, method, disparityMeas=None, block=
     errors=[]
     sigma = 1000.0
 
-
-    # TODO: add termination criterion instead of counting i (when estimate stops changing)
-
-    while np.max(sigma) > stops: #i < 10:
+    while np.max(sigma) > stops:
         print "iteration =", i
         if i==0:
             # initialize measurement from stereo data
             if disparityMeas is None:
-                disparityMeas = getSimulatedStereoMeas(surface, workspace, block)
+                disparityMeas = getSimulatedStereoMeas(surface, workspace, shouldPlot, block)
             meas = np.copy(disparityMeas)
             next_samples_points = randompoints(bounds, 1)
             sampled_points.append(next_samples_points)
@@ -129,8 +127,9 @@ def run_single_phase1_experiment(surfacename, method, disparityMeas=None, block=
         errors.append(error)
         # Plot everything
         time.sleep(0.0001)
-        plt.pause(0.0001) 
-        plot_data = plot_error(surface, workspace, mean, sigma, AqcuisFunction, meastouchonly, directory, plot_data, projection3D=False, iternum=i)
+        plt.pause(0.0001)
+        if (shouldPlot):
+            plot_data = plot_error(surface, workspace, mean, sigma, AqcuisFunction, meastouchonly, directory, plot_data, projection3D=False, iternum=i)
         
         i=i+1
 
@@ -144,6 +143,6 @@ def run_single_phase1_experiment(surfacename, method, disparityMeas=None, block=
 
 
 if __name__ == "__main__":
-    run_single_phase1_experiment("smooth_sin2", "maxVar", block=True)
+    run_single_phase1_experiment("smooth_sin1", "maxVar", block=True)
 
 
