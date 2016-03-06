@@ -34,7 +34,7 @@ def evalerror(surface, workspace, mean):
     # integrate error
     dx = workspace.bounds[0][1]/np.float(workspace.res)
     error = np.sum(np.sqrt((GroundTruth-np.squeeze(mean))**2))*dx**2
-    return error
+    return error / 10e6 # error/mm^2 to error/m^2 conversion
 
 def run_single_phase1_experiment(surfacename, method, disparityMeas=None, block=False, stops=0.38):
     # set workspace boundary
