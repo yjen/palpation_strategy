@@ -61,13 +61,13 @@ class Params():
 
 def stereo_pad(x,y,z,rangeX,rangeY):
         # pad the stereo measurements by a fixed amount. Necessary to avoid weird undertainty at the edges of the region when using Gaussian Processes
-        percentpad=0 #.1
+        percentpad=.1
 
         padbyX = percentpad*(rangeX[1]-rangeX[0])
         padbyY = percentpad*(rangeY[1]-rangeY[0])
 
         # how many extra points to add in each direction
-        gridSize=20
+        gridSize=40
         numpads=np.int(gridSize*percentpad)
 
         # pad grid arrays
@@ -117,7 +117,7 @@ def get_moments(model,x):
     except TypeError:
         k1=GPy.kern.RBF(2)
         m, v = model._raw_predict(x)
-        v += model.likelihood.variance[-1]
+        v += model.likelihood.variance[0]
     s = np.sqrt(np.clip(v, 0, np.inf))
     return (m,s)
 
@@ -181,6 +181,7 @@ def save_p2_data(dat, filename):
             pickle.dump(dat, open(filename, "wb"))
         except Exception as e:
             print "Exception: ", e
+
 
 class Workspace(object):
     def __init__(self, bounds, res):

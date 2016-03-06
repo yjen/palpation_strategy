@@ -114,6 +114,10 @@ def getObservationModel(planeName):
     obs = cv2.resize(model, (IMG_SIZE,IMG_SIZE))#, interpolation=cv2.INTER_LANCZOS4)
     # print("obs: " + str(obs))
     # print("shape: " + str(obs.shape))
+    if planeName == 'image_pairs/sinxy1':
+        obs = np.rot90(obs,1) #correct for sinxy1, wrong for the smoothed images
+    else:
+        obs = np.fliplr(obs)
     return obs*10 #convert to mm
 
 # returns a function that interpolates a vector of continuous (x, y) coords,
@@ -198,10 +202,10 @@ def getStereoDepthMap(folder, shouldPlot=False):
     num_iter2 = 3 #25
     kernel_size = 3 #5
     for _ in range(num_iter1):
-    	x1_median = cv2.medianBlur(x1_median,kernel_size)
+        x1_median = cv2.medianBlur(x1_median,kernel_size)
     x1_median2 = x1_median.astype(np.float32)
     for _ in range(num_iter2-num_iter1):
-    	x1_median2 = cv2.medianBlur(x1_median2,kernel_size)
+        x1_median2 = cv2.medianBlur(x1_median2,kernel_size)
 
 
 
@@ -220,10 +224,6 @@ def getStereoDepthMap(folder, shouldPlot=False):
     if shouldPlot:
         print("avg_x1: " + str(avg_x1))
     obs = getObservationModel(folder)
-    if folder == 'image_pairs/sinxy1':
-    	obs = np.rot90(obs,1) #correct for sinxy1, wrong for the smoothed images
-    else:
-    	obs = np.fliplr(obs)
     avg_obs = np.sum(obs)/np.square(IMG_SIZE)
     if shouldPlot:
         print("avg_obs: " + str(avg_obs))
@@ -332,8 +332,8 @@ def getStereoDepthMap(folder, shouldPlot=False):
 
 
 if __name__ == "__main__":
-    for i, folder in enumerate(folders[1:]):
-        if folder == 'image_pairs/exp' or folder == 'image_pairs/halved' or folder == 'image_pairs/plain_random' or folder == 'image_pairs/squaredDiffs':
-            continue
-        getStereoDepthMap(folder, True);
-    # getStereoDepthMap("image_pairs/smooth_sin1", True);
+    # for i, folder in enumerate(folders[1:]):
+    #     if folder == 'image_pairs/exp' or folder == 'image_pairs/halved' or folder == 'image_pairs/plain_random' or folder == 'image_pairs/squaredDiffs':
+    #         continue
+    #     getStereoDepthMap(folder, True);
+    getStereoDepthMap("image_pairs/smooth_sin1_text", True);

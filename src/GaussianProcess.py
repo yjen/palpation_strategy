@@ -17,9 +17,47 @@ from simUtils import *
 from utils import *
 from scipy import stats
 from shapely.geometry import Point, Polygon #to calculate point-polygon distances
+from descartes import PolygonPatch
 
 # from simulated_disparity import getObservationModel
 
+def update_GP_ph1(measurements,method='nonhet'):
+    """
+    GP for phase2:
+    Inputs: data=[x position, y position, measurement, measurement noise]
+    TODO: maybe combine with updateGP above
+    """
+    sensornoise=.01
+
+    # parse locations, measurements, noise from data
+    X = measurements[:,0:2]
+    Y = np.array([measurements[:,2]]).T
+    # Y=Y/10000.0
+    if method=="het":
+        # use heteroskedactic kernel
+        noise = np.array([measurements[:,3]]).T
+        var = .001 # variance
+        theta = 4 # lengthscale
+        kern = GPy.kern.RBF(2, variance=var,lengthscale=theta) 
+        m = GPy.models.GPHeteroscedasticRegression(X,Y,kern)
+        # m = GPy.models.GPRegression(X,Y,kern)
+        m['.*het_Gauss.variance'] = abs(noise)
+        m.het_Gauss.variance.fix() # We can fix the noise term, since we already know it
+    else:
+        # var = 100 # variance
+        var = 50
+        theta = 25# lengthscale
+        kern = GPy.kern.RBF(2, variance=var,lengthscale=theta)
+        m = GPy.models.GPRegression(X,Y,kern)
+        #m.optimize_restarts(num_restarts = 5)
+    #m.optimize()
+    # xgrid = np.vstack([self.x1.reshape(self.x1.size),
+    #                    self.x2.reshape(self.x2.size)]).T
+    # y_pred=m.predict(self.xgrid)[0]
+    # y_pred=y_pred.reshape(self.x1.shape)
+    # sigma=m.predict(self.xgrid)[1]
+    # sigma=sigma.reshape(self.x1.shape)
+    return m
 
 def update_GP(measurements,method='nonhet'):
     """
@@ -44,8 +82,8 @@ def update_GP(measurements,method='nonhet'):
         m['.*het_Gauss.variance'] = abs(noise)
         m.het_Gauss.variance.fix() # We can fix the noise term, since we already know it
     else:
-        # var = 100 # variance
-        # theta = .001 # lengthscale
+        #var = 100000 # variance
+        #theta = .00000001 # lengthscale
         kern = GPy.kern.RBF(2)
         m = GPy.models.GPRegression(X,Y,kern)
         # m.optimize_restarts(num_restarts = 10)
@@ -111,23 +149,7 @@ def predict_GP(m, pts):
     return [pts, z_pred, sigma]
 
 
-def RMS_error(surface, workspace, mean):
-    # choose points to compare
-    xx=workspace.xx
-    yy=workspace.yy
 
-    mean = gridreshape(mean,workspace)
-    x = workspace.xlin
-    y = workspace.ylin
-
-    interp=getInterpolatedGTSurface(surface, workspace)
-    # interp=getInterpolatedObservationModel(surface)
-
-    GroundTruth = interp(x,y)
-
-    # evaluate the RMSerror
-    error =np.sqrt((GroundTruth-np.squeeze(mean))**2)
-    return error
 
 ########################## Plot Scripts
 def plot_error(surface, workspace, mean, sigma, aq, meas, dirname, data=None,iternum=0, projection3D=False, plotmeas=True):
@@ -141,21 +163,29 @@ def plot_error(surface, workspace, mean, sigma, aq, meas, dirname, data=None,ite
     y = workspace.ylin
     aq = gridreshape(aq,workspace)
 
+    interpf = getInterpolatedStereoMeas(surface,workspace)
+    disparity = getStereoDepthMap(surface)
+    # disparity = gridreshape(disparity,workspace)
+    #disparity = SimulateStereoMeas(surface, workspace)
     # xx, yy = np.meshgrid(x, y)
 
-    interp=getInterpolatedGTSurface(surface, workspace)
+    interp = getInterpolatedGTSurface(surface, workspace)
     # interp=getInterpolatedObservationModel(surface)
+    GroundTruth = getObservationModel(surface)
+    # GroundTruth = gridreshape(GroundTruth,workspace)
 
     GroundTruth = interp(x,y)
+    disparity = interpf(x,y)
 
     # GroundTruth=GroundTruth.reshape(xx.shape)
     # evaluate the Gaussian Process mean at the same points
 
     # evaluate the RMSerror
     error =np.sqrt((GroundTruth-np.squeeze(mean))**2)
-
+    # GroundTruth = gridreshape(GroundTruth,workspace)
+    # error = gridreshape(error,workspace)
     if data is None:
-        fig = plt.figure(figsize=(20, 4))
+        fig = plt.figure(figsize=(24, 4))
         if projection3D==True:
             ax1 = fig.add_subplot(151, projection='3d')
             ax2 = fig.add_subplot(152, projection='3d')
@@ -163,81 +193,105 @@ def plot_error(surface, workspace, mean, sigma, aq, meas, dirname, data=None,ite
             # ax4 = fig.add_subplot(154, projection='3d')
             # ax5 = fig.add_subplot(155, projection='3d')
         else:
-            ax1 = fig.add_subplot(151)
-            ax2 = fig.add_subplot(152)
-        ax3 = fig.add_subplot(153)
-        ax4 = fig.add_subplot(154)
-        ax5 = fig.add_subplot(155)
+            ax1 = fig.add_subplot(161)
+            ax2 = fig.add_subplot(162)
+        ax3 = fig.add_subplot(163)
+        ax4 = fig.add_subplot(164)
+        ax5 = fig.add_subplot(165)
+        ax6 = fig.add_subplot(166)
         fig.canvas.draw()
         fig.canvas.draw()
         plt.show(block=False)
-        data = [fig, ax1, ax2, ax3, ax4,ax5]
+        data = [fig, ax1, ax2, ax3, ax4,ax5,ax6]
     data[1].clear()
     data[2].clear()
     data[3].clear()
     data[4].clear()
     data[5].clear()
+    data[6].clear()
 
-    # plot the ground truth
+
+    # plot the disparity
     if projection3D==True:
-        data[1].plot_surface(xx, yy, GroundTruth.reshape(workspace.res,workspace.res), rstride=1, cstride=1,
+        data[1].plot_surface(xx, yy, disparity, rstride=1, cstride=1,
                     cmap=cm.coolwarm, linewidth=0,
                     antialiased=False)
-        data[1].set_zlim3d(0,20)
+        data[1].set_zlim3d(0,30)
     else:
-        data[1].imshow(np.flipud(GroundTruth), cmap=cm.coolwarm,
+        data[1].imshow(np.flipud(disparity), cmap=cm.coolwarm,vmin=0, vmax=30,
                        extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
         if plotmeas==True:
             data[1].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=20,
                         cmap=cm.coolwarm)
+    data[1].set_title("Disparity")
+
+    # plot the ground truth
+    if projection3D==True:
+        data[2].plot_surface(xx, yy, np.flipud(GroundTruth), rstride=1, cstride=1,
+                    cmap=cm.coolwarm, linewidth=0,
+                    antialiased=False)
+        data[2].set_zlim3d(0,30)
+    else:
+        data[2].imshow(np.flipud(GroundTruth), cmap=cm.coolwarm,vmin=0, vmax=30,
+                       extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
+        if plotmeas==True:
+            data[2].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=30,
+                        cmap=cm.coolwarm)
     
-    data[1].set_title("Ground Truth")
+    data[2].set_title("Ground Truth")
         
     # plot the estimate
     if projection3D==True:
-        data[2].plot_surface(xx, yy, mean.reshape(workspace.res,workspace.res), rstride=1, cstride=1,
+        data[3].plot_surface(xx, yy, mean.reshape(workspace.res,workspace.res), rstride=1, cstride=1,
                          cmap=cm.coolwarm, linewidth=0, antialiased=False)
-        data[2].set_zlim3d(0,20)
+        data[3].set_zlim3d(0,30)
     else:
-        data[2].imshow(np.flipud(mean), cmap=cm.coolwarm,
+        data[3].imshow(np.flipud(mean), cmap=cm.coolwarm,vmin=0, vmax=30,
                        extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
         if plotmeas==True:
-            data[2].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=20,
+            data[3].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=30,
                         cmap=cm.coolwarm)
-    data[2].set_title("Estimate Mean")
+    data[3].set_title("Estimate (mean)")
 
     # plot the variance
     # if projection3D==True:
        # data[3].plot_surface(xx, yy, sigma.reshape(workspace.res,workspace.res), rstride=1, cstride=1,
                          # cmap=cm.coolwarm, linewidth=0, antialiased=False)
     # else:
-    data[3].imshow(np.flipud(sigma.reshape(workspace.res,workspace.res)), cmap=cm.coolwarm,
+    data[4].imshow(np.flipud(sigma), cmap=cm.coolwarm, 
                        extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
     if plotmeas==True:
-        data[3].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=20,
+        data[4].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=30,
                     cmap=cm.coolwarm)
-    data[3].set_title("Estimate Variance")
+    data[4].set_title("Estimate Variance")
+
+    data[5].imshow(np.flipud(aq), cmap=cm.coolwarm, 
+                       extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
+    if plotmeas==True:
+        data[5].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=30,
+                    cmap=cm.coolwarm)
+    data[5].set_title("Acquisition function")
 
     # plot the aquis function
     # if projection3D==True:
         # data[4].plot_surface(xx, yy, aq.reshape(workspace.res,workspace.res), rstride=1, cstride=1,
                          # cmap=cm.coolwarm, linewidth=0, antialiased=False)
-    # else:
-    data[4].imshow(np.flipud(aq.reshape(workspace.res,workspace.res)), cmap=cm.coolwarm,
-                   extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
-    if plotmeas==True:
-        data[4].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=20,
-                        cmap=cm.coolwarm)
-    data[4].set_title("Estimate Variance")
+    # # else:
+    # data[4].imshow(np.flipud(aq), cmap=cm.coolwarm, 
+    #                extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
+    # if plotmeas==True:
+    #     data[4].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=20,
+    #                     cmap=cm.coolwarm)
+    # data[4].set_title("Estimate Variance")
 
     # plot the error
     # if projection3D==True:
         # data[5].plot_surface(xx, yy, error.reshape(workspace.res,workspace.res), rstride=1, cstride=1,
                            # cmap=cm.Greys, linewidth=0, antialiased=False)
     # else:
-    data[5].imshow(np.flipud(error.reshape(workspace.res,workspace.res)), cmap=cm.coolwarm,
+    data[6].imshow(np.flipud(error), cmap=cm.coolwarm,vmin=0, vmax=10,
                        extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
-    data[5].set_title("Error from GT")
+    data[6].set_title("Error from GT")
     
     data[0].canvas.draw()
     data[0].savefig(dirname + '/' + str(iternum) + ".pdf" ,bbox_inches='tight')
@@ -299,7 +353,7 @@ def plot_beliefGPIS(poly,workspace,mean,variance,aq,meas,dirname,data=None, iter
 
     # for plotting, add first point to end
     GroundTruth = np.vstack((poly,poly[0]))
-    # GroundTruth = np.vstack((boundaryestimate,boundaryestimate[0]))
+    #GroundTruth = np.vstack((boundaryestimate,boundaryestimate[0]))
 
     if data is None:
         fig = plt.figure(figsize=(16, 4))
@@ -374,6 +428,32 @@ def plot_beliefGPIS(poly,workspace,mean,variance,aq,meas,dirname,data=None, iter
     cs2=data[4].imshow(np.flipud(GPIS), cmap=cm.Greys,
                        extent=(xx.min(), xx.max(), yy.min(),yy.max()))
     norm = plt.matplotlib.colors.Normalize(vmin=0., vmax=GPIS.max())
+
+    if len(boundaryestimate)>0:
+        a=Polygon(GroundTruth)
+        b=Polygon(boundaryestimate)
+        patch1 = PolygonPatch(a, alpha=0.2, zorder=1)
+        data[4].add_patch(patch1)
+        patch2 = PolygonPatch(b, fc='gray', ec='gray', alpha=0.2, zorder=1)
+        data[4].add_patch(patch2)
+        c1 = a.difference(b)
+        c2 = b.difference(a)
+
+        if c1.geom_type == 'Polygon':
+            patchc = PolygonPatch(c1, fc='red', ec='red', alpha=0.5, zorder=2)
+            data[4].add_patch(patchc)
+        elif c1.geom_type == 'MultiPolygon':
+            for p in c1:
+                patchp = PolygonPatch(p, fc='red', ec='red', alpha=0.5, zorder=2)
+                data[4].add_patch(patchp)
+        if c2.geom_type == 'Polygon':
+            patchc = PolygonPatch(c2, fc='blue', ec='blue', alpha=0.5, zorder=2)
+            data[4].add_patch(patchc)
+        elif c2.geom_type == 'MultiPolygon':
+            for p in c2:
+                patchp = PolygonPatch(p, fc='blue', ec='blue', alpha=0.5, zorder=2)
+                data[4].add_patch(patchp)
+
     if (len(data) > 5):
         data[5].remove()
         data = data[:5]
@@ -385,6 +465,61 @@ def plot_beliefGPIS(poly,workspace,mean,variance,aq,meas,dirname,data=None, iter
     data[0].savefig(dirname + '/' + str(iternum) + ".pdf", bbox_inches='tight')
     return data
 
+# def ploterr(a,b,workspace):
+#     fig = pyplot.figure(1, figsize=SIZE, dpi=90)
+
+#     # a = Point(1, 1).buffer(1.5)
+#     # b = Point(2, 1).buffer(1.5)
+
+#     # 1
+#     ax = fig.add_subplot(121)
+
+#     patch1 = PolygonPatch(a, fc=GRAY, ec=GRAY, alpha=0.2, zorder=1)
+#     ax.add_patch(patch1)
+#     patch2 = PolygonPatch(b, fc=GRAY, ec=GRAY, alpha=0.2, zorder=1)
+#     ax.add_patch(patch2)
+#     c = a.intersection(b)
+#     patchc = PolygonPatch(c, fc=BLUE, ec=BLUE, alpha=0.5, zorder=2)
+#     ax.add_patch(patchc)
+
+#     ax.set_title('a.intersection(b)')
+
+#     xrange = [workspace.bounds[0][0], workspace.bounds[0][1]]
+#     yrange = [workspace.bounds[1][0], workspace.bounds[1][1]]
+#     ax.set_xlim(*xrange)
+#     ax.set_xticks(range(*xrange) + [xrange[-1]])
+#     ax.set_ylim(*yrange)
+#     ax.set_yticks(range(*yrange) + [yrange[-1]])
+#     ax.set_aspect(1)
+
+#     #2
+#     ax = fig.add_subplot(122)
+
+#     patch1 = PolygonPatch(a, fc=GRAY, ec=GRAY, alpha=0.2, zorder=1)
+#     ax.add_patch(patch1)
+#     patch2 = PolygonPatch(b, fc=GRAY, ec=GRAY, alpha=0.2, zorder=1)
+#     ax.add_patch(patch2)
+#     c = a.symmetric_difference(b)
+
+#     if c.geom_type == 'Polygon':
+#         patchc = PolygonPatch(c, fc=BLUE, ec=BLUE, alpha=0.5, zorder=2)
+#         ax.add_patch(patchc)
+#     elif c.geom_type == 'MultiPolygon':
+#         for p in c:
+#             patchp = PolygonPatch(p, fc=BLUE, ec=BLUE, alpha=0.5, zorder=2)
+#             ax.add_patch(patchp)
+
+#     ax.set_title('a.symmetric_difference(b)')
+
+#     xrange = [-1, 4]
+#     yrange = [-1, 3]
+#     ax.set_xlim(*xrange)
+#     ax.set_xticks(range(*xrange) + [xrange[-1]])
+#     ax.set_ylim(*yrange)
+#     ax.set_yticks(range(*yrange) + [yrange[-1]])
+#     ax.set_aspect(1)
+
+#     pyplot.show()
 # def eval_GP(m, bounds, res=100):
 #     """
 #     evaluate the GP on a grid

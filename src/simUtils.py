@@ -1,6 +1,5 @@
 import numpy as np 
 # from getMap import getMap 
-import numpy as np
 import GPyOpt
 import matplotlib.pyplot as plt
 from matplotlib import cm
@@ -8,10 +7,9 @@ from utils import *
 from scipy import interpolate
 from matplotlib import _cntr as cntr #to get polygon of getLevelSet
 from shapely.geometry import asShape, Point, Polygon #to calculate point-polygon distances
-from scipy.optimize import curve_fit
-import pylab
 
-from simulated_disparity import getStereoDepthMap, getObservationModel,getInterpolatedObservationModel
+
+from simulated_disparity import getStereoDepthMap, getObservationModel, getInterpolatedObservationModel
 
 
 
@@ -51,15 +49,16 @@ def getInterpolatedGTSurface(surface, workspace):
     x = np.linspace(workspace.bounds[0][0], workspace.bounds[0][1], num = res)
     y = np.linspace(workspace.bounds[1][0], workspace.bounds[1][1], num = res)
     f = interpolate.interp2d(x, y, z, kind='cubic')
-    # f=getInterpolatedObservationModel(surface)
 
     return f
 
 def getInterpolatedStereoMeas(surface, workspace):
-    z = getStereoDepthMap(surface)[5:45,5:45]
-    z = np.pad(z,((5,5),(5,5)),mode='edge')
+    #z = getStereoDepthMap(surface)[5:45,5:45]
+    #z = np.pad(z,((5,5),(5,5)),mode='edge')
+    z = getStereoDepthMap(surface)
+    #z = np.pad(z,((5,5),(5,5)),mode='edge')
     z[z<0]=0
-    z[z>20]=20
+    z[z>30]=30
     res = z.shape[0]
     x = np.linspace(workspace.bounds[0][0], workspace.bounds[0][1], num = res)
     y = np.linspace(workspace.bounds[1][0], workspace.bounds[1][1], num = res)
@@ -106,7 +105,7 @@ def SimulateStereoMeas(surface, workspace, sensornoise=.001, subsample=True, num
     return xx, yy, z
 
 
-def getSimulatedStereoMeas(surface, workspace, plot = True):
+def getSimulatedStereoMeas(surface, workspace, plot=False, block=False):
     """
     wrapper function for SimulateStereoMeas
     hetero. GP model requires defining the variance for each measurement 
@@ -115,9 +114,8 @@ def getSimulatedStereoMeas(surface, workspace, plot = True):
     should fix these functions so they're not necessary by default...
     """
     xx, yy, z = SimulateStereoMeas(surface, workspace)
-
     # we assume Gaussian measurement noise:
-    sigma_g = .1
+    sigma_g = 1
     focalplane=workspace.bounds[1][1]/2.0
     # noise component due to curvature:
     # finite differencing
@@ -131,7 +129,7 @@ def getSimulatedStereoMeas(surface, workspace, plot = True):
     # todo: noise due to  offset uncertainty
     sigma_offset=(yy-focalplane)**2
     # weighted total noise for measurements
-    sigma_total = sigma_g + 0*sigma_fd  + .001*sigma_offset
+    sigma_total = sigma_g + 0*sigma_fd  + .0005*sigma_offset
 
     if plot==True:
         # plot the surface from disparity
@@ -144,7 +142,7 @@ def getSimulatedStereoMeas(surface, workspace, plot = True):
         ax.set_zlim3d(0,20)
         plt.xlabel('x')
         plt.ylabel('y')
-        plt.show()
+        plt.show(block=block)
 
     return np.array([xx.flatten(), yy.flatten(),
                      z.flatten(),
@@ -185,14 +183,14 @@ def getSimulatedProbeMeas(surface, workspace, sample_points):
     """
     xx,yy,z = SimulateProbeMeas(surface, workspace, sample_points)
     # we assume Gaussian measurement noise:
-    noise=.000001
+    noise=100
     sigma_t = np.full(z.shape, noise)
 
     return np.array([xx, yy,
                      z,
                      sigma_t]).T
 
-def SimulateStiffnessMeas(poly, sample_locations, sensornoise = .01):
+def SimulateStiffnessMeas(poly, sample_locations, sensornoise = .000005):
     """Simulate measurements from palpation (tapping mode) for the test
     functions above inputs: *surface: a function defining a test surface
     *locations: list of points [[x1,y1],[x2,y2]] outputs: *xx,yy, z,
@@ -211,43 +209,18 @@ def SimulateStiffnessMeas(poly, sample_locations, sensornoise = .01):
 
     return xx, yy, z
 
-def fit_measmodel():
-    xdata = np.array([0.0,   1.0,  3.0,  4.3,  7.0,   8.0,   8.5, 10.0,  
-    12.0, 14.0])
-    ydata = np.array([0.11, 0.12, 0.14, 0.21, 0.83,  1.45,   1.78,  1.9, 
-    1.98, 2.02])
 
-    popt, pcov = curve_fit(sigmoid, xdata, ydata)
-    print "Fit:"
-    print "x0 =", popt[0]
-    print "k  =", popt[1]
-    print "a  =", popt[2]
-    print "c  =", popt[3]
-    print "Asymptotes are", popt[3], "and", popt[3] + popt[2]
-
-    x = np.linspace(-1, 15, 50)
-    y = sigmoid(x, *popt)
-
-
-    pylab.plot(xdata, ydata, 'o', label='data')
-    pylab.plot(x,y, label='fit')
-    pylab.ylim(0, 2.05)
-    pylab.legend(loc='upper left')
-    pylab.grid(True)
-    pylab.show()
 
 def plotSimulatedStiffnessMeas(poly, workspace, ypos=None, sensornoise = .03):
     if ypos==None:
        ypos=(workspace.bounds[1][1]-workspace.bounds[1][0])/2.0+workspace.bounds[1][0]
-       print ypos
     x = np.arange(workspace.bounds[0][0], workspace.bounds[0][1], 1/float(10000))
     y = np.zeros(x.shape)+ypos
     sample_locations = np.array([x,y]).T
 
     meas = SimulateStiffnessMeas(poly, sample_locations, sensornoise=sensornoise)
     meas = meas[2]
-    print sample_locations
-    print meas
+
     plt.plot(x.flatten(), meas.flatten(), linewidth=3.0)
     plt.show()
 
@@ -260,7 +233,7 @@ def getSimulateStiffnessMeas(surface, sample_points):
     xx,yy,z = SimulateStiffnessMeas(surface, sample_points)
 
     # we assume Gaussian measurement noise:
-    noise=.001
+    noise=.000000001
     sigma_t = np.full(z.shape, noise)
     return np.array([xx, yy,
                      z,
@@ -347,7 +320,7 @@ def SixhumpcamelSurface(xx,yy):
 # Functions for simulating deflection measurements
 #######################################
 
-def sigmoid(dist, alpha=1000, a=0.0, b=1.0, c=-0.004):
+def sigmoid(dist, alpha=1014, a=0.0, b=1.0, c=-0.004):
     """  
     a, b: base and max readings of the probe with and without tumor
     dist = xProbe-xEdge
@@ -447,6 +420,6 @@ def probeMeasure(xProbe, Pts, z, level):
         Z : values at each of the points 1-D numpy array length N
         level: find the polygon at level
     """
-    poly = getLevelSet(Pts, z, level)
+    poly = getMapLevelSet(Pts, z, level)
     z = makeMeasurement_LS(xProbe, poly)
     return z

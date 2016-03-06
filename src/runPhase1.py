@@ -18,15 +18,31 @@ from GaussianProcess import *
 from Planner import *
 
 ##############################
+def evalerror(surface, workspace, mean):
+    # choose points to compare
+    xx=workspace.xx
+    yy=workspace.yy
 
+    mean = gridreshape(mean,workspace)
+    x = workspace.xlin
+    y = workspace.ylin
 
-def run_single_phase1_experiment(surfacename, method, disparityMeas=None, block=False, stops=0.38):
+    interp=getInterpolatedGTSurface(surface, workspace)
+    # interp=getInterpolatedObservationModel(surface)
+
+    GroundTruth = interp(x,y)
+    # integrate error
+    dx = workspace.bounds[0][1]/np.float(workspace.res)
+    error = np.sum(np.sqrt((GroundTruth-np.squeeze(mean))**2))*dx**2
+    return error / 10e6 # error/mm^2 to error/m^2 conversion
+
+def run_single_phase1_experiment(surfacename, method, disparityMeas=None, block=False, stops=1.343, shouldPlot=True):
     # set workspace boundary
-    bounds=((0,50),(0,50))
+    bounds=((0,200),(0,200))
     # choose surface for simulation
 
     # grid resolution: should be same for plots, ergodic stuff
-    gridres = 100
+    gridres = 200
 
     # initialize workspace object
     workspace = Workspace(bounds,gridres)
@@ -37,12 +53,18 @@ def run_single_phase1_experiment(surfacename, method, disparityMeas=None, block=
     planner=''
 
     # acquisition functions:  MaxVar_GP, UCB_GP, EI_GP, UCB_IS, EI_IS
-    AcFunction=MaxVar_GP#MaxVar_plus_gradient
-    Acfunctionname="MaxVar_GP"
 
-    directory='phase1_'+surfacename+'_'+Acfunctionname
-    if not os.path.exists(directory):
-        os.makedirs(directory)
+    if method=='maxVarGrad':
+        AcFunction=MaxVar_plus_gradient
+        Acfunctionname="MaxVar_plus_gradient"
+    else: #method=='maxVar':
+        AcFunction=MaxVar_GP
+        Acfunctionname="MaxVar_GP"
+    
+    if shouldPlot:
+        directory='phase1_'+surfacename+'_'+Acfunctionname
+        if not os.path.exists(directory):
+            os.makedirs(directory)
     ##############################
     # Phase 1
     ###############################
@@ -54,21 +76,20 @@ def run_single_phase1_experiment(surfacename, method, disparityMeas=None, block=
     sigmas = []
     sampled_points = []
     measures = []
+    errors=[]
     sigma = 1000.0
 
-
-    # TODO: add termination criterion instead of counting i (when estimate stops changing)
-
-    while np.max(sigma) > stops: #i < 10:
-        print "iteration = ", i
+    while np.max(sigma) > stops:
+        print "iteration =", i
         if i==0:
             # initialize measurement from stereo data
             if disparityMeas is None:
-                disparityMeas = getSimulatedStereoMeas(surface, workspace, block)
+                disparityMeas = getSimulatedStereoMeas(surface, workspace, shouldPlot, block)
             meas = np.copy(disparityMeas)
             next_samples_points = randompoints(bounds, 1)
             sampled_points.append(next_samples_points)
             meastouchonly = getSimulatedProbeMeas(surface, workspace, next_samples_points)
+            meas = np.append(meas,meastouchonly,axis=0)
             measures.append(meastouchonly)
         else:
             # add new measurements to old measurements
@@ -77,21 +98,23 @@ def run_single_phase1_experiment(surfacename, method, disparityMeas=None, block=
             meas = np.append(meas,measnew,axis=0)
        
         # update Gaussian process
-        gpmodel = update_GP(meas, method='nonhet')
+        gpmodel = update_GP_ph1(meas, method='nonhet')
 
         # evaluate mean, sigma on a grid
         mean, sigma = get_moments(gpmodel, workspace.x)
         means.append(np.mean(mean))
         sigmas.append(np.max(sigma))
+        # print np.max(sigma)
 
         # choose points to probe based on max uncertainty
         xgrid, AqcuisFunction = AcFunction(gpmodel, workspace)
 
-        if method == "maxAcquisition":
+        if method == "maxVarGrad" or method == "maxVar":
             next_samples_points = maxAcquisition(workspace, AqcuisFunction,
                                                    numpoints=1)
         elif method == "random":
             next_samples_points =  randompoints(bounds, 1)
+            
         else:
             print "ERROR: invalid method in runPhase1.py!"
             sys.exit(1)
@@ -100,11 +123,13 @@ def run_single_phase1_experiment(surfacename, method, disparityMeas=None, block=
         sampled_points.append(next_samples_points)
         measnew = getSimulatedProbeMeas(surface, workspace, next_samples_points)
         measures.append(measnew)
-
+        error = evalerror(surface, workspace, mean)
+        errors.append(error)
         # Plot everything
         time.sleep(0.0001)
-        plt.pause(0.0001) 
-        plot_data = plot_error(surface, workspace, mean, sigma, AqcuisFunction, meastouchonly, directory, plot_data, projection3D=True, iternum=i)
+        plt.pause(0.0001)
+        if (shouldPlot):
+            plot_data = plot_error(surface, workspace, mean, sigma, AqcuisFunction, meastouchonly, directory, plot_data, projection3D=False, iternum=i)
         
         i=i+1
 
@@ -112,11 +137,12 @@ def run_single_phase1_experiment(surfacename, method, disparityMeas=None, block=
     if disparityMeas is not None:
         plt.close()
 
-    return disparityMeas, means, sigmas, sampled_points, measures, i
+    
+    return disparityMeas, means, sigmas, sampled_points, measures, errors, i
 
 
 
 if __name__ == "__main__":
-    run_single_phase1_experiment("smooth1", "maxAcquisition", block=True)
+    run_single_phase1_experiment("smooth_sin1", "maxVar", block=True)
 
 
