@@ -23,7 +23,7 @@ IMG_SIZE = 50
 #######################################
 # polygon test functions for simulating phase2: 
 #######################################
-squaretumor=np.array([[1.25,1.25],[2.75,1.25],[2.75,2.75],[1.25,2.75]])
+squaretumor=np.array([[-.01,-.01],[.02,-.01],[.02,.02],[-.01,.02]])
 thintumor=np.array([[2.25,0.25],[2.75,2.25],[2.75,2.75],[2.25,2.75]])
 rantumor=.02*np.array([[2.25,0.75],[3.25,1.25],[2.75,2.25],[2.75,2.75],[2.25,2.75],[2.,1.25]])-.04
 
@@ -190,7 +190,7 @@ def getSimulatedProbeMeas(surface, workspace, sample_points):
                      z,
                      sigma_t]).T
 
-def SimulateStiffnessMeas(poly, sample_locations, sensornoise = .000005):
+def SimulateStiffnessMeas(poly, sample_locations, sensornoise = .05):
     """Simulate measurements from palpation (tapping mode) for the test
     functions above inputs: *surface: a function defining a test surface
     *locations: list of points [[x1,y1],[x2,y2]] outputs: *xx,yy, z,

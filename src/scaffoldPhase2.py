@@ -11,7 +11,6 @@ from model_fit import *
 # from figures import SIZE, BLUE, GRAY
 # from shapely.geometry import Point
 # from descartes import PolygonPatch
-NUM_EXPERIMENTS = 1
 
 # data1 = pickle.load(open("../scripts/saved_palpation_data/single_row_raster_100x.p", "rb"))
 # # data2 = pickle.load(open("probe_data_L2R.p", "rb"))
@@ -29,10 +28,10 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, con
     # initialize workspace object
     workspace = Workspace(bounds,gridres)
 
-    # plotSimulatedStiffnessMeas(phantomname, workspace, ypos=0, sensornoise = .01)
+    # plotSimulatedStiffnessMeas(phantomname, workspace, ypos=0, sensornoise = .05)
 
     # set level set to look for-- this should correspond to something, max FI?
-    level = .9 #pick something between min/max deflection
+    level = .5 #pick something between min/max deflection
 
     plot_data = None
     means = []
@@ -56,13 +55,10 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, con
 
     meas = getSimulateStiffnessMeas(phantomname, next_samples_points)
 
-    for j in range (10): #(1,100,1)
+    for j in range (100): #(1,100,1)
         # print "iteration = ", j
         # collect measurements
-        measnew = getSimulateStiffnessMeas(phantomname, next_samples_points)
 
-        #   concatenate measurements to prior measurements
-        meas = np.append(meas,measnew,axis=0)
         # update the GP model    
         gpmodel = update_GP(meas)
 
@@ -104,8 +100,13 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, con
                                       directory, plot_data, level=level,
                                       iternum=j, projection3D=False)
 
+        measnew = getSimulateStiffnessMeas(phantomname, next_samples_points)
+
+        #   concatenate measurements to prior measurements
+        meas = np.append(meas,measnew,axis=0)
+
     plt.show(block=True)
-    return means, sigmas, acqvals, measures, errors, errors1, j
+    return means, sigmas, acqvals, measures, healthyremoveds, tumorlefts, j
 
 def evalerror(tumor,workspace,mean,level):
     # see: http://toblerity.org/shapely/manual.html
@@ -123,11 +124,10 @@ def evalerror(tumor,workspace,mean,level):
         #correct=boundaryestimate.intersection(GroundTruth) #correctly labeled as tumor
         healthyremoved=healthyremoved.area
         tumorleft=tumorleft.area
-        print 'healthyremoved',healthyremoved
-        print 'healthyremoved',tumorleft
+
     else:
-        healthyremoved=100
-        tumorleft=100
+        healthyremoved=.100
+        tumorleft=.100
     return healthyremoved,tumorleft
 
 def save_data(arr, dirname, name):
@@ -140,7 +140,10 @@ def save_data(arr, dirname, name):
     f.close()
     return
 
-tumors = [rantumor]#, rantumor]              # add another model ?
+NUM_EXPERIMENTS = 5
+
+
+tumors = [squaretumor,rantumor]              # add another model ?
 stops = [[6.4, 0.01, 3.6, 0.0],
          [0.0, 0.36, 0.0, 0.0]]                 # TODO change 0.0's (variance is not monotonically decreasing)
 # textures = ["_lam", "_text", "_spec", "_st"]
@@ -158,11 +161,13 @@ def save_table(table, name):
     f.write(",,MaxVar_GP,UCB_GB,UCB_GBIS\n")
     # data in table
     # f.write("flat,lam,{},{}\n".format(table[0][0], table[0][1]))
-    f.write(",tumor1: healthy tissue removed,{},{},{}\n".format(table[0][0], table[0][1],table[0][2]))
-    f.write(",tumor1: tumor left behind,{},{},{}\n".format(table[1][0], table[1][1],table[1][2]))
+    f.write(",tumor1: iterations,{},{},{}\n".format(table[0][0], table[0][1],table[0][2]))
+    f.write(",tumor1: healthy tissue removed,{},{},{}\n".format(table[1][0], table[1][1],table[1][2]))
+    f.write(",tumor1: tumor left behind,{},{},{}\n".format(table[2][0], table[2][1],table[2][2]))
 
-    f.write(",tumor2: healthy tissue removed,{},{},{}\n".format(table[2][0], table[2][1],table[2][2]))
-    f.write(",tumor2: tumor left behind,{},{},{}\n".format(table[3][0], table[3][1],table[3][2]))
+    f.write(",tumor2: iterations,{},{},{}\n".format(table[3][0], table[3][1],table[3][2]))
+    f.write(",tumor2: healthy tissue removed,{},{},{}\n".format(table[4][0], table[4][1],table[4][2]))
+    f.write(",tumor2: tumor left behind,{},{},{}\n".format(table[5][0], table[5][1],table[5][2]))
 
     # f.write(",st,{},{}\n".format(table[0][0], table[0][1]))
 
@@ -175,48 +180,96 @@ def save_table(table, name):
     return
 
 
+def plot_error(errors,labels):    
+    #for e in errors:
+    #         plt.plot(e)
+    tum1 = errors[0]
+    tum2 = errors[1]
+    colors = ['blue','red','green']
+    for i in range(0,tum1.shape[0]):
 
+        for j in range(0,tum1.shape[1]):
+            for e in range(0,tum1.shape[2]):
+                exp = tum1[i][j][e]
+                print exp.shape
+                plt.plot(exp,color=colors[i])
+    plt.xlabel("Iterations")
+    plt.ylim(-.001, .1)
+
+    plt.xlim(0, 100)
+    plt.ylabel(" Error")
+    plt.title("Integrated Error between Estimate and Ground Truth - Phase 1")
+    plt.legend(labels.flatten(), loc='upper right')
+    # plt.savefig("image_pairs/"+surface_name+'/'+name)
+    # plt.close()
+    plt.show()
+    return
 
 
 def run_phase2_full():
-    iter_table = np.zeros((len(tumors), len(aqfunctions)+len(controls)))
-    error_table = np.zeros((len(tumors)*2, len(aqfunctions)+len(controls)))
-    # error_table1 = np.zeros((2, len(aqfunctions)+len(controls)))
 
+    # iter_table = np.zeros((len(aqfunctions)+len(controls),len(tumors)))
+    error_table = np.zeros((len(tumors)*3,len(aqfunctions)+len(controls)))
+    # print iter_table.shape
+    # error_table1 = np.zeros((2, len(aqfunctions)+len(controls)))
+    tumorerrlistleft=[]
+    tumorerrlistremoved=[]
     for i, tumor in enumerate(tumors):
+        acqerrlistleft=[]
+        acqerrlistremoved=[]
+        aclabellist=[]
         for j, acq in enumerate(aqfunctions):
+            conterrlistleft=[]
+            conterrlistremoved=[]
+            contlabellist=[]  
             for m, cont in enumerate(controls):
                 # if i*len(textures) + j != 0:        # Use this to run only the nth surface
                 #     continue
                 its = [0.0, 0.0]
+                # errors_per_method = []
+                experrlistleft=[]
+                experrlistremoved=[]
                 for k in range(NUM_EXPERIMENTS): # repeat experiment 5 times
                     # disparityMeas = None
                     # for l, method in enumerate(methods):
                     start = time.time()
                     dirname = str(i) + '_' + aqfunctionsnames[j] + '_' + cont
-                    print dirname
-                    means, sigmas, acqvals, measures, healthyremoved,tumorleft, num_iters = run_single_phase2_simulation(tumor, dirname, AcFunction=acq, control=cont, plot=True)
+                    means, sigmas, acqvals, measures, healthyremoved, tumorleft, num_iters = run_single_phase2_simulation(tumor, dirname, AcFunction=acq, control=cont, plot=False)
                     plt.close() 
                     end = time.time()
                     time_elapsed = end - start # in seconds
                     # plot or save/record everything
                     # its[k] += num_iters / 5.0
                     save_data([means, sigmas, acqvals, measures, healthyremoved, tumorleft, num_iters], dirname, str(k))
-                    iter_table[i][j + m]+= num_iters / float(NUM_EXPERIMENTS)
-                    error_table[i][j+ m]+= healthyremoved[-1] / float(NUM_EXPERIMENTS)
-                    error_table[i+len(tumors)][j + m]+= tumorleft[-1] / float(NUM_EXPERIMENTS)
+                    # iter_table[j + m][i]+= num_iters / float(NUM_EXPERIMENTS)
+                    # 3=num of errors in table
+                    error_table[i+i*2+0][j+m]+= num_iters / float(NUM_EXPERIMENTS)
+                    error_table[i+i*2+1][j+ m]+= healthyremoved[-1] / float(NUM_EXPERIMENTS)
+                    error_table[i+i*2+2][j+ m]+= tumorleft[-1] / float(NUM_EXPERIMENTS)
+                    experrlistleft.append(tumorleft)  
+                    experrlistremoved.append(healthyremoved)  
                     print k
 
-                save_table(iter_table, "phase2_iterations")
+                print error_table
+                # save_table(iter_table, "phase2_iterations")
                 save_table(error_table, "phase2_errors")
                 # save_table(error_table1, "phase2_errors1")
+                conterrlistleft.append(experrlistleft)
+                conterrlistremoved.append(experrlistremoved)
+                contlabellist.append(dirname)
+            acqerrlistleft.append(conterrlistleft)
+            acqerrlistremoved.append(conterrlistremoved)
+            aclabellist.append(contlabellist)
+        # plot_error(errors_per_method, "phase1_error_exp"+str(k), surf+text)
 
-    return
+        tumorerrlistleft.append(acqerrlistleft)
+        tumorerrlistremoved.append(acqerrlistremoved)
+    return np.array(tumorerrlistleft),np.array(tumorerrlistremoved),np.array(aclabellist)
 
 
 
 if __name__ == "__main__":
-    run_phase2_full()
+    outleft,outrem,aclabellist=run_phase2_full()
     # IPython.embed()
 
 

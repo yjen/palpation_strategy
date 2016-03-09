@@ -82,12 +82,14 @@ def update_GP(measurements,method='nonhet'):
         m['.*het_Gauss.variance'] = abs(noise)
         m.het_Gauss.variance.fix() # We can fix the noise term, since we already know it
     else:
-        #var = 100000 # variance
-        #theta = .00000001 # lengthscale
-        kern = GPy.kern.RBF(2)
+        var = .09 # variance
+        theta = .008 # lengthscale
+        # noise = .01
+        kern = GPy.kern.RBF(2,variance=var,lengthscale=theta)
         m = GPy.models.GPRegression(X,Y,kern)
-        # m.optimize_restarts(num_restarts = 10)
+    #     m.optimize_restarts(num_restarts = 10)
     m.optimize()
+    # print m
     # xgrid = np.vstack([self.x1.reshape(self.x1.size),
     #                    self.x2.reshape(self.x2.size)]).T
     # y_pred=m.predict(self.xgrid)[0]
