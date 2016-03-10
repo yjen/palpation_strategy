@@ -97,7 +97,7 @@ def run_single_phase2_simulation(AcFunction, dirname, control='Max', block=False
         # Plot everything
         plot_data = plot_beliefGPIS(phantomname,workspace,mean,sigma,
                                     AqcuisFunction,meas,
-                                    directory,plot_data,level=level,
+                                    directory,plot_data,errors,level=level,
                                     iternum=j,projection3D=False)
         # Save everything--this needs to be debugged
         # prename=directory+'/'

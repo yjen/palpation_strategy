@@ -50,7 +50,7 @@ def update_GP_ph1(measurements,method='nonhet'):
         kern = GPy.kern.RBF(2, variance=var,lengthscale=theta)
         m = GPy.models.GPRegression(X,Y,kern)
         #m.optimize_restarts(num_restarts = 5)
-    #m.optimize()
+    m.optimize()
     # xgrid = np.vstack([self.x1.reshape(self.x1.size),
     #                    self.x2.reshape(self.x2.size)]).T
     # y_pred=m.predict(self.xgrid)[0]
@@ -84,7 +84,7 @@ def update_GP(measurements,method='nonhet'):
     else:
         var = .09 # variance
         theta = .008 # lengthscale
-        # noise = .01
+        noise = .01
         kern = GPy.kern.RBF(2,variance=var,lengthscale=theta)
         m = GPy.models.GPRegression(X,Y,kern)
     #     m.optimize_restarts(num_restarts = 10)
@@ -154,7 +154,7 @@ def predict_GP(m, pts):
 
 
 ########################## Plot Scripts
-def plot_error(surface, workspace, mean, sigma, aq, meas, dirname, data=None,iternum=0, projection3D=False, plotmeas=True):
+def plot_error(surface, workspace, mean, sigma, aq, meas, dirname, data=None,iternum=0, projection3D=True, plotmeas=True):
     # choose points to compare
     xx=workspace.xx
     yy=workspace.yy
@@ -340,7 +340,7 @@ def calcCurveErr(workspace,poly,mean,sigma,level):
     return correct.area, mislabeled.area
     
 
-def plot_beliefGPIS(poly,workspace,mean,variance,aq,meas,dirname,data=None, iternum=0, level=.4, projection3D=False):
+def plot_beliefGPIS(poly,workspace,mean,variance,aq,meas,dirname,errors,data=None, iternum=0, level=.4, projection3D=False):
     # parse locations, measurements, noise from data
     # gp data
     xx=workspace.xx
@@ -358,24 +358,25 @@ def plot_beliefGPIS(poly,workspace,mean,variance,aq,meas,dirname,data=None, iter
     #GroundTruth = np.vstack((boundaryestimate,boundaryestimate[0]))
 
     if data is None:
-        fig = plt.figure(figsize=(16, 4))
+        fig = plt.figure(figsize=(20, 4))
         if projection3D==True:
-            ax1 = fig.add_subplot(141, projection='3d')
-            ax2 = fig.add_subplot(142, projection='3d')
+            ax1 = fig.add_subplot(151, projection='3d')
+            ax2 = fig.add_subplot(152, projection='3d')
         else:
-            ax1 = fig.add_subplot(141)
-            ax2 = fig.add_subplot(142)
-        ax3 = fig.add_subplot(143)
-        ax4 = fig.add_subplot(144)
+            ax1 = fig.add_subplot(151)
+            ax2 = fig.add_subplot(152)
+        ax3 = fig.add_subplot(153)
+        ax4 = fig.add_subplot(154)
+        ax5 = fig.add_subplot(155)
 
         fig.canvas.draw()
         plt.show(block=False)
-        data = [fig, ax1, ax2, ax3, ax4]
+        data = [fig, ax1, ax2, ax3, ax4, ax5]
     data[1].clear()
     data[2].clear()
     data[3].clear()
     data[4].clear()
-
+    data[5].clear() 
     # plot the mean
     if projection3D==True:
         data[1].plot_surface(xx, yy, mean, rstride=1, cstride=1,
@@ -456,9 +457,19 @@ def plot_beliefGPIS(poly,workspace,mean,variance,aq,meas,dirname,data=None, iter
                 patchp = PolygonPatch(p, fc='blue', ec='blue', alpha=0.5, zorder=2)
                 data[4].add_patch(patchp)
 
-    if (len(data) > 5):
-        data[5].remove()
-        data = data[:5]
+    data[5].plot(errors[0],color='red')
+    data[5].plot(errors[1],color='blue')
+    plt.xlabel("Iterations")
+    ym=.08*.08
+    plt.ylim(.00, .001)
+    plt.xlim(0, iternum)
+    plt.ylabel(" Error")
+    plt.title("Integrated Error between Estimate and Ground Truth - Phase 1")
+    plt.legend(["tumorleft","healthyremoved"], loc='upper right')
+
+    if (len(data) > 6):
+        data[6].remove()
+        data = data[:6]
     # cb2 = plt.colorbar(cs2, norm=norm)
     # cb2.set_label('${\\rm \mathbb{P}}\left[\widehat{G}(\mathbf{x}) = 0\\right]$')# # Define
     # data.append(cb2)

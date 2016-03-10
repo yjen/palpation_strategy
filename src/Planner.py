@@ -96,14 +96,17 @@ def MaxVar_GP(model, workspace, level=0,x=None, acquisition_par=0):
     f_acqu = sigmasq.flatten()
     return x, f_acqu  # note: returns negative value for posterior minimization
 
-def UCB_GP(model, workspace, level=0, x=None, acquisition_par=.8 ):
+def UCB_GP(model, workspace, level=0, x=None, acquisition_par=.25 ):
     """
+    .8 for ph 1
     Upper Confidence Band
     """
     if x==None:
         x=workspace.x
     #x = multigrid(bounds, res)
     mean, sigma = get_moments(model, x)     
+    print mean.max()
+    print sigma.max()
     f_acqu = acquisition_par * (mean) +  sigma
     return x, f_acqu  # note: returns negative value for posterior 
 

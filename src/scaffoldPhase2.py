@@ -31,7 +31,7 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, con
     # plotSimulatedStiffnessMeas(phantomname, workspace, ypos=0, sensornoise = .05)
 
     # set level set to look for-- this should correspond to something, max FI?
-    level = .5 #pick something between min/max deflection
+    level = .7 #pick something between min/max deflection
 
     plot_data = None
     means = []
@@ -97,7 +97,7 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, con
             plt.pause(0.0001)  
             plot_data = plot_beliefGPIS(phantomname, workspace, mean, sigma,
                                       AqcuisFunction, meas,
-                                      directory, plot_data, level=level,
+                                      directory, [healthyremoveds,tumorlefts],plot_data,level=level,
                                       iternum=j, projection3D=False)
 
         measnew = getSimulateStiffnessMeas(phantomname, next_samples_points)
@@ -150,7 +150,7 @@ stops = [[6.4, 0.01, 3.6, 0.0],
     # lambert, texture, specular, specular + texture
 
 # acquisition functions:  MaxVar_GP, UCB_GP, EI_GP, UCB_GPIS, EI_IS, MaxVar_plus_gradient
-aqfunctions = [MaxVar_GP, UCB_GP, UCB_GPIS]
+aqfunctions = [UCB_GP, UCB_GPIS,MaxVar_GP]
 aqfunctionsnames = ["MaxVar_GP", "UCB_GP", "UCB_GPIS"]#, "random"]
 
 controls =["Max"]
@@ -194,7 +194,8 @@ def plot_error(errors,labels):
                 print exp.shape
                 plt.plot(exp,color=colors[i])
     plt.xlabel("Iterations")
-    plt.ylim(-.001, .1)
+    ym=.08*.08
+    plt.ylim(.00, ym)
 
     plt.xlim(0, 100)
     plt.ylabel(" Error")
@@ -234,7 +235,7 @@ def run_phase2_full():
                     # for l, method in enumerate(methods):
                     start = time.time()
                     dirname = str(i) + '_' + aqfunctionsnames[j] + '_' + cont
-                    means, sigmas, acqvals, measures, healthyremoved, tumorleft, num_iters = run_single_phase2_simulation(tumor, dirname, AcFunction=acq, control=cont, plot=False)
+                    means, sigmas, acqvals, measures, healthyremoved, tumorleft, num_iters = run_single_phase2_simulation(tumor, dirname, AcFunction=acq, control=cont, plot=True)
                     plt.close() 
                     end = time.time()
                     time_elapsed = end - start # in seconds
