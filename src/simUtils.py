@@ -190,7 +190,7 @@ def getSimulatedProbeMeas(surface, workspace, sample_points):
                      z,
                      sigma_t]).T
 
-def SimulateStiffnessMeas(poly, sample_locations, sensornoise = .05):
+def SimulateStiffnessMeas(poly, sample_locations, sensornoise = .01):
     """Simulate measurements from palpation (tapping mode) for the test
     functions above inputs: *surface: a function defining a test surface
     *locations: list of points [[x1,y1],[x2,y2]] outputs: *xx,yy, z,
