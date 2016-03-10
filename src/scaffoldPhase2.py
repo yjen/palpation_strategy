@@ -54,8 +54,8 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, con
     # collect initial meausrements
 
     meas = getSimulateStiffnessMeas(phantomname, next_samples_points)
-
-    for j in range (100): #(1,100,1)
+    measnew=meas
+    for j in range (10): #(1,100,1)
         # print "iteration = ", j
         # collect measurements
 
@@ -66,37 +66,52 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, con
         mean, sigma = get_moments(gpmodel, workspace.x)
 
         # evaluate selected aqcuisition function over the grid
-        
-        xgrid, AqcuisFunction = AcFunction(gpmodel, workspace, level=level,acquisition_par=.4 )
+        if AcFunction==UCB_GPIS:
+            acquisition_par=.05
+        elif AcFunction==UCB_GP:
+            acquisition_par=.7
+        elif AcFunction==MaxVar_plus_gradient:
+            acquisition_par=.6
+        elif AcFunction==UCB_GPIS_implicitlevel:
+            acquisition_par=[.6,.5]
+        else:
+            acquisition_par=0
+        xgrid, AqcuisFunction = AcFunction(gpmodel, workspace, level=level, acquisition_par=acquisition_par)
 
         acqvals.append(AqcuisFunction)
         means.append(mean)
         sigmas.append(sigma)
         measures.append(meas)
-        healthyremoved,tumorleft= evalerror(phantomname, workspace, mean,level)
+        healthyremoved,tumorleft= evalerror(phantomname, workspace, mean,sigma,level)
         healthyremoveds.append(healthyremoved)
         tumorlefts.append(tumorleft)
 
         # select next sampling points. for now, just use Mac--dMax and Erg need work.
         bnd=getLevelSet (workspace, mean, level)
-        if len(bnd)==0:
-            next_samples_points = randompoints(bounds, 1)
-        elif control=='Max':            
-            next_samples_points = maxAcquisition(workspace, AqcuisFunction,
-                                                    numpoints=1)
-        elif control=='dMax':
+        # print 'max'  
+        # if 
+        # if len(bnd)==0:
+        #     next_samples_points = randompoints(bounds, 1)
 
-            next_samples_points = dmaxAcquisition(gpmodel, workspace, AcFunction, meas[-1][0:2],
-                                                numpoints=10, level=level)
+        if control=='Max':         
+            # print 'max'   
+            #     next_samples_points = maxAcquisition(workspace, AqcuisFunction,
+            #                                             numpoints=1)
+            # elif control=='batch'
+            next_samples_points = batch_optimization(gpmodel, workspace, AcFunction, 10, level=level, acquisition_par=acquisition_par)
+        # elif control=='dMax':
+        #     next_samples_points = dmaxAcquisition(gpmodel, workspace, AcFunction, meas[-1][0:2],
+        #                                         numpoints=10, level=level)
         else:
             next_samples_points=randompoints(bounds,1)
+            print 'RANDOM'
         
         # Plot everything
         if plot==True:
             time.sleep(0.0001)
             plt.pause(0.0001)  
             plot_data = plot_beliefGPIS(phantomname, workspace, mean, sigma,
-                                      AqcuisFunction, meas,
+                                      AqcuisFunction, measnew,
                                       directory, [healthyremoveds,tumorlefts],plot_data,level=level,
                                       iternum=j, projection3D=False)
 
@@ -105,12 +120,15 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, con
         #   concatenate measurements to prior measurements
         meas = np.append(meas,measnew,axis=0)
 
-    plt.show(block=True)
+    # plt.show(block=False)
     return means, sigmas, acqvals, measures, healthyremoveds, tumorlefts, j
 
-def evalerror(tumor,workspace,mean,level):
+def evalerror(tumor,workspace,mean,variance,level):
     # see: http://toblerity.org/shapely/manual.html
     boundaryestimate = getLevelSet (workspace, mean, level)
+    boundaryestimateupper = getLevelSet (workspace, mean+variance, level)
+    boundaryestimatelower = getLevelSet (workspace, mean-variance, level)
+    boundaryestimate=boundaryestimateupper
     GroundTruth = np.vstack((tumor,tumor[0]))
     GroundTruth=Polygon(GroundTruth)
     if len(boundaryestimate)>0:
@@ -129,6 +147,27 @@ def evalerror(tumor,workspace,mean,level):
         healthyremoved=.100
         tumorleft=.100
     return healthyremoved,tumorleft
+
+# def plotbounds(tumor,workspace,mean,sigma,level):
+#     # see: http://toblerity.org/shapely/manual.html
+#     GroundTruth = np.vstack((tumor,tumor[0]))
+#     # GroundTruth=Polygon(GroundTruth)
+
+#     boundaryestimateupper = getLevelSet (workspace, mean+sigma, level)
+#     boundaryestimatelower = getLevelSet (workspace, mean-sigma, level)
+
+#     boundaryestimate = getLevelSet (workspace, mean, level)
+#     if boundaryestimate.shape[0]>0:
+#         plt.plot(boundaryestimateupper.T[0], boundaryestimate.T[1], '-.',color='r',
+#                      linewidth=1, solid_capstyle='round', zorder=2)
+#         plt.plot(boundaryestimatelower.T[0], boundaryestimate.T[1], '-.',color='g',
+#                      linewidth=1, solid_capstyle='round', zorder=2)
+#         plt.plot(boundaryestimate.T[0], boundaryestimate.T[1], '-.',color='b',
+#                      linewidth=1, solid_capstyle='round', zorder=2)
+        
+#     plt.plot(GroundTruth.T[0], GroundTruth.T[1], '-.',color='m',
+#                  linewidth=1, solid_capstyle='round', zorder=2)
+
 
 def save_data(arr, dirname, name):
     directory=dirname
@@ -150,24 +189,25 @@ stops = [[6.4, 0.01, 3.6, 0.0],
     # lambert, texture, specular, specular + texture
 
 # acquisition functions:  MaxVar_GP, UCB_GP, EI_GP, UCB_GPIS, EI_IS, MaxVar_plus_gradient
-aqfunctions = [UCB_GP, UCB_GPIS,MaxVar_GP]
-aqfunctionsnames = ["MaxVar_GP", "UCB_GP", "UCB_GPIS"]#, "random"]
+# MaxVar_plus_gradient(model, workspace, level=0, x=None, acquisition_par=0,numpoints=1)
+aqfunctions = [UCB_GPIS_implicitlevel,MaxVar_plus_gradient,UCB_GP,UCB_GPIS,MaxVar_GP]
+aqfunctionsnames = ["UCB_GPIS_implicitlevel","MaxVar_plus_gradient","UCB_GP", "UCB_GPIS", "MaxVar_GP"]#, "random"]
 
 controls =["Max"]
 
 def save_table(table, name):
     f = open(name + ".csv", 'wb')
     # header
-    f.write(",,MaxVar_GP,UCB_GB,UCB_GBIS\n")
+    f.write(",,UCB_GPIS_implicitlevel,UCB_GBIS,MaxVar_plus_gradient,UCB_GB,MaxVar_GP\n")
     # data in table
     # f.write("flat,lam,{},{}\n".format(table[0][0], table[0][1]))
-    f.write(",tumor1: iterations,{},{},{}\n".format(table[0][0], table[0][1],table[0][2]))
-    f.write(",tumor1: healthy tissue removed,{},{},{}\n".format(table[1][0], table[1][1],table[1][2]))
-    f.write(",tumor1: tumor left behind,{},{},{}\n".format(table[2][0], table[2][1],table[2][2]))
+    f.write(",tumor1: iterations,{},{},{}\n".format(table[0][0], table[0][1],table[0][2],table[0][3],table[0][4]))
+    f.write(",tumor1: healthy tissue removed,{},{},{}\n".format(table[1][0], table[1][1],table[1][2],table[1][3],table[1][4]))
+    f.write(",tumor1: tumor left behind,{},{},{}\n".format(table[2][0], table[2][1],table[2][2],table[2][3],table[2][4]))
 
-    f.write(",tumor2: iterations,{},{},{}\n".format(table[3][0], table[3][1],table[3][2]))
-    f.write(",tumor2: healthy tissue removed,{},{},{}\n".format(table[4][0], table[4][1],table[4][2]))
-    f.write(",tumor2: tumor left behind,{},{},{}\n".format(table[5][0], table[5][1],table[5][2]))
+    f.write(",tumor2: iterations,{},{},{}\n".format(table[3][0], table[3][1],table[3][2],table[3][3],table[3][4]))
+    f.write(",tumor2: healthy tissue removed,{},{},{}\n".format(table[4][0], table[4][1],table[4][2],table[4][3],table[4][4]))
+    f.write(",tumor2: tumor left behind,{},{},{}\n".format(table[5][0], table[5][1],table[5][2],table[5][3],table[5][4]))
 
     # f.write(",st,{},{}\n".format(table[0][0], table[0][1]))
 
@@ -180,26 +220,54 @@ def save_table(table, name):
     return
 
 
-def plot_error(errors,labels):    
+def plot_error(errorsrem,errorsleft,labels):    
     #for e in errors:
     #         plt.plot(e)
-    tum1 = errors[0]
-    tum2 = errors[1]
-    colors = ['blue','red','green']
-    for i in range(0,tum1.shape[0]):
+    fig = plt.figure(figsize=(3, 9))
+    ax1 = fig.add_subplot(311)
+    ax2 = fig.add_subplot(312)
+    ax3 = fig.add_subplot(313)
+    ax=[ax1,ax2,ax3]
+    tum1left = errorsleft[0]
+    tum2left = errorsleft[1]
+    tum1rem = errorsrem[0]
+    tum2rem = errorsrem[1]
+    colors = ['blue','red','green','orange','magenta']
 
-        for j in range(0,tum1.shape[1]):
-            for e in range(0,tum1.shape[2]):
-                exp = tum1[i][j][e]
-                print exp.shape
-                plt.plot(exp,color=colors[i])
-    plt.xlabel("Iterations")
+    # for i in range(0,tum1left.shape[0]):
+    #     for j in range(0,tum1left.shape[1]):
+    #         expl=tum1left[i][j]
+    #         expl=np.mean(expl,axis=0)
+    #         #for e in range(0,tum1left.shape[2]):
+    #         #    exp = tum1left[i][j][e]
+    #         #    print exp.shape
+    #         ax[0].plot(expl,color=colors[i])
+    for i in range(0,tum1rem.shape[0]):
+        for j in range(0,tum1rem.shape[1]):
+            expl=tum1left[i][j]
+            expl=np.mean(expl,axis=0)
+
+            expr=tum1rem[i][j]
+            expr=np.mean(expr,axis=0)
+            #or e in range(0,tum1rem.shape[2]):
+            #    exp = tum1rem[i][j][e]
+            ax[0].plot(expl,color=colors[i])
+            ax[1].plot(expr,color=colors[i])
+            ax[2].plot(expr+expl,color=colors[i])
     ym=.08*.08
-    plt.ylim(.00, ym)
+    ym=.001
+    ax[0].set_ylim(.00, ym)
+    ax[0].set_title('error_leftover')
+    ax[1].set_ylim(.00, ym)
+    ax[1].set_title('error_removed')
+    ax[2].set_ylim(.00, ym)
+    ax[2].set_title('error_leftover+error_removed')
+    plt.xlabel("Iterations")
+    #ym=.08*.08
+    #plt.ylim(.00, ym)
 
-    plt.xlim(0, 100)
+    # plt.xlim(0, 100)
     plt.ylabel(" Error")
-    plt.title("Integrated Error between Estimate and Ground Truth - Phase 1")
     plt.legend(labels.flatten(), loc='upper right')
     # plt.savefig("image_pairs/"+surface_name+'/'+name)
     # plt.close()
@@ -271,6 +339,5 @@ def run_phase2_full():
 
 if __name__ == "__main__":
     outleft,outrem,aclabellist=run_phase2_full()
-    # IPython.embed()
-
+    plot_error(outrem,outleft,aclabellist)
 

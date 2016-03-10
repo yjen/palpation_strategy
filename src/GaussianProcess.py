@@ -82,13 +82,14 @@ def update_GP(measurements,method='nonhet'):
         m['.*het_Gauss.variance'] = abs(noise)
         m.het_Gauss.variance.fix() # We can fix the noise term, since we already know it
     else:
-        var = .09 # variance
-        theta = .008 # lengthscale
+        var = .3 # variance
+        theta = .006 # lengthscale
         noise = .01
         kern = GPy.kern.RBF(2,variance=var,lengthscale=theta)
         m = GPy.models.GPRegression(X,Y,kern)
+        m.Gaussian_noise.fix(1e-5)
     #     m.optimize_restarts(num_restarts = 10)
-    m.optimize()
+    #m.optimize()
     # print m
     # xgrid = np.vstack([self.x1.reshape(self.x1.size),
     #                    self.x2.reshape(self.x2.size)]).T
@@ -347,6 +348,8 @@ def plot_beliefGPIS(poly,workspace,mean,variance,aq,meas,dirname,errors,data=Non
     yy=workspace.yy
     GPIS = implicitsurface(mean,variance,level)
     boundaryestimate = getLevelSet (workspace, mean, level)
+    boundaryestimateupper = getLevelSet (workspace, mean+variance, level)
+    boundaryestimatelower = getLevelSet (workspace, mean-variance, level)
 
     mean=gridreshape(mean,workspace)
     variance=gridreshape(variance,workspace)
@@ -419,7 +422,11 @@ def plot_beliefGPIS(poly,workspace,mean,variance,aq,meas,dirname,errors,data=Non
     data[4].set_title("GPIS")
 
     if boundaryestimate.shape[0]>0:
-        data[4].plot(boundaryestimate.T[0], boundaryestimate.T[1], '-.',color='r',
+        data[4].plot(boundaryestimate.T[0], boundaryestimate.T[1], '-',color='k',
+                     linewidth=1, solid_capstyle='round', zorder=2)
+        data[4].plot(boundaryestimateupper.T[0], boundaryestimateupper.T[1], '--',color='k',
+                     linewidth=1, solid_capstyle='round', zorder=2)
+        data[4].plot(boundaryestimatelower.T[0], boundaryestimatelower.T[1], '--',color='k',
                      linewidth=1, solid_capstyle='round', zorder=2)
         
     data[4].plot(GroundTruth.T[0], GroundTruth.T[1], '-.',color='g',
@@ -474,7 +481,7 @@ def plot_beliefGPIS(poly,workspace,mean,variance,aq,meas,dirname,errors,data=Non
     # cb2.set_label('${\\rm \mathbb{P}}\left[\widehat{G}(\mathbf{x}) = 0\\right]$')# # Define
     # data.append(cb2)
     
-    data[0].canvas.draw()
+    # data[0].canvas.draw()
     data[0].savefig(dirname + '/' + str(iternum) + ".pdf", bbox_inches='tight')
     return data
 
