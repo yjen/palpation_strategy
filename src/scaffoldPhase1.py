@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from runPhase1 import *
 
 
-NUM_EXPERIMENTS = 3
+NUM_EXPERIMENTS = 5
 
 surfaces = ["smooth_sin1","flat"]              # add another model ?
 stops = [[1.343, 1.343, 1.343, 1.343],
