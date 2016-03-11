@@ -7,10 +7,10 @@ from runPhase1 import *
 
 NUM_EXPERIMENTS = 1
 
-surfaces = ["flat", "smooth_sin1"]              # add another model ?
+surfaces = ["smooth_sin1","flat"]              # add another model ?
 stops = [[1.343, 1.343, 1.343, 1.343],
          [1.343, 1.343, 1.343, 1.343]]
-textures = ["_lam", "_text", "_spec", "_st"]
+textures = [ "_text", "_spec", "_st","_lam"]
     # lambert, texture, specular, specular + texture
 methods = ["random", "maxVar","maxVarGrad"]
 
@@ -65,7 +65,7 @@ def run_phase1_full():
                 for l, method in enumerate(methods):
                     print "Running " + surf+text + " "+ method + ":"
                     start = time.time()
-                    disparityMeas, means, sigmas, sampled_points, measures, errors, num_iters = run_single_phase1_experiment(surf+text, method, disparityMeas, False, stops[i][j], shouldPlot=False)
+                    disparityMeas, means, sigmas, sampled_points, measures, errors, num_iters = run_single_phase1_experiment(surf+text, method, disparityMeas, False, stops[i][j], shouldPlot=True)
                     end = time.time()
                     time_elapsed = end - start # in seconds
                     # plot or save/record everything
