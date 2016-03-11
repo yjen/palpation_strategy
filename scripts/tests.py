@@ -111,5 +111,16 @@ def test_register_environment():
     palp = Palpation()
     palp.register_environment("env_registration_shifted.p")
 
+def execute_record_testing_grid_data():
+    palp = Palpation()
+    try:
+        palp.load_environment_registration("env_registration.p")
+    except Exception as e:
+        palp.register_environment("env_registration.p")
+
+    raw_input("Will now execute point probe grid test. Press any key to continue")
+    palp.execute_record_testing_grid_data(20, 40, 1)
+
+
 if __name__ == '__main__':
-    test_point_probe_grid()
+    execute_record_testing_grid_data()

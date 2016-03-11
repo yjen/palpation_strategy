@@ -104,3 +104,19 @@ def getExperimentalStiffnessMeas(sample_points):
     # z needs to be read from robot
     # should return: np.array([xx, yy,
     #                 z]).T
+
+
+    def getRecordedExperimentalStiffnessMeas(sample_points):
+        filename = 'dense_grid.p'
+        data_dict = pickle.load(open("dense_grid.p", "rb"))
+        data = np.array(data_dict['data'])
+
+        x, y, z = data[:,0], data[:,1], data[:,2]
+        interpolated = interpolate.interp2d(x, y, z, kind='cubic')
+        stiffnesses = np.array([interpolated(a[0], a[1]) for a in sample_points])
+
+        output = np.zeros(len(x), 3)
+        output[:,:2] = sample_points
+        output[:,2] = stiffnesses
+
+        return output

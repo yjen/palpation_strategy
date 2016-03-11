@@ -819,7 +819,7 @@ class Palpation():
 
         self.probe_stop_reset()
         for _ in range(k):
-            for i in range(m-1):
+            for i in range(m):
                 for j in range(n):
                     offset = np.dot(frame, np.array([i*dx, j*dy, z+0.01]))
                     pose = tfx.pose(origin+offset, rotation_matrix, frame=self.tissue_pose.frame)
@@ -839,6 +839,55 @@ class Palpation():
 
         self.probe_save("probe_data.p")
         # self.drop_off_tool()
+
+
+    def execute_record_testing_grid_data(self, m, n, k):
+        """ Records probe data that can be played back
+        """
+        speed = 0.05
+
+        origin = np.hstack(np.array(self.tissue_pose.position))
+        frame = np.array(self.tissue_pose.orientation.matrix)
+
+        u, v, w = frame.T[0], frame.T[1], frame.T[2]
+
+        rotation_matrix = np.array([v, u, -w]).transpose()
+
+        dy = self.tissue_width/n
+        dx = self.tissue_length/m
+        z = self.probe_offset
+
+        # pick up tool
+        self.pick_up_tool()
+        
+        data = dict()
+        data['data'] = []
+        data['tissue_width'] = self.tissue_width
+        data['tissue_length'] = self.tissue_length
+        data['rows'] = n
+        data['columns'] = m
+
+        self.probe_stop_reset()
+        for _ in range(k):
+            for i in range(m+1):
+                for j in range(n+1):
+                    offset = np.dot(frame, np.array([i*dx, j*dy, z+0.01]))
+                    pose = tfx.pose(origin+offset, rotation_matrix, frame=self.tissue_pose.frame)
+                    self.psm1.move_cartesian_frame_linear_interpolation(pose, self.speed, False)
+
+                    offset = np.dot(frame, np.array([i*dx, j*dy, z]))
+                    pose = tfx.pose(origin+offset, rotation_matrix, frame=self.tissue_pose.frame)
+                    self.psm1.move_cartesian_frame_linear_interpolation(pose, 0.01, False)
+                    
+                    rospy.sleep(0.4)
+                    data['data'].append([i*dx, j*dy, self.curr_probe_value])
+                    rospy.sleep(0.4)
+                    
+                    offset = np.dot(frame, np.array([i*dx, j*dy, z+0.01]))
+                    pose = tfx.pose(origin+offset, rotation_matrix, frame=self.tissue_pose.frame)
+                    self.psm1.move_cartesian_frame_linear_interpolation(pose, self.speed, False)
+
+        pickle.dump(data, open('dense_grid.p', "wb"))
 
     def register_surface(self, n):
         raw_input("Make sure probe is not touching anything. Press enter when ready")
