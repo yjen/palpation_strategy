@@ -19,14 +19,24 @@ from simulated_disparity import getStereoDepthMap, getObservationModel, getInter
 # simulation pipeline
 #######################################
 IMG_SIZE = 50
-
+offset=.004
 #######################################
 # polygon test functions for simulating phase2: 
 #######################################
 squaretumor=np.array([[-.01,-.01],[.02,-.01],[.02,.02],[-.01,.02]])
+# quaretumor=Polygon(quaretumor)
 thintumor=np.array([[2.25,0.25],[2.75,2.25],[2.75,2.75],[2.25,2.75]])
 rantumor=.02*np.array([[2.25,0.75],[3.25,1.25],[2.75,2.25],[2.75,2.75],[2.25,2.75],[2.,1.25]])-.04
 
+
+def polybuff(tum,minus=False):
+    if minus==True:
+        offs=-offset
+    else:
+        offs=offset
+    tum=Polygon(tum)
+    tum=tum.buffer(offs)
+    return np.array(tum.exterior.coords)
 # def interp_function(image, workspace):
 #     # creating interpolation functions
 #     x = np.array(range(image.shape[0]))
@@ -56,7 +66,6 @@ def getInterpolatedStereoMeas(surface, workspace):
     #z = getStereoDepthMap(surface)[5:45,5:45]
     #z = np.pad(z,((5,5),(5,5)),mode='edge')
     z = getStereoDepthMap(surface)
-    print z
     #z = np.pad(z,((5,5),(5,5)),mode='edge')
     z[z<0]=0
     # z[z>500]=500
@@ -321,7 +330,7 @@ def SixhumpcamelSurface(xx,yy):
 # Functions for simulating deflection measurements
 #######################################
 
-def sigmoid(dist, alpha=1014, a=0.0, b=1.0, c=-0.004):
+def sigmoid(dist, alpha=1014, a=0.0, b=1.0):
     """  
     a, b: base and max readings of the probe with and without tumor
     dist = xProbe-xEdge
@@ -331,6 +340,7 @@ def sigmoid(dist, alpha=1014, a=0.0, b=1.0, c=-0.004):
     Output:
     y = a + (b-a)/(1+ exp(-alpha*(xProbe-xEdge)))
     """
+    c=-offset
     y = a + np.divide((b-a),(1+ np.exp(-alpha*(dist-c))))  
     return y
 

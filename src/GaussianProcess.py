@@ -350,6 +350,7 @@ def plot_beliefGPIS(poly,workspace,mean,variance,aq,meas,dirname,errors,data=Non
     yy=workspace.yy
     GPIS = implicitsurface(mean,variance,level)
     boundaryestimate = getLevelSet (workspace, mean, level)
+
     boundaryestimateupper = getLevelSet (workspace, mean+variance, level)
     boundaryestimatelower = getLevelSet (workspace, mean-variance, level)
 
@@ -360,7 +361,6 @@ def plot_beliefGPIS(poly,workspace,mean,variance,aq,meas,dirname,errors,data=Non
 
     # for plotting, add first point to end
     GroundTruth = np.vstack((poly,poly[0]))
-    #GroundTruth = np.vstack((boundaryestimate,boundaryestimate[0]))
 
     if data is None:
         fig = plt.figure(figsize=(20, 4))
@@ -422,14 +422,33 @@ def plot_beliefGPIS(poly,workspace,mean,variance,aq,meas,dirname,errors,data=Non
                     cmap=cm.coolwarm)
     
     data[4].set_title("GPIS")
-
-    if boundaryestimate.shape[0]>0:
-        data[4].plot(boundaryestimate.T[0], boundaryestimate.T[1], '-',color='k',
+    if boundaryestimate.shape[0]>3:
+        boundaryestimate=Polygon(boundaryestimate)
+        bnd=boundaryestimate.buffer(-offset)
+        try:
+            boundaryestimate=np.array(bnd.exterior.coords)
+            data[4].plot(boundaryestimate.T[0], boundaryestimate.T[1], '-',color='k',
                      linewidth=1, solid_capstyle='round', zorder=2)
-        data[4].plot(boundaryestimateupper.T[0], boundaryestimateupper.T[1], '--',color='k',
+        except AttributeError:
+            boundaryestimate=[]
+    if boundaryestimateupper.shape[0]>3:
+        boundaryestimateupper=Polygon(boundaryestimateupper)
+        bnd=boundaryestimateupper.buffer(-offset)
+        try:
+            boundaryestimateupper=np.array(bnd.exterior.coords)
+            data[4].plot(boundaryestimateupper.T[0], boundaryestimateupper.T[1], '--',color='k',
                      linewidth=1, solid_capstyle='round', zorder=2)
-        data[4].plot(boundaryestimatelower.T[0], boundaryestimatelower.T[1], '--',color='k',
+        except AttributeError:
+            boundaryestimateupper=[]
+    if boundaryestimatelower.shape[0]>3:
+        boundaryestimatelower=Polygon(boundaryestimatelower)
+        bnd=boundaryestimatelower.buffer(-offset)
+        try:
+            boundaryestimatelower=np.array(bnd.exterior.coords)
+            data[4].plot(boundaryestimatelower.T[0], boundaryestimatelower.T[1], '--',color='k',
                      linewidth=1, solid_capstyle='round', zorder=2)
+        except AttributeError:
+            boundaryestimatelower=[]
         
     data[4].plot(GroundTruth.T[0], GroundTruth.T[1], '-.',color='g',
                  linewidth=1, solid_capstyle='round', zorder=2)
@@ -484,7 +503,7 @@ def plot_beliefGPIS(poly,workspace,mean,variance,aq,meas,dirname,errors,data=Non
     # data.append(cb2)
     
     # data[0].canvas.draw()
-    
+
     data[0].savefig(dirname + '/' + str(iternum) + ".pdf", bbox_inches='tight')
     return data
 

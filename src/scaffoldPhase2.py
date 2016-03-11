@@ -18,7 +18,7 @@ from model_fit import *
 # model=fit_measmodel(xdata,zdata)
 # mod=plot_model(data1,model,scale=True)
 # print mod
-def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, control='Max', plot=False, exp=False):
+def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, control='Max', plot=False, exp=False,iters=20):
     if exp==True: 
         from expUtils import *
     bounds=((-.04,.04),(-.04,.04))
@@ -32,7 +32,7 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, con
     # plotSimulatedStiffnessMeas(phantomname, workspace, ypos=0, sensornoise = .05)
 
     # set level set to look for-- this should correspond to something, max FI?
-    level = .7 #pick something between min/max deflection
+    level = .5 #pick something between min/max deflection
 
     plot_data = None
     means = []
@@ -50,7 +50,7 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, con
     ###############
     #Initializing
     ###############
-    next_samples_points = randompoints(bounds, 10) #randompoints(bounds, 100)
+    next_samples_points = randompoints(bounds, 5) #randompoints(bounds, 100)
 
     # collect initial meausrements
     if exp==True: 
@@ -58,7 +58,7 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, con
     else:
         meas = getSimulateStiffnessMeas(phantomname, next_samples_points)
     measnew=meas
-    for j in range (10): #(1,100,1)
+    for j in range (iters): #(1,100,1)
         # print "iteration = ", j
         # collect measurements
 
@@ -127,52 +127,28 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, con
         meas = np.append(meas,measnew,axis=0)
 
     # plt.show(block=False)
-    return means, sigmas, acqvals, measures, healthyremoveds, tumorlefts, j
+    return means, sigmas, acqvals, measures, healthyremoveds, tumorlefts, j, gpmodel
 
 def evalerror(tumor,workspace,mean,variance,level):
     # see: http://toblerity.org/shapely/manual.html
     boundaryestimate = getLevelSet (workspace, mean, level)
-    boundaryestimateupper = getLevelSet (workspace, mean+variance, level)
-    boundaryestimatelower = getLevelSet (workspace, mean-variance, level)
-    boundaryestimate=boundaryestimateupper
+
     GroundTruth = np.vstack((tumor,tumor[0]))
     GroundTruth=Polygon(GroundTruth)
+    # print GroundTruth
     if len(boundaryestimate)>0:
 
         boundaryestimate=Polygon(boundaryestimate)
-        healthyremoved=boundaryestimate.difference(GroundTruth) # mislabeled data ()
-        #boundaryestimate.difference(GroundTruth) #mislabeled as tumor--extra that would be removed
-        #
 
-        tumorleft=GroundTruth.difference(boundaryestimate) # mislbaled as not-tumor--would be missed and should be cut out
-        #correct=boundaryestimate.intersection(GroundTruth) #correctly labeled as tumor
-        healthyremoved=healthyremoved.area
-        tumorleft=tumorleft.area
+        boundaryestimate=boundaryestimate.buffer(-offset)
+        err=GroundTruth.symmetric_difference(boundaryestimate)
+     
+        err=err.area
 
     else:
-        healthyremoved=.100
+        err=.100
         tumorleft=.100
-    return healthyremoved,tumorleft
-
-# def plotbounds(tumor,workspace,mean,sigma,level):
-#     # see: http://toblerity.org/shapely/manual.html
-#     GroundTruth = np.vstack((tumor,tumor[0]))
-#     # GroundTruth=Polygon(GroundTruth)
-
-#     boundaryestimateupper = getLevelSet (workspace, mean+sigma, level)
-#     boundaryestimatelower = getLevelSet (workspace, mean-sigma, level)
-
-#     boundaryestimate = getLevelSet (workspace, mean, level)
-#     if boundaryestimate.shape[0]>0:
-#         plt.plot(boundaryestimateupper.T[0], boundaryestimate.T[1], '-.',color='r',
-#                      linewidth=1, solid_capstyle='round', zorder=2)
-#         plt.plot(boundaryestimatelower.T[0], boundaryestimate.T[1], '-.',color='g',
-#                      linewidth=1, solid_capstyle='round', zorder=2)
-#         plt.plot(boundaryestimate.T[0], boundaryestimate.T[1], '-.',color='b',
-#                      linewidth=1, solid_capstyle='round', zorder=2)
-        
-#     plt.plot(GroundTruth.T[0], GroundTruth.T[1], '-.',color='m',
-#                  linewidth=1, solid_capstyle='round', zorder=2)
+    return err, 0
 
 
 def save_data(arr, dirname, name):
@@ -196,24 +172,24 @@ stops = [[6.4, 0.01, 3.6, 0.0],
 
 # acquisition functions:  MaxVar_GP, UCB_GP, EI_GP, UCB_GPIS, EI_IS, MaxVar_plus_gradient
 # MaxVar_plus_gradient(model, workspace, level=0, x=None, acquisition_par=0,numpoints=1)
-aqfunctions = [UCB_GPIS_implicitlevel]#,MaxVar_plus_gradient,UCB_GP,UCB_GPIS,MaxVar_GP]
-aqfunctionsnames = ["UCB_GPIS_implicitlevel"]#,"MaxVar_plus_gradient","UCB_GP", "UCB_GPIS", "MaxVar_GP"]#, "random"]
+aqfunctions = [UCB_GPIS_implicitlevel,UCB_GPIS,UCB_GP,MaxVar_GP]#MaxVar_plus_gradient
+aqfunctionsnames = ["UCB_GPIS_implicitlevel","UCB_GPIS","UCB_GP", "MaxVar_GP"]#, "random"]"MaxVar_plus_gradient"
 
 controls =["Max"]
 
 def save_table(table, name):
     f = open(name + ".csv", 'wb')
     # header
-    f.write(",,UCB_GPIS_implicitlevel,UCB_GBIS,MaxVar_plus_gradient,UCB_GB,MaxVar_GP\n")
+    f.write(",,UCB_GPIS_implicitlevel,UCB_GBIS,UCB_GB,MaxVar_GP\n") #MaxVar_plus_gradient
     # data in table
     # f.write("flat,lam,{},{}\n".format(table[0][0], table[0][1]))
-    f.write(",tumor1: iterations,{},{},{}\n".format(table[0][0], table[0][1],table[0][2],table[0][3],table[0][4]))
-    f.write(",tumor1: healthy tissue removed,{},{},{}\n".format(table[1][0], table[1][1],table[1][2],table[1][3],table[1][4]))
-    f.write(",tumor1: tumor left behind,{},{},{}\n".format(table[2][0], table[2][1],table[2][2],table[2][3],table[2][4]))
+    f.write(",tumor1: iterations,{},{},{}\n".format(table[0][0], table[0][1],table[0][2],table[0][3]))#,table[0][4]))
+    f.write(",tumor1: healthy tissue removed,{},{},{}\n".format(table[1][0], table[1][1],table[1][2],table[1][3]))#,table[1][4]))
+    f.write(",tumor1: tumor left behind,{},{},{}\n".format(table[2][0], table[2][1],table[2][2],table[2][3]))#,table[2][4]))
 
-    f.write(",tumor2: iterations,{},{},{}\n".format(table[3][0], table[3][1],table[3][2],table[3][3],table[3][4]))
-    f.write(",tumor2: healthy tissue removed,{},{},{}\n".format(table[4][0], table[4][1],table[4][2],table[4][3],table[4][4]))
-    f.write(",tumor2: tumor left behind,{},{},{}\n".format(table[5][0], table[5][1],table[5][2],table[5][3],table[5][4]))
+    f.write(",tumor2: iterations,{},{},{}\n".format(table[3][0], table[3][1],table[3][2],table[3][3]))#,table[3][4]))
+    f.write(",tumor2: healthy tissue removed,{},{},{}\n".format(table[4][0], table[4][1],table[4][2],table[4][3]))#,table[4][4]))
+    f.write(",tumor2: tumor left behind,{},{},{}\n".format(table[5][0], table[5][1],table[5][2],table[5][3]))#,table[5][4]))
 
     # f.write(",st,{},{}\n".format(table[0][0], table[0][1]))
 
@@ -285,7 +261,7 @@ def run_phase2_full():
 
     # iter_table = np.zeros((len(aqfunctions)+len(controls),len(tumors)))
     error_table = np.zeros((len(tumors)*3,len(aqfunctions)+len(controls)))
-    # print iter_table.shape
+    # print iter_table.shapetumor
     # error_table1 = np.zeros((2, len(aqfunctions)+len(controls)))
     tumorerrlistleft=[]
     tumorerrlistremoved=[]
@@ -309,7 +285,7 @@ def run_phase2_full():
                     # for l, method in enumerate(methods):
                     start = time.time()
                     dirname = str(i) + '_' + aqfunctionsnames[j] + '_' + cont
-                    means, sigmas, acqvals, measures, healthyremoved, tumorleft, num_iters = run_single_phase2_simulation(tumor, dirname, AcFunction=acq, control=cont, plot=True, exp=False)
+                    means, sigmas, acqvals, measures, healthyremoved, tumorleft, num_iters, gpmodel = run_single_phase2_simulation(tumor, dirname, AcFunction=acq, control=cont, plot=True, exp=False)
                     plt.close() 
                     end = time.time()
                     time_elapsed = end - start # in seconds
