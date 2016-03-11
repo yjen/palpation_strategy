@@ -18,8 +18,9 @@ from model_fit import *
 # model=fit_measmodel(xdata,zdata)
 # mod=plot_model(data1,model,scale=True)
 # print mod
-def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, control='Max', plot=False):
-
+def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, control='Max', plot=False, exp=False):
+    if exp==True: 
+        from expUtils import *
     bounds=((-.04,.04),(-.04,.04))
 
     # grid resolution: should be same for plots, ergodic stuff
@@ -52,8 +53,10 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, con
     next_samples_points = randompoints(bounds, 10) #randompoints(bounds, 100)
 
     # collect initial meausrements
-
-    meas = getSimulateStiffnessMeas(phantomname, next_samples_points)
+    if exp==True: 
+        meas = getExperimentalStiffnessMeas(next_samples_points)
+    else:
+        meas = getSimulateStiffnessMeas(phantomname, next_samples_points)
     measnew=meas
     for j in range (10): #(1,100,1)
         # print "iteration = ", j
@@ -115,7 +118,10 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, con
                                       directory, [healthyremoveds,tumorlefts],plot_data,level=level,
                                       iternum=j, projection3D=False)
 
-        measnew = getSimulateStiffnessMeas(phantomname, next_samples_points)
+        if exp==True:
+            measnew = getExperimentalStiffnessMeas(next_samples_points)
+        else:
+            measnew = getSimulateStiffnessMeas(phantomname, next_samples_points)
 
         #   concatenate measurements to prior measurements
         meas = np.append(meas,measnew,axis=0)
@@ -190,8 +196,8 @@ stops = [[6.4, 0.01, 3.6, 0.0],
 
 # acquisition functions:  MaxVar_GP, UCB_GP, EI_GP, UCB_GPIS, EI_IS, MaxVar_plus_gradient
 # MaxVar_plus_gradient(model, workspace, level=0, x=None, acquisition_par=0,numpoints=1)
-aqfunctions = [UCB_GPIS_implicitlevel,MaxVar_plus_gradient,UCB_GP,UCB_GPIS,MaxVar_GP]
-aqfunctionsnames = ["UCB_GPIS_implicitlevel","MaxVar_plus_gradient","UCB_GP", "UCB_GPIS", "MaxVar_GP"]#, "random"]
+aqfunctions = [UCB_GPIS_implicitlevel]#,MaxVar_plus_gradient,UCB_GP,UCB_GPIS,MaxVar_GP]
+aqfunctionsnames = ["UCB_GPIS_implicitlevel"]#,"MaxVar_plus_gradient","UCB_GP", "UCB_GPIS", "MaxVar_GP"]#, "random"]
 
 controls =["Max"]
 
@@ -303,7 +309,7 @@ def run_phase2_full():
                     # for l, method in enumerate(methods):
                     start = time.time()
                     dirname = str(i) + '_' + aqfunctionsnames[j] + '_' + cont
-                    means, sigmas, acqvals, measures, healthyremoved, tumorleft, num_iters = run_single_phase2_simulation(tumor, dirname, AcFunction=acq, control=cont, plot=True)
+                    means, sigmas, acqvals, measures, healthyremoved, tumorleft, num_iters = run_single_phase2_simulation(tumor, dirname, AcFunction=acq, control=cont, plot=True, exp=False)
                     plt.close() 
                     end = time.time()
                     time_elapsed = end - start # in seconds
@@ -321,7 +327,7 @@ def run_phase2_full():
 
                 print error_table
                 # save_table(iter_table, "phase2_iterations")
-                save_table(error_table, "phase2_errors")
+                # save_table(error_table, "phase2_errors")
                 # save_table(error_table1, "phase2_errors1")
                 conterrlistleft.append(experrlistleft)
                 conterrlistremoved.append(experrlistremoved)

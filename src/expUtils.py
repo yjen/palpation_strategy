@@ -95,6 +95,7 @@ def getExperimentalStiffnessMeas(sample_points):
         rospy.sleep(0.1)
     print('done')
     stiffness = []
+    measurementsNOC/1000.0
     for i in range(len(measurementsNOC)):
         stiffness.append([x[i], y[i], measurementsNOC[i]])
     return np.array(stiffness).T

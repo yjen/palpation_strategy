@@ -484,6 +484,7 @@ def plot_beliefGPIS(poly,workspace,mean,variance,aq,meas,dirname,errors,data=Non
     # data.append(cb2)
     
     # data[0].canvas.draw()
+    
     data[0].savefig(dirname + '/' + str(iternum) + ".pdf", bbox_inches='tight')
     return data
 
