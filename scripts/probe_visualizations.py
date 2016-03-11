@@ -291,5 +291,3 @@ if __name__ == '__main__':
     # plot_rotations_combined(data1, data2)
     data_dict = pickle.load(open("dense_grid.p", "rb"))
     plot_interpolated_recorded_data(data_dict)
-
-

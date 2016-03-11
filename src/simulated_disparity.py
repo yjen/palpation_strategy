@@ -136,6 +136,7 @@ def getStereoDepthMap(folder, shouldPlot=False):
         print("folder: " + str(folder))
     disparity = getDisparityMap(folder).astype(np.float32)/16
     if shouldPlot:
+        # plt.imsave(folder+ "/disparity.png", disparity)
         print(disparity.dtype)
     
     # plt.imsave(folder+ "/disparity.mat", disparity)

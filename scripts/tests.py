@@ -85,8 +85,10 @@ def test_point_probe():
     except Exception as e:
         palp.register_environment("env_registration.p")
     # palp.pick_up_tool()
+
     raw_input("Will now listen to runPhase2.py. Press Enter to continue")
     rospy.spin()    
+
 
 def test_register_surface():
     palp = Palpation()
