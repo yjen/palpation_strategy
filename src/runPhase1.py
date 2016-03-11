@@ -79,14 +79,14 @@ def run_single_phase1_experiment(surfacename, method, disparityMeas=None, block=
     errors=[]
     sigma = 1000.0
 
-    while np.max(sigma) > stops:
+    while i < 50: # or np.max(sigma) > stops:
         print "iteration =", i
         if i==0:
             # initialize measurement from stereo data
             if disparityMeas is None:
                 disparityMeas = getSimulatedStereoMeas(surface, workspace, shouldPlot, block)
             meas = np.copy(disparityMeas)
-            next_samples_points = randompoints(bounds, 1)
+            next_samples_points = randompoints(bounds, 10)
             sampled_points.append(next_samples_points)
             meastouchonly = getSimulatedProbeMeas(surface, workspace, next_samples_points)
             meas = np.append(meas,meastouchonly,axis=0)
@@ -143,6 +143,7 @@ def run_single_phase1_experiment(surfacename, method, disparityMeas=None, block=
 
 
 if __name__ == "__main__":
-    run_single_phase1_experiment("smooth_sin1", "maxVar", block=True)
+    run_single_phase1_experiment("smooth_sin1_text", "maxVar", block=True)
+
 
 

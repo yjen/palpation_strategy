@@ -56,9 +56,10 @@ def getInterpolatedStereoMeas(surface, workspace):
     #z = getStereoDepthMap(surface)[5:45,5:45]
     #z = np.pad(z,((5,5),(5,5)),mode='edge')
     z = getStereoDepthMap(surface)
+    print z
     #z = np.pad(z,((5,5),(5,5)),mode='edge')
     z[z<0]=0
-    z[z>30]=30
+    # z[z>500]=500
     res = z.shape[0]
     x = np.linspace(workspace.bounds[0][0], workspace.bounds[0][1], num = res)
     y = np.linspace(workspace.bounds[1][0], workspace.bounds[1][1], num = res)
@@ -139,7 +140,7 @@ def getSimulatedStereoMeas(surface, workspace, plot=False, block=False):
                     cmap=cm.coolwarm, linewidth=0,
                     antialiased=False)
         ax.set_title("Depth from Disparity")
-        ax.set_zlim3d(0,20)
+        # ax.set_zlim3d(0,100)
         plt.xlabel('x')
         plt.ylabel('y')
         plt.show(block=block)

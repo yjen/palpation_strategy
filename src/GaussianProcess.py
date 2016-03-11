@@ -45,12 +45,14 @@ def update_GP_ph1(measurements,method='nonhet'):
         m.het_Gauss.variance.fix() # We can fix the noise term, since we already know it
     else:
         # var = 100 # variance
-        var = 50
-        theta = 25# lengthscale
+        var = 25
+        theta = 20 #engthscale
         kern = GPy.kern.RBF(2, variance=var,lengthscale=theta)
         m = GPy.models.GPRegression(X,Y,kern)
+        m.Gaussian_noise.fix(.4)
         #m.optimize_restarts(num_restarts = 5)
-    m.optimize()
+    #m.optimize()
+    # print m
     # xgrid = np.vstack([self.x1.reshape(self.x1.size),
     #                    self.x2.reshape(self.x2.size)]).T
     # y_pred=m.predict(self.xgrid)[0]
@@ -221,7 +223,7 @@ def plot_error(surface, workspace, mean, sigma, aq, meas, dirname, data=None,ite
                     antialiased=False)
         data[1].set_zlim3d(0,30)
     else:
-        data[1].imshow(np.flipud(disparity), cmap=cm.coolwarm,vmin=0, vmax=30,
+        data[1].imshow(np.flipud(disparity), cmap=cm.coolwarm,vmin=0, vmax=20,
                        extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
         if plotmeas==True:
             data[1].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=20,
@@ -235,7 +237,7 @@ def plot_error(surface, workspace, mean, sigma, aq, meas, dirname, data=None,ite
                     antialiased=False)
         data[2].set_zlim3d(0,30)
     else:
-        data[2].imshow(np.flipud(GroundTruth), cmap=cm.coolwarm,vmin=0, vmax=30,
+        data[2].imshow(np.flipud(GroundTruth), cmap=cm.coolwarm,vmin=0, vmax=20,
                        extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
         if plotmeas==True:
             data[2].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=30,
@@ -249,7 +251,7 @@ def plot_error(surface, workspace, mean, sigma, aq, meas, dirname, data=None,ite
                          cmap=cm.coolwarm, linewidth=0, antialiased=False)
         data[3].set_zlim3d(0,30)
     else:
-        data[3].imshow(np.flipud(mean), cmap=cm.coolwarm,vmin=0, vmax=30,
+        data[3].imshow(np.flipud(mean), cmap=cm.coolwarm,vmin=0, vmax=20,
                        extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
         if plotmeas==True:
             data[3].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=30,
@@ -264,14 +266,14 @@ def plot_error(surface, workspace, mean, sigma, aq, meas, dirname, data=None,ite
     data[4].imshow(np.flipud(sigma), cmap=cm.coolwarm, 
                        extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
     if plotmeas==True:
-        data[4].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=30,
+        data[4].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=20,
                     cmap=cm.coolwarm)
     data[4].set_title("Estimate Variance")
 
     data[5].imshow(np.flipud(aq), cmap=cm.coolwarm, 
                        extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
     if plotmeas==True:
-        data[5].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=30,
+        data[5].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=20,
                     cmap=cm.coolwarm)
     data[5].set_title("Acquisition function")
 
@@ -292,7 +294,7 @@ def plot_error(surface, workspace, mean, sigma, aq, meas, dirname, data=None,ite
         # data[5].plot_surface(xx, yy, error.reshape(workspace.res,workspace.res), rstride=1, cstride=1,
                            # cmap=cm.Greys, linewidth=0, antialiased=False)
     # else:
-    data[6].imshow(np.flipud(error), cmap=cm.coolwarm,vmin=0, vmax=10,
+    data[6].imshow(np.flipud(error), cmap=cm.coolwarm,vmin=0, vmax=20,
                        extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
     data[6].set_title("Error from GT")
     
@@ -482,6 +484,7 @@ def plot_beliefGPIS(poly,workspace,mean,variance,aq,meas,dirname,errors,data=Non
     # data.append(cb2)
     
     # data[0].canvas.draw()
+    
     data[0].savefig(dirname + '/' + str(iternum) + ".pdf", bbox_inches='tight')
     return data
 
