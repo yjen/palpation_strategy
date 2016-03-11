@@ -271,6 +271,6 @@ if __name__ == '__main__':
     # data1 = pickle.load(open("probe_data_newdvrk.p", "rb"))
     # data2 = pickle.load(open("probe_data_newdvrk_desired.p", "rb"))
     # plot_rotations_combined(data1, data2)
-    data = pickle.load(open("probe_data_newdvrk_po0.03_s0.005_t0_d1.p", "rb"))
+    data = pickle.load(open("probe_data.p", "rb"))
     stiffness_map(data)
 

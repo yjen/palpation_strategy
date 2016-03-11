@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import sys, os, time, IPython
 sys.path.append('../scripts')
-
+from shapely.topology import *
 import numpy as np
 import matplotlib.pyplot as plt
 from runPhase1 import *
@@ -19,16 +19,18 @@ from model_fit import *
 # mod=plot_model(data1,model,scale=True)
 # print mod
 def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, control='Max', plot=False, exp=False):
-    if exp==True: 
-        from expUtils import *
-    bounds=((-.04,.04),(-.04,.04))
-
+    #if exp==True: 
+    from expUtils import *
+    bounds=calculate_boundary("../scripts/env_registration.p")
+    #else:
+    #    bounds=((-.08,.08),(-.08,.08))
+    print(bounds)
     # grid resolution: should be same for plots, ergodic stuff
     gridres = 200
 
     # initialize workspace object
     workspace = Workspace(bounds,gridres)
-
+    print workspace.bounds
     # plotSimulatedStiffnessMeas(phantomname, workspace, ypos=0, sensornoise = .05)
 
     # set level set to look for-- this should correspond to something, max FI?
@@ -56,8 +58,11 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, con
     if exp==True: 
         meas = getExperimentalStiffnessMeas(next_samples_points)
     else:
-        meas = getSimulateStiffnessMeas(phantomname, next_samples_points)
+        
+        meas1 = getSimulateStiffnessMeas(phantomname, next_samples_points)
     measnew=meas
+    print 'expmeas=',meas
+    print 'simmeas=',getSimulateStiffnessMeas(phantomname, next_samples_points)
     for j in range (10): #(1,100,1)
         # print "iteration = ", j
         # collect measurements
@@ -76,7 +81,11 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, con
         elif AcFunction==MaxVar_plus_gradient:
             acquisition_par=.6
         elif AcFunction==UCB_GPIS_implicitlevel:
-            acquisition_par=[.6,.5]
+            if exp==True:
+                acquisition_par=[.1,.5]
+            else:
+                acquisition_par=[.6,.5]
+                
         else:
             acquisition_par=0
         xgrid, AqcuisFunction = AcFunction(gpmodel, workspace, level=level, acquisition_par=acquisition_par)
@@ -119,7 +128,8 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, con
                                       iternum=j, projection3D=False)
 
         if exp==True:
-            measnew = getExperimentalStiffnessMeas(next_samples_points)
+            measnew = getExperimentalStiffnessMeas(next_samples_points)#np.zeros(next_samples_points.shape)
+
         else:
             measnew = getSimulateStiffnessMeas(phantomname, next_samples_points)
 
@@ -134,20 +144,23 @@ def evalerror(tumor,workspace,mean,variance,level):
     boundaryestimate = getLevelSet (workspace, mean, level)
     boundaryestimateupper = getLevelSet (workspace, mean+variance, level)
     boundaryestimatelower = getLevelSet (workspace, mean-variance, level)
-    boundaryestimate=boundaryestimateupper
+    #boundaryestimate=boundaryestimateupper
     GroundTruth = np.vstack((tumor,tumor[0]))
     GroundTruth=Polygon(GroundTruth)
     if len(boundaryestimate)>0:
 
         boundaryestimate=Polygon(boundaryestimate)
-        healthyremoved=boundaryestimate.difference(GroundTruth) # mislabeled data ()
-        #boundaryestimate.difference(GroundTruth) #mislabeled as tumor--extra that would be removed
-        #
-
-        tumorleft=GroundTruth.difference(boundaryestimate) # mislbaled as not-tumor--would be missed and should be cut out
-        #correct=boundaryestimate.intersection(GroundTruth) #correctly labeled as tumor
-        healthyremoved=healthyremoved.area
-        tumorleft=tumorleft.area
+        try: 
+            healthyremoved=boundaryestimate.difference(GroundTruth) # mislabeled data ()
+            #boundaryestimate.difference(GroundTruth) #mislabeled as tumor--extra that would be removed
+                
+            tumorleft=GroundTruth.difference(boundaryestimate) # mislbaled as not-tumor--would be missed and should be cut out
+            #correct=boundaryestimate.intersection(GroundTruth) #correctly labeled as tumor
+            healthyremoved=healthyremoved.area
+            tumorleft=tumorleft.area
+        except TopologicalError:
+            healthyremoved=.100
+            tumorleft=.100
 
     else:
         healthyremoved=.100
@@ -309,7 +322,7 @@ def run_phase2_full():
                     # for l, method in enumerate(methods):
                     start = time.time()
                     dirname = str(i) + '_' + aqfunctionsnames[j] + '_' + cont
-                    means, sigmas, acqvals, measures, healthyremoved, tumorleft, num_iters = run_single_phase2_simulation(tumor, dirname, AcFunction=acq, control=cont, plot=True, exp=False)
+                    means, sigmas, acqvals, measures, healthyremoved, tumorleft, num_iters = run_single_phase2_simulation(tumor, dirname, AcFunction=acq, control=cont, plot=True, exp=True)
                     plt.close() 
                     end = time.time()
                     time_elapsed = end - start # in seconds

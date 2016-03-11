@@ -346,8 +346,10 @@ def calcCurveErr(workspace,poly,mean,sigma,level):
 def plot_beliefGPIS(poly,workspace,mean,variance,aq,meas,dirname,errors,data=None, iternum=0, level=.4, projection3D=False):
     # parse locations, measurements, noise from data
     # gp data
+    
     xx=workspace.xx
     yy=workspace.yy
+    print 'bnds=',(xx.min(), xx.max(), yy.min(),yy.max() )
     GPIS = implicitsurface(mean,variance,level)
     boundaryestimate = getLevelSet (workspace, mean, level)
     boundaryestimateupper = getLevelSet (workspace, mean+variance, level)
@@ -357,7 +359,7 @@ def plot_beliefGPIS(poly,workspace,mean,variance,aq,meas,dirname,errors,data=Non
     variance=gridreshape(variance,workspace)
     aq=gridreshape(aq,workspace)
     GPIS = gridreshape(GPIS,workspace)
-
+    print meas
     # for plotting, add first point to end
     GroundTruth = np.vstack((poly,poly[0]))
     #GroundTruth = np.vstack((boundaryestimate,boundaryestimate[0]))
@@ -396,7 +398,8 @@ def plot_beliefGPIS(poly,workspace,mean,variance,aq,meas,dirname,errors,data=Non
     data[1].set_title("Data and GP Mean: Stiffness map")
     data[1].set_xlabel('x')
     data[1].set_ylabel('y')
-    
+    #data[1].set_ylim([yy.min(),yy.max()])
+    #data[1].set_xlim([xx.min(),xx.max()])
     # plot the uncertainty
     if projection3D==True:
         #lim=1
@@ -412,6 +415,8 @@ def plot_beliefGPIS(poly,workspace,mean,variance,aq,meas,dirname,errors,data=Non
     data[2].set_title("GP Uncertainty: Stiffness map")  
     data[2].set_xlabel('x')
     data[2].set_ylabel('y')
+    data[2].set_ylim([yy.min(),yy.max()])
+    data[2].set_xlim([xx.min(),xx.max()])
 
     data[3].set_title("acquisition function")
     cs=data[3].imshow(np.flipud(aq), cmap=cm.jet, extent=(xx.min(),
@@ -420,19 +425,25 @@ def plot_beliefGPIS(poly,workspace,mean,variance,aq,meas,dirname,errors,data=Non
     )
     data[3].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=20,
                     cmap=cm.coolwarm)
+    data[3].set_ylim([yy.min(),yy.max()])
+    data[3].set_xlim([xx.min(),xx.max()])
     
     data[4].set_title("GPIS")
 
     if boundaryestimate.shape[0]>0:
         data[4].plot(boundaryestimate.T[0], boundaryestimate.T[1], '-',color='k',
                      linewidth=1, solid_capstyle='round', zorder=2)
+    if boundaryestimateupper.shape[0]>0:
         data[4].plot(boundaryestimateupper.T[0], boundaryestimateupper.T[1], '--',color='k',
                      linewidth=1, solid_capstyle='round', zorder=2)
+    if boundaryestimatelower.shape[0]>0:
         data[4].plot(boundaryestimatelower.T[0], boundaryestimatelower.T[1], '--',color='k',
                      linewidth=1, solid_capstyle='round', zorder=2)
         
     data[4].plot(GroundTruth.T[0], GroundTruth.T[1], '-.',color='g',
                  linewidth=1, solid_capstyle='round', zorder=2)
+    data[4].set_ylim([yy.min(),yy.max()])
+    data[4].set_xlim([xx.min(),xx.max()])
 
     data[4].legend( loc='upper right' )
     data[4].set_xlabel('x')
