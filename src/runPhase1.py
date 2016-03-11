@@ -79,7 +79,7 @@ def run_single_phase1_experiment(surfacename, method, disparityMeas=None, block=
     errors=[]
     sigma = 1000.0
 
-    while np.max(sigma) > stops:
+    while i < 50: # or np.max(sigma) > stops:
         print "iteration =", i
         if i==0:
             # initialize measurement from stereo data
@@ -144,5 +144,6 @@ def run_single_phase1_experiment(surfacename, method, disparityMeas=None, block=
 
 if __name__ == "__main__":
     run_single_phase1_experiment("smooth_sin1_text", "maxVar", block=True)
+
 
 
