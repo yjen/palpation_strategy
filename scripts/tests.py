@@ -125,4 +125,4 @@ def execute_record_testing_grid_data():
 
 
 if __name__ == '__main__':
-    execute_record_testing_grid_data()
+    test_raster_scan()

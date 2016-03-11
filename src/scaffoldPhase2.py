@@ -56,7 +56,7 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, con
 
     # collect initial meausrements
     if exp==True: 
-        meas = getExperimentalStiffnessMeas(next_samples_points)
+        meas = getRecordedExperimentalStiffnessMeas(next_samples_points)
     else:
         
         meas1 = getSimulateStiffnessMeas(phantomname, next_samples_points)
@@ -128,7 +128,7 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, con
                                       iternum=j, projection3D=False)
 
         if exp==True:
-            measnew = getExperimentalStiffnessMeas(next_samples_points)#np.zeros(next_samples_points.shape)
+            measnew = getRecordedExperimentalStiffnessMeas(next_samples_points)#np.zeros(next_samples_points.shape)
 
         else:
             measnew = getSimulateStiffnessMeas(phantomname, next_samples_points)

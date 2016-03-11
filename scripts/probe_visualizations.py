@@ -259,15 +259,20 @@ def plot_interpolated_recorded_data(data_dict):
     data = np.array(data_dict['data'])
 
     x, y, z = data[:,0], data[:,1], data[:,2]
-    interpolated = interpolate.interp2d(x, y, z, kind='cubic')
-    
 
-    x_new = np.arange(np.min(x), np.max(x), 0.001)
-    y_new = np.arange(np.min(y), np.max(y), 0.001)
-    xx, yy = np.meshgrid(x_new,y_new)
-    zz = np.array([interpolated(np.hstack(xx)[i], np.hstack(yy)[i]) for i in range(len(np.hstack(yy)))])
+    from scipy.ndimage.filters import gaussian_filter
+    z = gaussian_filter(z.reshape(21,41), sigma=1)
+    z = z.reshape((21*41,))
 
-    # import IPython; IPython.embed()
+    from scipy.interpolate import Rbf
+    rbfi = Rbf(x, y, z)
+
+    x_new = np.arange(np.min(x), np.max(x), 0.0005)
+    y_new = np.arange(np.min(y), np.max(y), 0.0005)
+    xx, yy = np.meshgrid(x_new, y_new)
+
+    zz = rbfi(xx, yy)
+
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     ax.scatter(xx, yy, zz, c='b', marker='o')

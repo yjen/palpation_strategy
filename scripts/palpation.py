@@ -467,7 +467,7 @@ class Palpation():
         z = self.probe_offset
 
         # pick up tool
-        # self.pick_up_tool()
+        self.pick_up_tool()
 
         self.probe_stop_reset()
         for i in range(steps-3):
