@@ -10,8 +10,8 @@ from numpy.linalg import norm
 import tfx
 import pickle
 import matplotlib.pyplot as plt
-import GaussianProcess
-from utils import *
+# import GaussianProcess
+# from utils import *
 
 
 def stiffness_map(probe_data):
@@ -233,6 +233,29 @@ def plot_rotations(probe_data):
 	ax.scatter(roll, pitch, yaw, marker='o')
 	plt.show()
 
+def plot_rotations_combined(probe_data1, probe_data2):
+	probe_data1.extend(probe_data2)
+	probe_data = probe_data1
+
+	colors1 = ["red" for _ in range(len(probe_data1)-len(probe_data2))]
+	colors2 = ["blue" for _ in range(len(probe_data2))]
+	colors1.extend(colors2)
+
+	data = [tfx.pose(i[1]).tb_angles for i in probe_data]
+	roll = [d.roll_deg for d in data]
+	pitch = [d.pitch_deg for d in data]
+	yaw = [d.yaw_deg for d in data]
+	print("roll: max, min: " + str(max(roll)) + ", " + str(min(roll)))
+	print("pitch: max, min: " + str(max(pitch)) + ", " + str(min(pitch)))
+	print("yaw: max, min: " + str(max(yaw)) + ", " + str(min(yaw)))
+	fig = plt.figure()
+	ax = fig.add_subplot(111, projection='3d')
+	ax.scatter(roll, pitch, yaw, c=colors1, marker='o', edgecolors=colors1)
+	plt.show()
+
+
+
+
 if __name__ == '__main__':
 	# load data
 	# probe_data1 = pickle.load(open("saved_palpation_data/single_row_raster_100x.p", "rb"))
@@ -243,6 +266,11 @@ if __name__ == '__main__':
     # data1 = pickle.load(open("probe_data_L2R_old_tool_tilt.p", "rb"))
     # data2 = pickle.load(open("probe_data_L2R_new_tool_tilt.p", "rb"))
     # stiffness_map_combined(data1, data2)
-    data = pickle.load(open("probe_data_L2R_old_tool_tilt.p", "rb"))
-    plot_rotations(data)
+    # data = pickle.load(open("probe_data_L2R_old_tool_tilt.p", "rb"))
+    # plot_rotations(data)
+    # data1 = pickle.load(open("probe_data_newdvrk.p", "rb"))
+    # data2 = pickle.load(open("probe_data_newdvrk_desired.p", "rb"))
+    # plot_rotations_combined(data1, data2)
+    data = pickle.load(open("probe_data_newdvrk_po0.03_s0.005_t0_d1.p", "rb"))
+    stiffness_map(data)
 

@@ -18,7 +18,7 @@ def test_raster_scan_tilted_L2R():
         palp.register_environment("env_registration.p")
 
     raw_input("Will now execute raster test. Press any key to continue")
-    palp.execute_raster_tilted(5, 1)
+    palp.execute_raster_tilted(0, 1)
 
 def test_raster_scan_tilted_R2L():
     palp = Palpation()
@@ -76,7 +76,7 @@ def test_point_probe_grid():
         palp.register_environment("env_registration.p")
 
     raw_input("Will now execute point probe grid test. Press any key to continue")
-    palp.execute_point_probe_grid(20, 40, 1)
+    palp.execute_point_probe_grid(10, 20, 1)
 
 def test_point_probe():
     palp = Palpation()
@@ -112,4 +112,4 @@ def test_register_environment():
     palp.register_environment("env_registration_shifted.p")
 
 if __name__ == '__main__':
-    test_raster_scan_tilted_L2R()
+    test_point_probe_grid()

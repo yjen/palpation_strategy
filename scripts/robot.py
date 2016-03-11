@@ -288,7 +288,9 @@ class robot:
 
         :returns: the desired position of the robot in cartesian space
         :rtype: `PyKDL.Frame <http://docs.ros.org/diamondback/api/kdl/html/python/geometric_primitives.html>`_"""
-        return self.__position_cartesian_desired
+        frame = self.__position_cartesian_desired
+        tfx_pose = tfx.pose(posemath.toMsg(frame))
+        return tfx_pose
 
     def get_desired_joint_position(self):
         """Gets the :ref:`desired joint position <currentvdesired>` of the robot in terms of joint space.
