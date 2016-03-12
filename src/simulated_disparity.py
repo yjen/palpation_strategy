@@ -136,6 +136,7 @@ def getStereoDepthMap(folder, shouldPlot=False):
         print("folder: " + str(folder))
     disparity = getDisparityMap(folder).astype(np.float32)/16
     if shouldPlot:
+        # plt.imsave(folder+ "/disparity.png", disparity)
         print(disparity.dtype)
     
     # plt.imsave(folder+ "/disparity.mat", disparity)
@@ -328,7 +329,10 @@ def getStereoDepthMap(folder, shouldPlot=False):
         # output_name = folder[(len('image_pairs/')):] + '_depth_grad_maps.mat'
         # savemat(output_name, {'height':x1_smoothed, 'ygrad':ygrad, 'xgrad':xgrad})
 
-    return x1_smoothed - calibration + 1.00000001
+    x1_smoothed = x1_smoothed - calibration + 1.00000001
+    # plt.imsave(folder+"/depth.png", x1_smoothed, vmin=0, vmax=20)
+
+    return x1_smoothed
 
 
 if __name__ == "__main__":

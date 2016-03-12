@@ -14,7 +14,7 @@ import numpy as np
 #sys.path.append("..")
 #import simulated_disparity
 import rospy
-from simUtils import *
+# from simUtils import *
 from utils import *
 from scipy import stats
 
@@ -81,6 +81,32 @@ def getExperimentalStiffnessMeas(sample_points):
     pts_publisher = rospy.Publisher("/gaussian_process/pts_to_probe", Points)
     x = sample_points[:, 0]
     y = sample_points[:, 1]
+
+    """CHANGE THIS"""
+
+    x = [0.001, 0.005, 0.02, 0.005, 0.02]
+    y = [0.005, 0.025, 0.01, 0.03, 0.04]
+
+    x2 = []
+    y2 = []
+
+    distance = 0.005
+    for i in range(len(x)-1):
+        x2.append(x[i])
+        y2.append(y[i])
+        dist = np.linalg.norm((x[i] - x[i+1], y[i] - y[i+1]))
+        numInterpolatedPoints = int(dist/distance)-1
+        deltaX = (x[i+1]-x[i])/(numInterpolatedPoints+1)
+        deltaY = (y[i+1]-y[i])/(numInterpolatedPoints+1)
+        for j in range(numInterpolatedPoints):
+            x2.append(x[i] + (j+1)*deltaX)
+            y2.append(y[i] + (j+1)*deltaY)
+    x2.append(x[-1])
+    y2.append(y[-1])
+    x = np.array(x2)
+    y = np.array(y2)
+
+
     p = Points()
     p.x, p.y = x, y
     rospy.sleep(0.2)
@@ -90,17 +116,41 @@ def getExperimentalStiffnessMeas(sample_points):
 
 
     while not flagSTOPSPINNING:
-        print("spin")
-        print("WHILE: " + str(flagSTOPSPINNING))
+        # print("spin")
+        # print("WHILE: " + str(flagSTOPSPINNING))
         rospy.sleep(0.1)
     print('done')
     stiffness = []
-    measurementsNOC/1000.0
+    measurementsNOC = np.array(measurementsNOC)/1000.0
     for i in range(len(measurementsNOC)):
         stiffness.append([x[i], y[i], measurementsNOC[i]])
-    return np.array(stiffness).T
+    return np.array(stiffness)
 
 
     # z needs to be read from robot
     # should return: np.array([xx, yy,
     #                 z]).T
+
+
+def getRecordedExperimentalStiffnessMeas(sample_points):
+    filename = '../scripts/dense_grid.p'
+    data_dict = pickle.load(open(filename, "rb"))
+    data = np.array(data_dict['data'])
+
+    data = np.array(data_dict['data'])
+
+    x, y, z = data[:,0], data[:,1], data[:,2]
+
+    from scipy.ndimage.filters import gaussian_filter
+    z = gaussian_filter(z.reshape(21,41), sigma=1)
+    z = z.reshape((21*41,))
+
+    from scipy.interpolate import Rbf
+    rbfi = Rbf(x, y, z)
+
+    stiffnesses = np.array([rbfi(a[0], a[1]) for a in sample_points])
+
+    output = np.zeros((len(sample_points), 3))
+    output[:,:2] = sample_points
+    output[:,2] = stiffnesses
+    return output
