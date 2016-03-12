@@ -8,6 +8,37 @@ from scipy.spatial.distance import cdist
 import GPy
 import pickle
 
+def evalerror(tumor,workspace,mean,variance,level):
+    # see: http://toblerity.org/shapely/manual.html
+    boundaryestimate = getLevelSet (workspace, mean, level)
+    # boundaryestimateupper = getLevelSet (workspace, mean+variance, level)
+    # boundaryestimatelower = getLevelSet (workspace, mean-variance, level)
+    # boundaryestimate= boundaryestimateupper
+    GroundTruth = np.vstack((tumor,tumor[0]))
+    GroundTruth=Polygon(GroundTruth)
+    # print GroundTruth
+    if len(boundaryestimate)>0:
+
+        boundaryestimate=Polygon(boundaryestimate)
+        # print boundaryestimate
+
+        #boundaryestimate=polybuff(boundaryestimate, minus=True)
+        # print boundaryestimate
+        #healthyremoved=boundaryestimate.difference(GroundTruth) # mislabeled data ()
+        #boundaryestimate.difference(GroundTruth) #mislabeled as tumor--extra that would be removed
+        #
+        boundaryestimate=boundaryestimate.buffer(-offset)
+        err=GroundTruth.symmetric_difference(boundaryestimate)
+        #tumorleft=GroundTruth.difference(boundaryestimate) # mislbaled as not-tumor--would be missed and should be cut out
+        #correct=boundaryestimate.intersection(GroundTruth) #correctly labeled as tumor
+        #healthyremoved=healthyremoved.area
+        err=err.area
+
+    else:
+        err=.100
+        tumorleft=.100
+    return err, 0
+
 
 def plotBelief (xx,yy,z):
 	#xx,yy -- matrix obtained from meshgrid
@@ -192,4 +223,54 @@ class Workspace(object):
         self.yy=self.x.T[1].reshape(self.res,self.res).T
         self.xlin=np.linspace(bounds[0][0], bounds[0][1],res)
         self.ylin=np.linspace(bounds[1][0], bounds[1][1],res)
+
+
+def plot_acq():
+    plot=True
+    dirname='compareacquisition'
+    phantomname = rantumor
+    AcFunction=MaxVar_GP
+    control='Max' 
+    bounds=((-.04,.04),(-.04,.04))
+    gridres = 200
+    workspace = Workspace(bounds,gridres)
+    level = .5 #pick something between min/max deflection
+
+    plot_data = None
+
+    ###############
+    #Initializing
+    ###############
+
+    means, sigmas, acqvals, measures, healthyremoved, tumorleft, num_iters,gpmodel = run_single_phase2_simulation(phantomname, dirname, AcFunction=UCB_GPIS, control='Max', plot=False, exp=False,iters=2)
+
+
+    AcFunctions=[UCB_GPIS_implicitlevel,MaxVar_plus_gradient,UCB_GP,UCB_GPIS,MaxVar_GP]
+    aqfunctionsnames=["UCB_GPIS_implicitlevel","MaxVar_plus_gradient","UCB_GP", "UCB_GPIS", "MaxVar_GP"]#, "random"]
+    for j in range (len(AcFunctions)): #(1,100,1)
+        AcFunction=AcFunctions[j]
+        
+        # evaluate selected aqcuisition function over the grid
+        if AcFunction==UCB_GPIS:
+            acquisition_par=.05
+        elif AcFunction==UCB_GP:
+            acquisition_par=.7
+        elif AcFunction==MaxVar_plus_gradient:
+            acquisition_par=.6
+        elif AcFunction==UCB_GPIS_implicitlevel:
+            acquisition_par=[.6,.5]
+        else:
+            acquisition_par=0
+        xgrid, AqcuisFunction = AcFunction(gpmodel, workspace, level=level, acquisition_par=acquisition_par)
+                # Plot everything
+        directory=dirname+'_' + aqfunctionsnames[j]
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+        if plot==True:
+            time.sleep(0.0001)
+            plt.pause(0.0001)  
+            plot_data = plot_beliefGPIS(phantomname, workspace, means[-1], sigmas[-1],
+                                      AqcuisFunction, measures[-1],
+                                      directory, [0,0],plot_data,level=level,
+                                      iternum=j, projection3D=False)
 
