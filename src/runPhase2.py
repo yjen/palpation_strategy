@@ -91,7 +91,7 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, con
         UCB_GP_acpar=.7 # set parameters for acquiisition functions: balancing mean vs. var in prioritizing search
         UCB_GPIS_acpar=.2
         UCB_GPIS_implicit_acpar=[.2,.9]
-        UCB_dGP_acpar=[7,.9]
+        UCB_dGP_acpar=[1,.9]
         # GP_params= [6,.005,.0001,7] # parameters for gaussian process update
         GP_params= [14,.003,.02,63] # parameters for gaussian process update
 
