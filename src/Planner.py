@@ -20,7 +20,6 @@ import ErgodicPlanner
 from itertools import combinations
 
 
-
 # def max_uncertainty(GPdata,numpoints=1):
 #     # return the x,y locations of the "numpoints" largest uncertainty values
 #     ind = np.argpartition(GPdata[3].flatten(),
@@ -53,29 +52,50 @@ from itertools import combinations
 ##########################
 #Acuisition functions
 ##########################
-def MaxVar_plus_gradient(model, workspace, level=0, x=None, acquisition_par=0,numpoints=1):
+
+
+
+def UCB_dGP(model, workspace, level=0, x=None, acquisition_par=[0,0],numpoints=1):
     """
     choose next sample points based on maximizing prior variance
     """
     #x = multigrid(bounds, res)
     mean, sigma = get_moments(model, workspace.x)     
-    meansq = mean.reshape(workspace.res,workspace.res)
-
-    grad = np.gradient(meansq)
-    dx,dy = grad
-    fd = np.sqrt((dx**2+dy**2))
+    fd= gradfd(mean,workspace)
     fd=fd/np.max(fd)
     fd[np.isinf(fd)]=0
 
-    buffx=.002*workspace.bounds[0][1]
-    buffy=.002*workspace.bounds[1][1]
+    buffx=.05*workspace.bounds[0][1]
+    buffy=.05*workspace.bounds[1][1]
 
-    # sigma[workspace.x[:,0]<buffx]=0
-    # sigma[workspace.x[:,1]<buffy]=0
-    # sigma[workspace.x[:,0]>workspace.bounds[0][1]-buffx]=0
-    # sigma[workspace.x[:,1]>workspace.bounds[1][1]-buffy]=0
-    f_acqu = 1*sigma.flatten()+acquisition_par*fd.flatten()
-    f_acqu=np.array([f_acqu]).T
+    fd=np.array([fd.flatten()]).T
+    fd=fd/fd.mean()
+    # lev=(fd.max()-fd.min())+fd.min()
+    # print lev
+    # print mean.shape
+    # print fd.shape
+
+    # implev=acquisition_par[1]*lev
+    # bound=getLevelSet (workspace, fd, implev)
+    #fd=fd.flatten()
+
+    # f_acqu = 1*sigma.flatten()+acquisition_par*fd.flatten()
+    # f_acqu=np.array([f_acqu]).T
+    # print bound.shape[0]
+    # if bound.shape[0]>0:
+        # sdf=abs(fd-level)
+        # sdf=-mean
+        # print -sdf.max()
+        # print sigma.mean()
+    f_acqu = fd +  acquisition_par[0]*sigma
+    f_acqu=abs(f_acqu)+abs(min(f_acqu)) 
+    f_acqu[workspace.x[:,0]<buffx]=0
+    f_acqu[workspace.x[:,1]<buffy]=0
+    f_acqu[workspace.x[:,0]>workspace.bounds[0][1]-buffx]=0
+    f_acqu[workspace.x[:,1]>workspace.bounds[1][1]-buffy]=0
+    # else: 
+    #     f_acqu=sigma
+
     return workspace.x, f_acqu  # note: returns negative value for posterior minimization
 
 def MaxVar_GP(model, workspace, level=0,x=None, acquisition_par=0):
@@ -101,6 +121,8 @@ def UCB_GP(model, workspace, level=0, x=None, acquisition_par=.8  ):
     .8 for ph 1
     Upper Confidence Band
     """
+    # print acquisition_par
+    # print level
     if x==None:
         x=workspace.x
     #x = multigrid(bounds, res)
@@ -147,9 +169,11 @@ def UCB_GPIS(model, workspace, level=0, x=None, acquisition_par=.1 ):
     """
     x=workspace.x
     #x = multigrid(bounds, res)
-
+    # print 'ac=',acquisition_par
     mean, sigma = get_moments(model, x)  
     bound=getLevelSet (workspace, mean, level)
+    # bound=bound.flatten()
+    # print 'bnd=', bound
     if bound.shape[0]>0:
         sdf=abs(mean-level)
         f_acqu = - sdf +  acquisition_par*sigma
@@ -164,13 +188,20 @@ def UCB_GPIS_implicitlevel(model, workspace, level=0, x=None, acquisition_par=[.
     Upper Confidence Band
     """
     x=workspace.x
+    
     #x = multigrid(bounds, res)
-
+    # print 'run'
+    # print acquisition_par
     mean, sigma = get_moments(model, x)  
-    implev=acquisition_par[1]*(mean.max()-mean.min())+mean.min()
+    lev=(mean.max()-mean.min())+mean.min()
+    # print lev
+    implev=acquisition_par[1]*lev
     bound=getLevelSet (workspace, mean, implev)
+    # bound=bound.flatten(axis=0)
     if bound.shape[0]>0:
         sdf=abs(mean-level)
+        # print -sdf.max()
+        # print sigma.mean()
         f_acqu = - sdf +  acquisition_par[0]*sigma
         f_acqu=f_acqu+abs(min(f_acqu)) 
     else: 
@@ -283,7 +314,7 @@ def ergAcquisition(workspace, AcquisitionFunctionVals, LQ, xinit=[.2,.3], T=10, 
     return newpts #newpts[0::newlen]
 
     ## ---- Predictive batch optimization
-def batch_optimization(model,workspace,aqfunction, n_inbatch, level=0, acquisition_par=.1):   
+def batch_optimization(model,workspace,aqfunction, n_inbatch, xinit, GP_params, level=0, acquisition_par=.1):   
     '''
     Computes batch optimization using the predictive mean to obtain new batch elements
     :param acquisition: acquisition function in which the batch selection is based
@@ -305,43 +336,20 @@ def batch_optimization(model,workspace,aqfunction, n_inbatch, level=0, acquisiti
     X_new = maxAcquisition(workspace, AcquisitionFunctionVals, numpoints=1)
     #X_new = optimize_acquisition(acquisition, d_acquisition, bounds, acqu_optimize_restarts, acqu_optimize_method, model, X_batch=None, L=None, Min=None)
     X_batch = reshape(X_new,input_dim)
-    k = 1
-    while k < n_inbatch:
-        X = np.vstack((X, reshape(X_new,input_dim))) 
-        Y = np.vstack((Y, model.predict(reshape(X_new, input_dim))[0]))
-        model = update_GP(np.hstack((X, Y)))
-        xgrid,AcquisitionFunctionVals = aqfunction(model, workspace, level=level, x=None, acquisition_par=acquisition_par )
-        X_new = maxAcquisition(workspace, AcquisitionFunctionVals, numpoints=1)
-        X_batch = np.vstack((X_batch,X_new))
-        k+=1 
 
-    # k = 1
-    # while k < n_inbatch:
-    #     X = np.vstack((X, reshape(X_new,input_dim)))       # update the sample within the batch
-    #     Y = np.vstack((Y, model.predict(reshape(X_new, input_dim))[0]))
-       
-    #     try: # this exception is included in case two equal points are selected in a batch, in this case the method stops
-    #         batchBO = GPyOpt.methods.BayesianOptimization(f=0, 
-    #                                     bounds= bounds, 
-    #                                     X=X, 
-    #                                     Y=Y, 
-    #                                     kernel = kernel,
-    #                                     acquisition = aqfunction, 
-    #                                     acquisition_par = acquisition_par)
-    #     except np.linalg.linalg.LinAlgError:
-    #         print 'Optimization stopped. Two equal points selected.'
-    #         break        
-
-    #     batchBO.run_optimization(max_iter = 0, 
-    #                                 n_inbatch=1, 
-    #                                 acqu_optimize_method = acqu_optimize_method,  
-    #                                 acqu_optimize_restarts = acqu_optimize_restarts, 
-    #                                 eps = 1e-6,verbose = False)
+    if n_inbatch>1:
         
-    #     X_new = batchBO.suggested_sample
-    #     X_batch = np.vstack((X_batch,X_new))
-    #     k+=1    
-    X_batch=solve_tsp_dynamic(X_batch)
+        k = 1
+        while k < n_inbatch:
+            X = np.vstack((X, reshape(X_new,input_dim))) 
+            Y = np.vstack((Y, model.predict(reshape(X_new, input_dim))[0]))
+            model = update_GP(np.hstack((X, Y)),params=GP_params)
+            xgrid,AcquisitionFunctionVals = aqfunction(model, workspace, level=level, x=None, acquisition_par=acquisition_par )
+            X_new = maxAcquisition(workspace, AcquisitionFunctionVals, numpoints=1)
+            X_batch = np.vstack((X_batch,X_new))
+            k+=1 
+        X_batch=np.vstack((xinit,X_batch))
+        X_batch=solve_tsp_dynamic(X_batch)
     # if interpolate==True:
     #     x = np.linspace(0, 10, num=11, endpoint=True)
     #     y = np.cos(-x**2/9.0)

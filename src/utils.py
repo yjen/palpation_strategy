@@ -8,36 +8,36 @@ from scipy.spatial.distance import cdist
 import GPy
 import pickle
 
-def evalerror(tumor,workspace,mean,variance,level):
-    # see: http://toblerity.org/shapely/manual.html
-    boundaryestimate = getLevelSet (workspace, mean, level)
-    # boundaryestimateupper = getLevelSet (workspace, mean+variance, level)
-    # boundaryestimatelower = getLevelSet (workspace, mean-variance, level)
-    # boundaryestimate= boundaryestimateupper
-    GroundTruth = np.vstack((tumor,tumor[0]))
-    GroundTruth=Polygon(GroundTruth)
-    # print GroundTruth
-    if len(boundaryestimate)>0:
+# def evalerror(tumor,workspace,mean,variance,level):
+#     # see: http://toblerity.org/shapely/manual.html
+#     boundaryestimate = getLevelSet (workspace, mean, level)
+#     # boundaryestimateupper = getLevelSet (workspace, mean+variance, level)
+#     # boundaryestimatelower = getLevelSet (workspace, mean-variance, level)
+#     # boundaryestimate= boundaryestimateupper
+#     GroundTruth = np.vstack((tumor,tumor[0]))
+#     GroundTruth=Polygon(GroundTruth)
+#     # print GroundTruth
+#     if len(boundaryestimate)>0:
 
-        boundaryestimate=Polygon(boundaryestimate)
-        # print boundaryestimate
+#         boundaryestimate=Polygon(boundaryestimate)
+#         # print boundaryestimate
 
-        #boundaryestimate=polybuff(boundaryestimate, minus=True)
-        # print boundaryestimate
-        #healthyremoved=boundaryestimate.difference(GroundTruth) # mislabeled data ()
-        #boundaryestimate.difference(GroundTruth) #mislabeled as tumor--extra that would be removed
-        #
-        boundaryestimate=boundaryestimate.buffer(-offset)
-        err=GroundTruth.symmetric_difference(boundaryestimate)
-        #tumorleft=GroundTruth.difference(boundaryestimate) # mislbaled as not-tumor--would be missed and should be cut out
-        #correct=boundaryestimate.intersection(GroundTruth) #correctly labeled as tumor
-        #healthyremoved=healthyremoved.area
-        err=err.area
+#         #boundaryestimate=polybuff(boundaryestimate, minus=True)
+#         # print boundaryestimate
+#         #healthyremoved=boundaryestimate.difference(GroundTruth) # mislabeled data ()
+#         #boundaryestimate.difference(GroundTruth) #mislabeled as tumor--extra that would be removed
+#         #
+#         boundaryestimate=boundaryestimate.buffer(-offset)
+#         err=GroundTruth.symmetric_difference(boundaryestimate)
+#         #tumorleft=GroundTruth.difference(boundaryestimate) # mislbaled as not-tumor--would be missed and should be cut out
+#         #correct=boundaryestimate.intersection(GroundTruth) #correctly labeled as tumor
+#         #healthyremoved=healthyremoved.area
+#         err=err.area
 
-    else:
-        err=.100
-        tumorleft=.100
-    return err, 0
+#     else:
+#         err=.100
+#         tumorleft=.100
+#     return err, 0
 
 
 def plotBelief (xx,yy,z):
@@ -273,4 +273,20 @@ def plot_acq():
                                       AqcuisFunction, measures[-1],
                                       directory, [0,0],plot_data,level=level,
                                       iternum=j, projection3D=False)
+def gradfd(mean,workspace):
+    meansq = mean.reshape(workspace.res,workspace.res)
 
+    grad = np.gradient(meansq)
+    dx,dy = grad
+    fd = np.sqrt((dx**2+dy**2))
+
+    # buffx=.02*workspace.bounds[0][1]
+    # buffy=.02*workspace.bounds[1][1]
+    # fd=fd/np.max(fd)
+    # fd[np.isinf(fd)]=0
+    # fd=np.array([fd.flatten()]).T
+    # fd[workspace.x[:,0]<buffx]=0
+    # fd[workspace.x[:,1]<buffy]=0
+    # fd[workspace.x[:,0]>workspace.bounds[0][1]-buffx]=0
+    # fd[workspace.x[:,1]>workspace.bounds[1][1]-buffy]=0
+    return fd

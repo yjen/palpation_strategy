@@ -1,13 +1,14 @@
 #!/usr/bin/env python
 import sys, os, time, IPython
 sys.path.append('../scripts')
-from shapely.topology import *
-import numpy as np
+# from shapely.topology import *
+# import numpy as np
 import matplotlib.pyplot as plt
-from runPhase1 import *
-from Planner import *
-from simUtils import *
+from runPhase2 import *
+# from Planner import *
+# from simUtils import *
 from model_fit import *
+from plotscripts import *
 # from figures import SIZE, BLUE, GRAY
 # from shapely.geometry import Point
 # from descartes import PolygonPatch
@@ -18,151 +19,32 @@ from model_fit import *
 # model=fit_measmodel(xdata,zdata)
 # mod=plot_model(data1,model,scale=True)
 # print mod
-def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, control='Max', plot=False, exp=False,iters=20):
-    if exp==True: 
-        from expUtils import *
-        bounds=calculate_boundary("../scripts/env_registration.p")
-    else:   
-        bounds=((-.04,.04),(-.04,.04))
 
-    # grid resolution: should be same for plots, ergodic stuff
-    gridres = 200
 
-    # initialize workspace object
-    workspace = Workspace(bounds,gridres)
-    print workspace.bounds
-    # plotSimulatedStiffnessMeas(phantomname, workspace, ypos=0, sensornoise = .05)
 
-    # set level set to look for-- this should correspond to something, max FI?
-    level = .5 #pick something between min/max deflection
+def save_table(table, name):
+    f = open(name + ".csv", 'wb')
+    # header
+    f.write(",,UCB_GPIS_implicitlevel,UCB_GBIS,UCB_GB,MaxVar_GP\n") #MaxVar_plus_gradient
+    # data in table
+    # f.write("flat,lam,{},{}\n".format(table[0][0], table[0][1]))
+    f.write(",tumor1: iterations,{},{},{}\n".format(table[0][0], table[0][1],table[0][2],table[0][3]))#,table[0][4]))
+    f.write(",tumor1: healthy tissue removed,{},{},{}\n".format(table[1][0], table[1][1],table[1][2],table[1][3]))#,table[1][4]))
+    f.write(",tumor1: tumor left behind,{},{},{}\n".format(table[2][0], table[2][1],table[2][2],table[2][3]))#,table[2][4]))
 
-    plot_data = None
-    means = []
-    sigmas = []
-    acqvals = []
-    healthyremoveds=[]
-    tumorlefts=[]
-    sampled_points = []
-    measures = []
+    f.write(",tumor2: iterations,{},{},{}\n".format(table[3][0], table[3][1],table[3][2],table[3][3]))#,table[3][4]))
+    f.write(",tumor2: healthy tissue removed,{},{},{}\n".format(table[4][0], table[4][1],table[4][2],table[4][3]))#,table[4][4]))
+    f.write(",tumor2: tumor left behind,{},{},{}\n".format(table[5][0], table[5][1],table[5][2],table[5][3]))#,table[5][4]))
 
-    directory=dirname
-    if not os.path.exists(directory):
-        os.makedirs(directory)
+    # f.write(",st,{},{}\n".format(table[0][0], table[0][1]))
 
-    ###############
-    #Initializing
-    ###############
-    next_samples_points = randompoints(bounds, 5) #randompoints(bounds, 100)
+    # f.write("S,lam,{},{}\n".format(table[1][0], table[1][1]))
+    # f.write(",text,{},{}\n".format(table[1][0], table[1][1]))
+    # f.write(",spec,{},{}\n".format(table[1][0], table[1][1]))
+    # f.write(",st,{},{}\n".format(table[1][0], table[1][1]))
 
-    # collect initial meausrements
-    if exp==True: 
-        meas = getRecordedExperimentalStiffnessMeas(next_samples_points)
-    else:
-        
-        meas = getSimulateStiffnessMeas(phantomname, next_samples_points)
-    measnew=meas
-
-    for j in range (iters): #(1,100,1)
-
-        # print "iteration = ", j
-        # collect measurements
-
-        # update the GP model    
-        gpmodel = update_GP(meas)
-
-        # use GP to predict mean, sigma on a grid
-        mean, sigma = get_moments(gpmodel, workspace.x)
-
-        # evaluate selected aqcuisition function over the grid
-        if AcFunction==UCB_GPIS:
-            acquisition_par=.05
-        elif AcFunction==UCB_GP:
-            acquisition_par=.7
-        elif AcFunction==MaxVar_plus_gradient:
-            acquisition_par=.6
-        elif AcFunction==UCB_GPIS_implicitlevel:
-            if exp==True:
-                acquisition_par=[.1,.5]
-            else:
-                acquisition_par=[.6,.5]
-                
-        else:
-            acquisition_par=0
-        xgrid, AqcuisFunction = AcFunction(gpmodel, workspace, level=level, acquisition_par=acquisition_par)
-
-        acqvals.append(AqcuisFunction)
-        means.append(mean)
-        sigmas.append(sigma)
-        measures.append(meas)
-        healthyremoved,tumorleft= evalerror(phantomname, workspace, mean,sigma,level)
-        healthyremoveds.append(healthyremoved)
-        tumorlefts.append(tumorleft)
-
-        # select next sampling points. for now, just use Mac--dMax and Erg need work.
-        bnd=getLevelSet (workspace, mean, level)
-        # print 'max'  
-        # if 
-        # if len(bnd)==0:
-        #     next_samples_points = randompoints(bounds, 1)
-
-        if control=='Max':         
-            # print 'max'   
-            #     next_samples_points = maxAcquisition(workspace, AqcuisFunction,
-            #                                             numpoints=1)
-            # elif control=='batch'
-            next_samples_points = batch_optimization(gpmodel, workspace, AcFunction, 10, level=level, acquisition_par=acquisition_par)
-        # elif control=='dMax':
-        #     next_samples_points = dmaxAcquisition(gpmodel, workspace, AcFunction, meas[-1][0:2],
-        #                                         numpoints=10, level=level)
-        else:
-            next_samples_points=randompoints(bounds,1)
-            print 'RANDOM'
-        
-        # Plot everything
-        if plot==True:
-            time.sleep(0.0001)
-            plt.pause(0.0001)  
-            plot_data = plot_beliefGPIS(phantomname, workspace, mean, sigma,
-                                      AqcuisFunction, measnew,
-                                      directory, [healthyremoveds,tumorlefts],plot_data,level=level,
-                                      iternum=j, projection3D=False)
-
-        if exp==True:
-            measnew = getRecordedExperimentalStiffnessMeas(next_samples_points)#np.zeros(next_samples_points.shape)
-
-        else:
-            measnew = getSimulateStiffnessMeas(phantomname, next_samples_points)
-
-        #   concatenate measurements to prior measurements
-        meas = np.append(meas,measnew,axis=0)
-
-    # plt.show(block=False)
-    return means, sigmas, acqvals, measures, healthyremoveds, tumorlefts, j, gpmodel
-
-def evalerror(tumor,workspace,mean,variance,level):
-    # see: http://toblerity.org/shapely/manual.html
-    boundaryestimate = getLevelSet (workspace, mean, level)
-    boundaryestimateupper = getLevelSet (workspace, mean+variance, level)
-    boundaryestimatelower = getLevelSet (workspace, mean-variance, level)
-    #boundaryestimate=boundaryestimateupper
-    GroundTruth = np.vstack((tumor,tumor[0]))
-    GroundTruth = Polygon(GroundTruth)
-    # print GroundTruth
-    if len(boundaryestimate)>0:
-        try: 
-            boundaryestimate=Polygon(boundaryestimate)
-            boundaryestimate=boundaryestimate.buffer(-offset)
-            err=GroundTruth.symmetric_difference(boundaryestimate)
-            err=err.area
-
-        except TopologicalError:
-            err=.100
-            tumorleft=.100
-    else:
-        err=.100
-        tumorleft=.100
-    return err, 0
-
+    f.close()
+    return
 
 def save_data(arr, dirname, name):
     directory=dirname
@@ -190,84 +72,6 @@ aqfunctionsnames = ["UCB_GPIS_implicitlevel","UCB_GPIS","UCB_GP", "MaxVar_GP"]#,
 
 controls =["Max"]
 
-def save_table(table, name):
-    f = open(name + ".csv", 'wb')
-    # header
-    f.write(",,UCB_GPIS_implicitlevel,UCB_GBIS,UCB_GB,MaxVar_GP\n") #MaxVar_plus_gradient
-    # data in table
-    # f.write("flat,lam,{},{}\n".format(table[0][0], table[0][1]))
-    f.write(",tumor1: iterations,{},{},{}\n".format(table[0][0], table[0][1],table[0][2],table[0][3]))#,table[0][4]))
-    f.write(",tumor1: healthy tissue removed,{},{},{}\n".format(table[1][0], table[1][1],table[1][2],table[1][3]))#,table[1][4]))
-    f.write(",tumor1: tumor left behind,{},{},{}\n".format(table[2][0], table[2][1],table[2][2],table[2][3]))#,table[2][4]))
-
-    f.write(",tumor2: iterations,{},{},{}\n".format(table[3][0], table[3][1],table[3][2],table[3][3]))#,table[3][4]))
-    f.write(",tumor2: healthy tissue removed,{},{},{}\n".format(table[4][0], table[4][1],table[4][2],table[4][3]))#,table[4][4]))
-    f.write(",tumor2: tumor left behind,{},{},{}\n".format(table[5][0], table[5][1],table[5][2],table[5][3]))#,table[5][4]))
-
-    # f.write(",st,{},{}\n".format(table[0][0], table[0][1]))
-
-    # f.write("S,lam,{},{}\n".format(table[1][0], table[1][1]))
-    # f.write(",text,{},{}\n".format(table[1][0], table[1][1]))
-    # f.write(",spec,{},{}\n".format(table[1][0], table[1][1]))
-    # f.write(",st,{},{}\n".format(table[1][0], table[1][1]))
-
-    f.close()
-    return
-
-
-def plot_error(errorsrem,errorsleft,labels):    
-    #for e in errors:
-    #         plt.plot(e)
-    fig = plt.figure(figsize=(3, 9))
-    ax1 = fig.add_subplot(311)
-    ax2 = fig.add_subplot(312)
-    ax3 = fig.add_subplot(313)
-    ax=[ax1,ax2,ax3]
-    tum1left = errorsleft[0]
-    tum2left = errorsleft[1]
-    tum1rem = errorsrem[0]
-    tum2rem = errorsrem[1]
-    colors = ['blue','red','green','orange','magenta']
-
-    # for i in range(0,tum1left.shape[0]):
-    #     for j in range(0,tum1left.shape[1]):
-    #         expl=tum1left[i][j]
-    #         expl=np.mean(expl,axis=0)
-    #         #for e in range(0,tum1left.shape[2]):
-    #         #    exp = tum1left[i][j][e]
-    #         #    print exp.shape
-    #         ax[0].plot(expl,color=colors[i])
-    for i in range(0,tum1rem.shape[0]):
-        for j in range(0,tum1rem.shape[1]):
-            expl=tum1left[i][j]
-            expl=np.mean(expl,axis=0)
-
-            expr=tum1rem[i][j]
-            expr=np.mean(expr,axis=0)
-            #or e in range(0,tum1rem.shape[2]):
-            #    exp = tum1rem[i][j][e]
-            ax[0].plot(expl,color=colors[i])
-            ax[1].plot(expr,color=colors[i])
-            ax[2].plot(expr+expl,color=colors[i])
-    ym=.08*.08
-    ym=.001
-    ax[0].set_ylim(.00, ym)
-    ax[0].set_title('error_leftover')
-    ax[1].set_ylim(.00, ym)
-    ax[1].set_title('error_removed')
-    ax[2].set_ylim(.00, ym)
-    ax[2].set_title('error_leftover+error_removed')
-    plt.xlabel("Iterations")
-    #ym=.08*.08
-    #plt.ylim(.00, ym)
-
-    # plt.xlim(0, 100)
-    plt.ylabel(" Error")
-    plt.legend(labels.flatten(), loc='upper right')
-    # plt.savefig("image_pairs/"+surface_name+'/'+name)
-    # plt.close()
-    plt.show()
-    return
 
 
 def run_phase2_full():
@@ -299,7 +103,8 @@ def run_phase2_full():
                     start = time.time()
                     dirname = str(i) + '_' + aqfunctionsnames[j] + '_' + cont
 
-                    means, sigmas, acqvals, measures, healthyremoved, tumorleft, num_iters, gpmodel = run_single_phase2_simulation(tumor, dirname, AcFunction=acq, control=cont, plot=True, exp=False)
+                    means, sigmas, acqvals, measures, healthyremoved, tumorleft, num_iters, gpmodel = run_single_phase2_simulation(
+                        tumor, dirname, AcFunction=acq, control=cont, plot=True, mode='RecordedExp')
                     plt.close() 
                     end = time.time()
                     time_elapsed = end - start # in seconds
@@ -334,6 +139,8 @@ def run_phase2_full():
 
 
 if __name__ == "__main__":
-    outleft,outrem,aclabellist=run_phase2_full()
-    plot_error(outrem,outleft,aclabellist)
+    dirname='tt'
+    run_single_phase2_simulation(rantumor, dirname, AcFunction=UCB_GPIS, control='Max', plot=True, smode='Sim',iters=20)
+    # outleft,outrem,aclabellist=run_phase2_full()
+    # plot_ph2_error(outrem,outleft,aclabellist)
 
