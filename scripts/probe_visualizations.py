@@ -294,5 +294,5 @@ if __name__ == '__main__':
     # data1 = pickle.load(open("probe_data_newdvrk.p", "rb"))
     # data2 = pickle.load(open("probe_data_newdvrk_desired.p", "rb"))
     # plot_rotations_combined(data1, data2)
-    data_dict = pickle.load(open("dense_grid.p", "rb"))
-    plot_interpolated_recorded_data(data_dict)
+    data_dict = pickle.load(open("probe_data.p", "rb"))
+    stiffness_map(data_dict)

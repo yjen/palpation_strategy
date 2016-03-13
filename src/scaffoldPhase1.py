@@ -69,7 +69,7 @@ def run_phase1_full():
                 for l, method in enumerate(methods):
                     print "Running " + surf+text + " "+ method + ":"
                     start = time.time()
-                    disparityMeas, means, sigmas, sampled_points, measures, errors, num_iters = run_single_phase1_experiment(surf+text, method, disparityMeas, False, stops[i][j], shouldPlot=True)
+                    disparityMeas, means, sigmas, sampled_points, measures, errors, num_iters = run_single_phase1_experiment(surf+text, method, disparityMeas, False, stops[i][j], shouldPlot=False)
                     end = time.time()
                     time_elapsed = end - start # in seconds
                     # plot or save/record everything
