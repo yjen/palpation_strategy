@@ -18,26 +18,32 @@ import rospy
 from utils import *
 from scipy import stats
 
-def calculate_boundary(filename):
-    data_dict = None
-    try:
-        data_dict = pickle.load(open(filename, "rb"))
-    except Exception as e:
-        print "Exception: ", e
-        rospy.logerror("Error: %s", e)
-        rospy.logerror("Failed to load saved tissue registration.")
+# def calculate_boundary(filename):
+#     data_dict = None
+#     try:
+#         data_dict = pickle.load(open(filename, "rb"))
+#     except Exception as e:
+#         print "Exception: ", e
+#         rospy.logerror("Error: %s", e)
+#         rospy.logerror("Failed to load saved tissue registration.")
 
-    # compute tissue frame
-    nw = data_dict['nw']
-    ne = data_dict['ne']
-    sw = data_dict['sw']
-    nw_position = np.hstack(np.array(nw.position))
-    ne_position = np.hstack(np.array(ne.position))
-    sw_position = np.hstack(np.array(sw.position))
-    u = sw_position - nw_position
-    v = ne_position - nw_position
-    tissue_length = np.linalg.norm(u)
-    tissue_width = np.linalg.norm(v)
+#     # compute tissue frame
+#     nw = data_dict['nw']
+#     ne = data_dict['ne']
+#     sw = data_dict['sw']
+#     nw_position = np.hstack(np.array(nw.position))
+#     ne_position = np.hstack(np.array(ne.position))
+#     sw_position = np.hstack(np.array(sw.position))
+#     u = sw_position - nw_position
+#     v = ne_position - nw_position
+#     tissue_length = np.linalg.norm(u)
+#     tissue_width = np.linalg.norm(v)
+#     return ((0, tissue_length), (0, tissue_width))
+
+# note we are manually defining the tissue size
+def calculate_boundary(filename):
+    tissue_length = 0.025
+    tissue_width = 0.05
     return ((0, tissue_length), (0, tissue_width))
 
 

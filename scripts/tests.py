@@ -135,4 +135,4 @@ def execute_record_testing_grid_data():
 
 
 if __name__ == '__main__':
-    test_raster_scan_reverse()
+    test_point_probe()
