@@ -523,7 +523,7 @@ class Palpation():
 
     def execute_raster_reverse(self):
         """ Linearly interpolates through a series of palpation points """
-        steps = 5
+        steps = 10
         poses = []
 
         origin = np.hstack(np.array(self.tissue_pose.position))
@@ -543,11 +543,11 @@ class Palpation():
         for i in range(steps):
             offset = np.dot(frame, np.array([i*dy, self.tissue_width, z+0.02]))
             pose = tfx.pose(origin+offset, rotation_matrix, frame=self.tissue_pose.frame)
-            self.psm1.move_cartesian_frame_linear_interpolation(pose, 0.01, False)
+            self.psm1.move_cartesian_frame_linear_interpolation(pose, 0.03, False)
 
             offset = np.dot(frame, np.array([i*dy, self.tissue_width, z]))
             pose = tfx.pose(origin+offset, rotation_matrix, frame=self.tissue_pose.frame)
-            self.psm1.move_cartesian_frame_linear_interpolation(pose, 0.005, False)
+            self.psm1.move_cartesian_frame_linear_interpolation(pose, 0.01, False)
 
             # start recording data
             rospy.sleep(0.2)
@@ -555,7 +555,7 @@ class Palpation():
 
             offset = np.dot(frame, np.array([i*dy, 0.0, z]))
             pose = tfx.pose(origin+offset, rotation_matrix, frame=self.tissue_pose.frame)
-            self.psm1.move_cartesian_frame_linear_interpolation(pose, 0.01, False)
+            self.psm1.move_cartesian_frame_linear_interpolation(pose, 0.005, False)
 
             # pause recording data
             rospy.sleep(0.2)
@@ -563,7 +563,7 @@ class Palpation():
 
             offset = np.dot(frame, np.array([i*dy, 0.0, z+0.02]))
             pose = tfx.pose(origin+offset, rotation_matrix, frame=self.tissue_pose.frame)
-            self.psm1.move_cartesian_frame_linear_interpolation(pose, 0.03, False)
+            self.psm1.move_cartesian_frame_linear_interpolation(pose, 0.01, False)
 
 
 
