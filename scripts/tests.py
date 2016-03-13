@@ -41,6 +41,16 @@ def test_raster_scan():
     raw_input("Will now execute raster test. Press any key to continue")
     palp.execute_raster()
 
+def test_raster_scan_reverse():
+    palp = Palpation()
+    try:
+        palp.load_environment_registration("env_registration.p")
+    except Exception as e:
+        palp.register_environment("env_registration.p")
+
+    raw_input("Will now execute raster test. Press any key to continue")
+    palp.execute_raster_reverse()
+
 
 def test_raster_single_row():
     """ Rasters a single row on the tissue 100 times """
@@ -52,7 +62,7 @@ def test_raster_single_row():
         palp.register_environment("env_registration.p")
 
     raw_input("Will now execute raster single row test. Press any key to continue")
-    palp.execute_raster_single_row(100, False)
+    palp.execute_raster_single_row(30, False)
 
 def test_raster_single_row_reverse():
     """ Rasters a single row on the tissue 30 times in the reverse direction"""
@@ -125,4 +135,4 @@ def execute_record_testing_grid_data():
 
 
 if __name__ == '__main__':
-    test_raster_scan()
+    test_raster_scan_reverse()
