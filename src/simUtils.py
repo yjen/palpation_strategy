@@ -10,11 +10,13 @@ from matplotlib import cm
 from utils import *
 from scipy import interpolate
 from matplotlib import _cntr as cntr #to get polygon of getLevelSet
-from shapely.geometry import asShape, Point, Polygon #to calculate point-polygon distances
-
+from shapely.geometry import asShape, Point, Polygon, LineString, MultiPoint#to calculate point-polygon distances
+from shapely.ops import cascaded_union
+import numpy as np
 
 from simulated_disparity import getStereoDepthMap, getObservationModel, getInterpolatedObservationModel
 
+from descartes import PolygonPatch
 
 
 #######################################
@@ -37,6 +39,32 @@ thintumor=np.array([[2.25,0.25],[2.75,2.25],[2.75,2.75],[2.25,2.75]])
 rantumor=.02*np.array([[2.25,0.75],[3.25,1.25],[2.75,2.25],[2.75,2.75],[2.25,2.75],[2.,1.25]])-.04
 
 phantomsquareGT=np.array([[.001,.019],[.02,.019],[.02,.03],[.001,.03]])
+
+# make circular tumor
+rad=.0125
+loc=[0,0]
+simCircle = Point(loc[0],loc[1]).buffer(rad)
+simCircle = np.array(simCircle.exterior.coords)
+rad=.0125
+loc=[0.0229845803642/2.0,.035]
+expCircle = Point(loc[0],loc[1]).buffer(rad)
+expCircle = np.array(expCircle.exterior.coords)
+
+# create horseshow
+rad=.005
+loc=[0.0229845803642/3.0,.035]
+circle = Point(loc[0],loc[1]).buffer(rad)
+circle = np.array(circle.exterior.coords)
+semicircle=circle[circle[:,0]>=loc[0]]
+semi=semicircle[semicircle[:,1].argsort()]
+line = LineString(semi)#LineString([(0, 0), (1, 1), (0, 2), (2, 2), (3, 1), (1, 0)])
+horseshoe = LineString(semi).buffer(.0025)
+horseshoe = np.array(horseshoe.exterior.coords)
+
+
+othertumor = LineString(.008*np.array([(0, 0), (1, 1), (0, 2), (2, 2), (3, 1), (1, 0)]))
+othertumor = othertumor.buffer(.005)
+othertumor = np.array(othertumor.exterior.coords)
 
 def polybuff(tum,minus=False):
     if minus==True:

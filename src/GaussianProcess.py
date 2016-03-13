@@ -51,7 +51,7 @@ def update_GP_ph1(measurements,method='nonhet'):
         m = GPy.models.GPRegression(X,Y,kern)
         m.Gaussian_noise.fix(.4)
         #m.optimize_restarts(num_restarts = 5)
-    #m.optimize()
+    # m.optimize()
     # print m
     # xgrid = np.vstack([self.x1.reshape(self.x1.size),
     #                    self.x2.reshape(self.x2.size)]).T
@@ -156,7 +156,7 @@ def predict_GP(m, pts):
 def calcCurveErr(workspace,poly,mean,sigma,level):
     # see: http://toblerity.org/shapely/manual.html
     boundaryestimate = getLevelSet (workspace, mean, level)
-    GroundTruth = np.vstack((poly,poly[0]))
+    # GroundTruth = np.vstack((poly,poly[0]))
     GroundTruth=Polygon(GroundTruth)
     boundaryestimate=Polygon(boundaryestimate)
 
