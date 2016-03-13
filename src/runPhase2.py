@@ -18,27 +18,57 @@ import pickle
 # Phase 2
 ###############################
 def evalerror_ph2(tumor,workspace,mean,variance,level):
-    # see: http://toblerity.org/shapely/manual.html
-    boundaryestimate = getLevelSet (workspace, mean, level)
-    boundaryestimateupper = getLevelSet (workspace, mean+variance, level)
-    boundaryestimatelower = getLevelSet (workspace, mean-variance, level)
-    #boundaryestimate=boundaryestimateupper
     GroundTruth = np.vstack((tumor,tumor[0]))
     GroundTruth = Polygon(GroundTruth)
-    # print GroundTruth
-    if len(boundaryestimate)>3:
-        try: 
-            boundaryestimate=Polygon(boundaryestimate)
-            boundaryestimate=boundaryestimate.buffer(-offset)
-            err=GroundTruth.symmetric_difference(boundaryestimate)
-            err=err.area
+    # see: http://toblerity.org/shapely/manual.html
+    boundaryestimate = getLevelSet (workspace, mean, level)
+    offsetboundary=[]
 
-        except TopologicalError:
-            err=.100
-            tumorleft=.100
+    for i in range(0,boundaryestimate.shape[0]):
+        bnd = boundaryestimate[i]
+        if bnd.shape[0]>3:
+            # data[4].plot(bnd[:,0], bnd[:,1], '-',color='k',
+            #            linewidth=1, solid_capstyle='round', zorder=2)
+            # for bn in bnd:
+            bnd=Polygon(bnd)
+            bnd=bnd.buffer(-offset)
+            try:
+                bnd=np.array(bnd.exterior.coords)
+                # data[4].plot(bnd.T[0], bnd.T[1], '-',color='r',
+                #     linewidth=1, solid_capstyle='round', zorder=2)
+            except AttributeError:
+                 bnd=[]
+            offsetboundary.append(bnd)
+    
+    if len(offsetboundary)>0:
+        err=0
+        for b in offsetboundary:
+            if len(b)>3:
+                bn=Polygon(b)
+                c1=GroundTruth.symmetric_difference(bn)
+                if c1.geom_type == 'Polygon':
+                    err = c1.area
+                elif c1.geom_type == 'MultiPolygon':
+                    for p in c1:
+                        err=err+p.area
+                    # patchp = PolygonPatch(p, fc='red', ec='red', alpha=0.5, zorder=2)
+                    #     data[4].add_patch(patchp)    
     else:
-        err=.100
-        tumorleft=.100
+        err=(workspace.bounds[0][1]-workspace.bounds[0][0])*(workspace.bounds[1][1]-workspace.bounds[1][0])
+    # print GroundTruth
+    # if len(boundaryestimate)>3:
+    #     try: 
+    #         boundaryestimate=Polygon(boundaryestimate)
+    #         boundaryestimate=boundaryestimate.buffer(-offset)
+    #         err=GroundTruth.symmetric_difference(boundaryestimate)
+    #         err=err.area
+
+    #     except TopologicalError:
+    #         err=.100
+    #         tumorleft=.100
+    # else:
+    #     err=.100
+    #     tumorleft=.100
     return err, 0
 
 def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, control='Max', plot=False, smode='RecordedExp',iters=20):
@@ -52,7 +82,8 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, con
     elif smode=='Sim':
 
         getmeasurements=getSimulateStiffnessMeas
-        bounds=((-.04,.04),(-.04,.04))
+        bounds=((.0,0.0229845803642),(.0,0.0577416388862))
+        #               bounds=((-.04,.04),(-.04,.04))
     else: 
         print 'invalid mode!'
     
@@ -88,7 +119,7 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, con
     # initialize workspace object
     workspace = Workspace(bounds,gridres)
     # print workspace.bounds
-    plotSimulatedStiffnessMeas(phantomname, workspace, ypos=0, sensornoise = .05)
+    # plotSimulatedStiffnessMeas(phantomname, workspace, ypos=0, sensornoise = .05)
 
     # set level set to look for-- this should correspond to something, max FI?
     level = .8*(measmax-measmin)+measmin #pick something between min/max deflection
@@ -184,7 +215,7 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, con
 
 if __name__ == "__main__":
     dirname='tt'
-    run_single_phase2_simulation(phantomsquareGT, dirname, AcFunction=UCB_GPIS_implicitlevel, control='Max', plot=True, smode='RecordedExp',iters=100)
+    run_single_phase2_simulation(horseshoe, dirname, AcFunction=UCB_dGP, control='Max', plot=True, smode='RecordedExp',iters=30)
     # outleft,outrem,aclabellist=run_phase2_full()
     # plot_error(outrem,outleft,aclabellist)
 
