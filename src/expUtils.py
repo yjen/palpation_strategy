@@ -52,7 +52,7 @@ def getExperimentalStereoMeas(surface, workspace, plot = True):
     #                 z]).T
     pass
 
-def getExperimentalStiffnessMeas(sample_points):
+def getExperimentalStiffnessMeas(sample_points,surface=None):
     """
     needs to be written
     """
@@ -132,25 +132,25 @@ def getExperimentalStiffnessMeas(sample_points):
     #                 z]).T
 
 
-def getRecordedExperimentalStiffnessMeas(sample_points):
-    filename = '../scripts/dense_grid.p'
-    data_dict = pickle.load(open(filename, "rb"))
-    data = np.array(data_dict['data'])
+# def getRecordedExperimentalStiffnessMeas(sample_points,surface=None):
+#     filename = '../scripts/dense_grid.p'
+#     data_dict = pickle.load(open(filename, "rb"))
+#     data = np.array(data_dict['data'])
 
-    data = np.array(data_dict['data'])
+#     data = np.array(data_dict['data'])
 
-    x, y, z = data[:,0], data[:,1], data[:,2]
+#     x, y, z = data[:,0], data[:,1], data[:,2]
 
-    from scipy.ndimage.filters import gaussian_filter
-    z = gaussian_filter(z.reshape(21,41), sigma=1)
-    z = z.reshape((21*41,))
+#     from scipy.ndimage.filters import gaussian_filter
+#     z = gaussian_filter(z.reshape(21,41), sigma=1)
+#     z = z.reshape((21*41,))
 
-    from scipy.interpolate import Rbf
-    rbfi = Rbf(x, y, z)
+#     from scipy.interpolate import Rbf
+#     rbfi = Rbf(x, y, z)
 
-    stiffnesses = np.array([rbfi(a[0], a[1]) for a in sample_points])
+#     stiffnesses = np.array([rbfi(a[0], a[1]) for a in sample_points])
 
-    output = np.zeros((len(sample_points), 3))
-    output[:,:2] = sample_points
-    output[:,2] = stiffnesses
-    return output
+#     output = np.zeros((len(sample_points), 3))
+#     output[:,:2] = sample_points
+#     output[:,2] = stiffnesses
+#     return output

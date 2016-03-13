@@ -3,7 +3,7 @@ import sys, os, time, IPython
 import numpy as np
 import matplotlib.pyplot as plt
 from runPhase1 import *
-
+from plotscripts import *
 
 NUM_EXPERIMENTS = 5
 

@@ -1,4 +1,8 @@
 import numpy as np 
+import sys
+
+sys.path.append('../scripts')
+
 # from getMap import getMap 
 import GPyOpt
 import matplotlib.pyplot as plt
@@ -19,7 +23,11 @@ from simulated_disparity import getStereoDepthMap, getObservationModel, getInter
 # simulation pipeline
 #######################################
 IMG_SIZE = 50
-offset=.004
+offset=.001
+measmin=7
+measmax=9
+# measmin=9
+# measmax=7
 #######################################
 # polygon test functions for simulating phase2: 
 #######################################
@@ -28,6 +36,7 @@ squaretumor=np.array([[-.01,-.01],[.02,-.01],[.02,.02],[-.01,.02]])
 thintumor=np.array([[2.25,0.25],[2.75,2.25],[2.75,2.75],[2.25,2.75]])
 rantumor=.02*np.array([[2.25,0.75],[3.25,1.25],[2.75,2.25],[2.75,2.75],[2.25,2.75],[2.,1.25]])-.04
 
+phantomsquareGT=np.array([[.001,.019],[.02,.019],[.02,.03],[.001,.03]])
 
 def polybuff(tum,minus=False):
     if minus==True:
@@ -37,21 +46,7 @@ def polybuff(tum,minus=False):
     tum=Polygon(tum)
     tum=tum.buffer(offs)
     return np.array(tum.exterior.coords)
-# def interp_function(image, workspace):
-#     # creating interpolation functions
-#     x = np.array(range(image.shape[0]))
-#     y = np.array(range(image.shape[1]))
-#     if (rangeX is not None and rangeY is not None):
-#         return RGI((rangeX, rangeY), image, bounds_error=False, fill_value=0)
-#     return RGI((x, y), image, bounds_error=False, fill_value=0)
 
-# def getInterpolatedObservationModel(planeName):
-#     model = getObservationModel(planeName)
-#     if model is None:
-#         return None
-#     rangeX = np.array(range(IMG_SIZE))
-#     rangeY = np.array(range(IMG_SIZE))
-#     return interp_function(model, rangeX, rangeY)
 
 def getInterpolatedGTSurface(surface, workspace):
     z = getObservationModel(surface)
@@ -91,13 +86,6 @@ def SimulateStereoMeas(surface, workspace, sensornoise=.001, subsample=True, num
     """
     x = np.linspace(workspace.bounds[0][0], workspace.bounds[0][1], num = numstereo)
     y = np.linspace(workspace.bounds[1][0], workspace.bounds[1][1], num = numstereo)
-    
-    # sizeX = rangeX[1] - rangeX[0]
-    # sizeY = rangeY[1] - rangeY[0]
-
-    # xx, yy = np.meshgrid(x, y)
-
-    # z = surface(xx,yy)
 
     if subsample==False:
         z = getStereoDepthMap(surface)[:40,:40]
@@ -219,8 +207,6 @@ def SimulateStiffnessMeas(poly, sample_locations, sensornoise = .01):
 
     return xx, yy, z
 
-
-
 def plotSimulatedStiffnessMeas(poly, workspace, ypos=None, sensornoise = .03):
     if ypos==None:
        ypos=(workspace.bounds[1][1]-workspace.bounds[1][0])/2.0+workspace.bounds[1][0]
@@ -234,7 +220,7 @@ def plotSimulatedStiffnessMeas(poly, workspace, ypos=None, sensornoise = .03):
     plt.plot(x.flatten(), meas.flatten(), linewidth=3.0)
     plt.show()
 
-def getSimulateStiffnessMeas(surface, sample_points):
+def getSimulateStiffnessMeas(sample_points,surface):
     """wrapper function for SimulateProbeMeas hetero. GP model requires
     defining the variance for each measurement standard stationary
     kernel doesn't need this
@@ -243,23 +229,37 @@ def getSimulateStiffnessMeas(surface, sample_points):
     xx,yy,z = SimulateStiffnessMeas(surface, sample_points)
 
     # we assume Gaussian measurement noise:
-    noise=.000000001
+    noise=.0001
     sigma_t = np.full(z.shape, noise)
     return np.array([xx, yy,
                      z,
                      sigma_t]).T
 
-#######################################
-# LM question: this function was already in here--not sure if it does anything?
-#######################################
+def getRecordedExperimentalStiffnessMeas(sample_points,surface=None):
+    filename = '../scripts/dense_grid.p'
+    data_dict = pickle.load(open(filename, "rb"))
+    data = np.array(data_dict['data'])
+    x, y, z = data[:,0], data[:,1], data[:,2]
 
-# def getActualHeight (pos, modality=0):
-#     """
-#     Get actual surface height at a point 'pos'
-#     """
-#     x,y,xx,yy,z = getMap(modality) 
-#     h = z (pos[0], pos[1])
-#     return h
+    buffx=.3*(x.max()-x.min())
+
+    from scipy.ndimage.filters import gaussian_filter
+    z = gaussian_filter(z.reshape(21,41), sigma=1)
+    z = z.reshape((21*41,))
+
+    from scipy.interpolate import Rbf
+    rbfi = Rbf(x, y, z)
+
+    stiffnesses = np.array([rbfi(a[0], a[1]) for a in sample_points])
+    stiffnesses=stiffnesses/1000.0
+
+    stiffnesses[sample_points[:,0]>x.max()-buffx]=z.mean()/1000.0
+    stiffnesses[sample_points[:,0]<x.min()+buffx]=z.mean()/1000.0
+    # print z[x>x.min()+buffx]
+    output = np.zeros((len(sample_points), 3))
+    output[:,:2] = sample_points
+    output[:,2] = stiffnesses
+    return output
 
 #######################################
 # Curved surface functions for simulating phase1: don't delete, but these
@@ -323,9 +323,6 @@ def SixhumpcamelSurface(xx,yy):
 
     return z
 
-
-
-
 #######################################
 # Functions for simulating deflection measurements
 #######################################
@@ -340,32 +337,13 @@ def sigmoid(dist, alpha=1014, a=0.0, b=1.0):
     Output:
     y = a + (b-a)/(1+ exp(-alpha*(xProbe-xEdge)))
     """
-    c=-offset
+    a = measmin
+    b = measmax
+    c = -offset
     y = a + np.divide((b-a),(1+ np.exp(-alpha*(dist-c))))  
     return y
 
-
-# def getLevelSet (Pts, z, level):
-#     """
-#     Input: 
-#         Pts: x, y - 2-d numpy array N-by-d
-#         Z : values at each of the points 1-D numpy array length N
-#         level: find the polygon at level
-
-#     output:
-#         poly: ordered list of points on the polygon 2-d array
-#     """
-#     x = Pts[:,0]
-#     y = Pts[:,1]
-#     c = cntr.Cntr(x, y, z)
-
-#     res = c.trace(level)
-#     nseg = len(res) // 2
-#     segments, codes = res[:nseg], res[nseg:]
-#     poly = segments[0]
-
-#     return poly
-def getLevelSet (workspace, mean, level):
+def getLevelSet (workspace, mean, level, allpoly=False):
     """
     Input: 
         Pts: x, y - 2-d numpy array N-by-d
@@ -384,9 +362,19 @@ def getLevelSet (workspace, mean, level):
     if len(res)>0:
         nseg = len(res) // 2
         segments, codes = res[:nseg], res[nseg:]
-        poly = segments[0]
+        # poly = segments[0]
+        if allpoly==True:
+            poly=segments
+            for pol in poly:
+                #close polygons
+                pol = np.vstack((pol,pol[0]))
+        else:
+            poly=[segments[0]]
     else:
-        poly=[]
+        if allpoly==True:
+            poly=[[]]
+        else:
+            poly=[]
     return np.array(poly)
 
 def makeMeasurement_LS(xProbe, boundaryEstimate):
@@ -413,15 +401,9 @@ def makeMeasurement_LS(xProbe, boundaryEstimate):
 
         z.append(sigmoid(dist))
     #calculate the sigmoidal measurement value due to this distance
-    #z = sigmoid(dist)
-    
-    # return measurement value z
+
     return np.array(z)
 
-# debug plotting
-# x = np.arange(-10, 10, 0.2)
-# sig = sigmoid(x,0)
-# plt.plot(x, sig, linewidth=3.0)
 
 def probeMeasure(xProbe, Pts, z, level):
     """
