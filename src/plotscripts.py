@@ -234,7 +234,7 @@ def plot_beliefGPIS(poly,workspace,mean,variance,aq,meas,dirname,errors,data=Non
 
 
     ########################## Plot Scripts
-def plot_error(surface, workspace, mean, sigma, aq, meas, dirname, data=None,iternum=0, projection3D=True, plotmeas=True):
+def plot_error(surface, workspace, mean, sigma, aq, meas, dirname=None, data=None,iternum=0, projection3D=True, plotmeas=True):
     # choose points to compare
     xx=workspace.xx
     yy=workspace.yy
@@ -305,7 +305,7 @@ def plot_error(surface, workspace, mean, sigma, aq, meas, dirname, data=None,ite
         if plotmeas==True:
             data[1].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=20, 
                         cmap=cm.coolwarm)
-    data[1].set_title("Disparity")
+    data[1].set_title("Depth from Stereo")
 
     # plot the ground truth
     if projection3D==True:
@@ -376,7 +376,9 @@ def plot_error(surface, workspace, mean, sigma, aq, meas, dirname, data=None,ite
     data[6].set_title("Error from GT")
     
     data[0].canvas.draw()
-    data[0].savefig(dirname + '/' + str(iternum) + ".pdf" ,bbox_inches='tight')
+    
+    if dirname is not None:
+        data[0].savefig(dirname + '/' + str(iternum) + ".pdf" ,bbox_inches='tight')
 
     return data
 
