@@ -340,14 +340,14 @@ def plot_error(surface, workspace, mean, sigma, aq, meas, dirname=None, data=Non
        # data[3].plot_surface(xx, yy, sigma.reshape(workspace.res,workspace.res), rstride=1, cstride=1,
                          # cmap=cm.coolwarm, linewidth=0, antialiased=False)
     # else:
-    data[4].imshow(np.flipud(sigma), cmap=cm.coolwarm, 
+    data[4].imshow(np.flipud(sigma), cmap=cm.coolwarm, vmax=5,
                        extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
     if plotmeas==True:
         data[4].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=20,
                     cmap=cm.coolwarm)
     data[4].set_title("Estimate Variance")
 
-    data[5].imshow(np.flipud(aq), cmap=cm.coolwarm, 
+    data[5].imshow(np.flipud(aq), cmap=cm.coolwarm, vmax=2
                        extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
     if plotmeas==True:
         data[5].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=20,
@@ -421,7 +421,8 @@ def make_error_table(fname):
     itermid=np.round(errordata.shape[4]/2.0)
 
     tumor=0
-    iterd=errordata.shape[4]-1
+    iterd=errordata.shape[4]
+    iterd=10
     # noiselev=0
     # format: tumor, acfunction, noiselev, iteration, experiment, iteration
     #tumor1table=errordata[0,:,noiselev,:,iterd]
@@ -432,14 +433,16 @@ def make_error_table(fname):
     f = open(fname + titlestring + ".csv", 'wb')
     f.write("," + titlestring+",\n")
     f.write(",," + headerstring+",\n")
-    print errordata.shape
     for n in range(errordata.shape[2]):
         rowstring='noise='+str(errordata[0,0,n,0,0])
-        rowdat=errordata[tumor,:,n,:,iterd]
+        rowdat=errordata[tumor,:,n,:,iterd-1]
         meanrowdat=rowdat.mean(axis=1)
+        # convert to cm^
+        meanrowdat=meanrowdat
+        print meanrowdat
         # # data in table
         # f.write("flat,lam,{},{}\n".format(table[0][0], table[0][1]))
-        f.write(","+rowstring+",{},{},{}\n".format(meanrowdat[0],meanrowdat[1],meanrowdat[2],meanrowdat[3],meanrowdat[4]))#,table[0][5]))
+        f.write(","+rowstring+",{},{},{},{},{}\n".format(meanrowdat[0],meanrowdat[1],meanrowdat[2],meanrowdat[3],meanrowdat[4]))#,table[0][5]))
         #f.write(","+rowstring+",{},{},{},{},{}\n".format(table[1][0], table[1][1],table[1][2],table[1][3],table[1][4]))
     # f.write(",tumor1: tumor left behind,{},{},{}\n".format(table[2][0], table[2][1],table[2][2],table[2][3],table[2][4]))#,table[2][5]))
 
@@ -487,9 +490,9 @@ def plot_ph2_error(errorsrem,labels):
             ax[0].plot(expl,color=colors[i])
             # ax[1].plot(expr,color=colors[i])
             # ax[2].plot(expr+expl,color=colors[i])
-    ym=.08*.08
-    ym=.001
-    ax[0].set_ylim(.00, ym)
+    # ym=.08*.08
+    # ym=.001
+    # ax[0].set_ylim(.00, ym)
     ax[0].set_title('error_leftover')
     # ax[1].set_ylim(.00, ym)
     # ax[1].set_title('error_removed')
