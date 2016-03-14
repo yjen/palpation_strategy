@@ -160,6 +160,7 @@ def getStereoDepthMap(folder, shouldPlot=False):
     values = sorted(projected_disp.flatten())
     floor = values[int(0.01*len(values))]
     projected_disp[projected_disp < floor] = floor
+    
     ceil = values[int(0.99*len(values))]
     projected_disp[projected_disp > ceil] = ceil
     projected_disp[projected_disp < 0] = 0

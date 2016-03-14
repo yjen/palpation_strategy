@@ -140,24 +140,41 @@ def get_moments(model,x):
     '''
     Moments (mean and sdev.) of a GP model at x
     '''
+    input_dim = model.X.shape[1] 
+    x = reshape(x,input_dim)    
+    try:
+        m, v = model.predict(x)
+    except TypeError:
+        # k1=GPy.kern.RBF(2)      
+        # this is for Heteroscedastic-measurements in phase 1  
+        # make prediction assuming the new variance is drawn from stereo only
+        numPoints = np.shape(x)[0]        
+        m,v = model.predict(x,Y_metadata={'output_index':np.zeros((numPoints,1))[:,None].astype(int)})
 
+    s = np.sqrt(np.clip(v, 0, np.inf))
+    return (m,s)
+
+def get_moments_old(model,x):
+    '''
+    Moments (mean and sdev.) of a GP model at x
+    '''
     input_dim = model.X.shape[1]
     x = reshape(x,input_dim)
     try:
         m, v = model.predict(x)
     except TypeError:
-        k1=GPy.kern.RBF(2)
-        m, v = model._raw_predict(x)
+        k1=GPy.kern.RBF(2)        
+        m, v = model._raw_predict(x)        
         v += model.likelihood.variance[0]
     s = np.sqrt(np.clip(v, 0, np.inf))
     return (m,s)
 
 #need to get the old reshape function from gpyopt
 def get_d_moments(model,x):
-    '''Gradients with respect to x of the moments (mean and sdev.) of the GP
+    '''
+    Gradients with respect to x of the moments (mean and sdev.) of the GP
     :param model: GPy model.  :param x: location where the gradients are
     evaluated.
-
     '''
     input_dim = model.input_dim
     x = reshape(x,input_dim)

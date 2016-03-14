@@ -41,6 +41,17 @@ def test_raster_scan():
     raw_input("Will now execute raster test. Press any key to continue")
     palp.execute_raster()
 
+def test_raster_scan_both_directions():
+    palp = Palpation()
+    try:
+        palp.load_environment_registration("env_registration.p")
+    except Exception as e:
+        palp.register_environment("env_registration.p")
+
+    raw_input("Will now execute raster test in both directions. Press any key to continue")
+    palp.execute_raster_both_directions()
+
+
 def test_raster_scan_reverse():
     palp = Palpation()
     try:
@@ -135,4 +146,6 @@ def execute_record_testing_grid_data():
 
 
 if __name__ == '__main__':
+    # test_raster_scan()
+    # test_raster_scan_both_directions()
     test_point_probe()

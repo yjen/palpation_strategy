@@ -143,7 +143,14 @@ def run_phase2_full():
 
 if __name__ == "__main__":
     dirname='tt'
+<<<<<<< HEAD
     # run_single_phase2_simulation(rantumor, dirname, AcFunction=UCB_dGPIS, control='Max', plot=True, smode='Sim',iters=20)
     outleft,outrem,aclabellist=run_phase2_full()
     #     plot_ph2_error(outrem,outleft,aclabellist)
+=======
+
+    run_single_phase2_simulation(expCircle, dirname, AcFunction=UCB_GPIS_implicitlevel, control='Max', plot=True, smode='Exp',iters=20)
+    # outleft,outrem,aclabellist=run_phase2_full()
+    # plot_ph2_error(outrem,outleft,aclabellist)
+>>>>>>> 59ad9438327a1cf48628fb31d4206833507775ad
 

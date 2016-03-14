@@ -21,10 +21,14 @@ from descartes import PolygonPatch
 
 # from simulated_disparity import getObservationModel
 
-def update_GP_ph1(measurements,method='nonhet'):
+def update_GP_ph1(measurements, nStereoMeas, method='heteroscedastic'):
     """
     GP for phase2:
-    Inputs: data=[x position, y position, measurement, measurement noise]
+    Inputs: 
+        measurements=[x position, y position, measurement, measurement noise]
+        nStereoMeas: number of stereo points; the rest are assumed to be probe measurements
+        method: "heteroscedastic" -- stereo and probe measurements have different noise values
+                "homoscedastic" -- stereo and probe measurements have same noise values
     TODO: maybe combine with updateGP above
     """
     sensornoise=.01
@@ -33,25 +37,42 @@ def update_GP_ph1(measurements,method='nonhet'):
     X = measurements[:,0:2]
     Y = np.array([measurements[:,2]]).T
     # Y=Y/10000.0
-    if method=="het":
+    if method=="heteroscedastic":
         # use heteroskedactic kernel
         noise = np.array([measurements[:,3]]).T
-        var = .001 # variance
-        theta = 4 # lengthscale
-        kern = GPy.kern.RBF(2, variance=var,lengthscale=theta) 
+        var = 10 # variance 0.001
+        theta = 50  # lengthscale 4
+        kern = GPy.kern.RBF(2, variance=var,lengthscale=theta)
+
+        #define two types of noise
+        nProbeMeas = len(noise)-nStereoMeas
+        noiseModel = np.concatenate((np.zeros((nStereoMeas,), dtype=int), np.ones((nProbeMeas,), dtype=int)), axis=0)                
+
+        #define heteroscedastic noise. 
+        Y_meta = {'output_index':noiseModel[:,None]}
+        #the following two lines are only for reference
+        # likelihood = GPy.likelihoods.HeteroscedasticGaussian(Y_metadata)
+        # m.predict(np.array([[0.3]]),Y_metadata={'output_index':np.zeros((1,1))[:,None].astype(int)})
+
+        # m = GPy.models.GPHeteroscedasticRegression(X,Y,kern, Y_metadata=Y_meta)
         m = GPy.models.GPHeteroscedasticRegression(X,Y,kern)
-        # m = GPy.models.GPRegression(X,Y,kern)
         m['.*het_Gauss.variance'] = abs(noise)
-        m.het_Gauss.variance.fix() # We can fix the noise term, since we already know it
-    else:
+        m.het_Gauss.variance.fix() # We can fix the noise term, since we already know it        
+
+    elif method=="homoscedastic":
         # var = 100 # variance
         var = 25
-        theta = 20 #engthscale
+        theta = 20 #lengthscale
         kern = GPy.kern.RBF(2, variance=var,lengthscale=theta)
         m = GPy.models.GPRegression(X,Y,kern)
         m.Gaussian_noise.fix(.4)
         #m.optimize_restarts(num_restarts = 5)
-    m.optimize()
+        m.optimize()
+    else:
+        assert (method=="homoscedastic")or(method=="heteroscedastic")
+
+    # m.optimize()
+    
     # print m
     # xgrid = np.vstack([self.x1.reshape(self.x1.size),
     #                    self.x2.reshape(self.x2.size)]).T
@@ -59,6 +80,7 @@ def update_GP_ph1(measurements,method='nonhet'):
     # y_pred=y_pred.reshape(self.x1.shape)
     # sigma=m.predict(self.xgrid)[1]
     # sigma=sigma.reshape(self.x1.shape)
+
     return m
 
 def update_GP(measurements,method='nonhet',params=[1,.006,1e-5,0]):
