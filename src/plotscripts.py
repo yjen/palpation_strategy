@@ -10,14 +10,18 @@ def plot_beliefGPIS(poly,workspace,mean,variance,aq,meas,dirname,errors,data=Non
     
     xx=workspace.xx
     yy=workspace.yy
+
     # print 'bnds=',(xx.min(), xx.max(), yy.min(),yy.max() )
     # GPIS = implicitsurface(mean,variance,level)
-    boundaryestimate = getLevelSet (workspace, mean, level, allpoly=True)
+    lev=.5*(measmax-measmin)+measmin#(mean.max()-mean.min())+mean.min()
+    print lev
 
-    boundaryestimateupper = getLevelSet (workspace, mean+variance,level)#+1.96*np.sqrt(variance), level)
+    boundaryestimate = getLevelSet (workspace, mean,lev, allpoly=True)
+
+    boundaryestimateupper = getLevelSet (workspace, mean+variance,lev)#+1.96*np.sqrt(variance), level)
     #boundaryestimatelower = getLevelSet (workspace, mean-variance, level)
-
     mean = gridreshape(mean,workspace)
+
     variance = gridreshape(variance,workspace)
     aq = gridreshape(aq,workspace)
     # GPIS = gridreshape(GPIS,workspace)
@@ -56,7 +60,7 @@ def plot_beliefGPIS(poly,workspace,mean,variance,aq,meas,dirname,errors,data=Non
                              antialiased=False)
 
     else:
-        data[1].imshow(np.flipud(mean), cmap=cm.coolwarm, vmax=9.5, vmin=6,
+        data[1].imshow(np.flipud(mean), cmap=cm.coolwarm, vmax=measmax+.5, vmin=measmin-.5,
                        extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
         data[1].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=20,
                         cmap=cm.coolwarm)
@@ -109,7 +113,7 @@ def plot_beliefGPIS(poly,workspace,mean,variance,aq,meas,dirname,errors,data=Non
     ################
     #plot level sets/polygons
     ################
-    data[4].contour(xx, yy, mean, levels=[level], color='m')
+    data[4].contour(xx, yy, mean, levels=[lev], color='m')
     offsetboundary=[]
     for i in range(0,boundaryestimate.shape[0]):
         bnd=boundaryestimate[i]
@@ -165,6 +169,7 @@ def plot_beliefGPIS(poly,workspace,mean,variance,aq,meas,dirname,errors,data=Non
     data[4].set_aspect('equal')
     start, end = data[4].get_xlim()
     data[4].xaxis.set_ticks(np.arange(start, end, .01))
+    
     GT = Polygon(GroundTruth)
     patch1 = PolygonPatch(GT, alpha=0.2, zorder=1)
     data[4].add_patch(patch1)
@@ -194,18 +199,16 @@ def plot_beliefGPIS(poly,workspace,mean,variance,aq,meas,dirname,errors,data=Non
                     for p in c2:
                         patchp = PolygonPatch(p, fc='blue', ec='blue', alpha=0.5, zorder=2)
                         data[4].add_patch(patchp)
-
-    data[5].plot(errors[0],color='red')
-    data[5].plot(errors[1],color='blue')
+    data[5].plot(errors,color='red')
+    # data[5].plot(errors[1],color='blue')
 
     data[5].set_xlabel("Iterations")
     data[5].set_ylabel(" Error")
 
     ym=.08*.08
     # plt.ylim(.00, .001)
-    plt.xlim(0, iternum)
-    plt.title("Integrated Error between Estimate and Ground Truth - Phase 1")
-    plt.legend(["tumorleft","healthyremoved"], loc='upper right')
+    data[5].set_xlim(0, iternum)
+    data[5].set_title("symmetric difference between boundary and GT")
 
     data[6].set_title("surface gradient")
     cs=data[6].imshow(np.flipud(grad), cmap=cm.jet, extent=(xx.min(),
@@ -347,7 +350,7 @@ def plot_error(surface, workspace, mean, sigma, aq, meas, dirname=None, data=Non
                     cmap=cm.coolwarm)
     data[4].set_title("Estimate Variance")
 
-    data[5].imshow(np.flipud(aq), cmap=cm.coolwarm, vmax=2
+    data[5].imshow(np.flipud(aq), cmap=cm.coolwarm, vmax=2,
                        extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
     if plotmeas==True:
         data[5].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=20,
@@ -408,66 +411,137 @@ def plot_belief(mean,sigma,workspace):
     plt.colorbar(cs1)
     plt.show()
 
-
-def make_error_table(fname):
+# [errorlist,timelist,aqfunctionsnames,modelerrors
+def make_error_table(fname,errtyp):
     filename = fname
-    data=np.load(fname+'.npy')
 
-    errordata=data[0]
-    aclabellist=data[1]
-    # noiselevels=data[2]
+    data=np.load(fname+'.npy')
+    
+    errordata= np.array(data[0])
+    
+    timedata=np.array(data[1])
+    aclabellist=np.array(data[2])
+    modelerrors=np.array(data[3])
 
     itermax=errordata.shape[4]
     itermid=np.round(errordata.shape[4]/2.0)
 
     tumor=0
-    iterd=errordata.shape[4]
-    iterd=10
-    # noiselev=0
-    # format: tumor, acfunction, noiselev, iteration, experiment, iteration
-    #tumor1table=errordata[0,:,noiselev,:,iterd]
-    
-    titlestring='tumor' + str(tumor) + 'iteration_'+str(iterd)#+'_noise level_'#+str(tumor1table(0,0,noiselev,0,0))
+    iterd=itermax
+    # iterd=10
+    f = open(fname +errtyp+'tumor'+ ".csv", 'wb')
+    titlestring='Error as a function of Gaussian noise level, for tumor' + str(tumor) + 'after iteration_'+str(iterd)#+'_noise level_'#+str(tumor1table(0,0,noiselev,0,0))
     headerstring = ",".join(aclabellist)
     
-    f = open(fname + titlestring + ".csv", 'wb')
     f.write("," + titlestring+",\n")
     f.write(",," + headerstring+",\n")
     for n in range(errordata.shape[2]):
-        rowstring='noise='+str(errordata[0,0,n,0,0])
+        rowstring='noise='+str(modelerrors[n])
         rowdat=errordata[tumor,:,n,:,iterd-1]
         meanrowdat=rowdat.mean(axis=1)
-        # convert to cm^
-        meanrowdat=meanrowdat
-        print meanrowdat
-        # # data in table
-        # f.write("flat,lam,{},{}\n".format(table[0][0], table[0][1]))
         f.write(","+rowstring+",{},{},{},{},{}\n".format(meanrowdat[0],meanrowdat[1],meanrowdat[2],meanrowdat[3],meanrowdat[4]))#,table[0][5]))
-        #f.write(","+rowstring+",{},{},{},{},{}\n".format(table[1][0], table[1][1],table[1][2],table[1][3],table[1][4]))
-    # f.write(",tumor1: tumor left behind,{},{},{}\n".format(table[2][0], table[2][1],table[2][2],table[2][3],table[2][4]))#,table[2][5]))
 
-    # f.write(",tumor2: iterations,{},{},{}\n".format(table[3][0], table[3][1],table[3][2],table[3][3],table[3][4]))#,table[3][5]))
-    # f.write(",tumor2: healthy tissue removed,{},{},{}\n".format(table[4][0], table[4][1],table[4][2],table[4][3],table[4][4]))#,table[4][5]))
-    # f.write(",tumor2: tumor left behind,{},{},{}\n".format(table[5][0], table[5][1],table[5][2],table[5][3],table[5][4]))#,table[5][5]))
+    f.write("\n\n")
 
-    # f.write(",st,{},{}\n".format(table[0][0], table[0][1]))
+    titlestring='time elapsed for tumor' + str(tumor) + 'after iteration_'+str(errordata.shape[4])#+'_noise level_'#+str(tumor1table(0,0,noiselev,0,0))
+    f.write("," + titlestring+",\n")
+    f.write(",," + headerstring+",\n")
 
-    # f.write("S,lam,{},{}\n".format(table[1][0], table[1][1]))
-    # f.write(",text,{},{}\n".format(table[1][0], table[1][1]))
-    # f.write(",spec,{},{}\n".format(table[1][0], table[1][1]))
-    # f.write(",st,{},{}\n".format(table[1][0], table[1][1]))
+    for n in range(errordata.shape[2]):
+        rowstring='noise='+str(modelerrors[n])
+        rowdat=errordata[tumor,:,n,0,iterd-1]
+        f.write(","+rowstring+",{},{},{},{},{}\n".format(meanrowdat[0],meanrowdat[1],meanrowdat[2],meanrowdat[3],meanrowdat[4]))#,table[0][5]))
+
+    f.write("\n\n")
+    iterd=itermid
+
+    titlestring='Error as a function of Gaussian noise level, for tumor' + str(tumor) + 'after iteration_'+str(iterd)#+'_noise level_'#+str(tumor1table(0,0,noiselev,0,0))
+    headerstring = ",".join(aclabellist)
+    # f = open(fname +errtyp+ ".csv", 'wb')
+    f.write("," + titlestring+",\n")
+    f.write(",," + headerstring+",\n")
+    for n in range(errordata.shape[2]):
+        rowstring='noise='+str(modelerrors[n])
+        rowdat=errordata[tumor,:,n,:,iterd-1]
+        meanrowdat=rowdat.mean(axis=1)
+        f.write(","+rowstring+",{},{},{},{},{}\n".format(meanrowdat[0],meanrowdat[1],meanrowdat[2],meanrowdat[3],meanrowdat[4]))#,table[0][5]))
+    f.write("\n\n")
+
+    titlestring='time elapsed for tumor' + str(tumor) + 'after iteration_'+str(errordata.shape[4])#+'_noise level_'#+str(tumor1table(0,0,noiselev,0,0))
+    f.write("," + titlestring+",\n")
+    f.write(",," + headerstring+",\n")
+
+    for n in range(errordata.shape[2]):
+        rowstring='noise='+str(modelerrors[n])
+        rowdat=errordata[tumor,:,n,0,iterd-1]
+        f.write(","+rowstring+",{},{},{},{},{}\n".format(meanrowdat[0],meanrowdat[1],meanrowdat[2],meanrowdat[3],meanrowdat[4]))#,table[0][5]))
+
+    #########
+    f.write("\n\n")
+    tumor=1
+    iterd=itermax
+    # iterd=10
+    # f = open(fname +errtyp+'tumor'+ ".csv", 'wb')
+    titlestring='Error as a function of Gaussian noise level, for tumor' + str(tumor) + 'after iteration_'+str(iterd)#+'_noise level_'#+str(tumor1table(0,0,noiselev,0,0))
+    headerstring = ",".join(aclabellist)
+    
+    f.write("," + titlestring+",\n")
+    f.write(",," + headerstring+",\n")
+    for n in range(errordata.shape[2]):
+        rowstring='noise='+str(modelerrors[n])
+        rowdat=errordata[tumor,:,n,:,iterd-1]
+        meanrowdat=rowdat.mean(axis=1)
+        f.write(","+rowstring+",{},{},{},{},{}\n".format(meanrowdat[0],meanrowdat[1],meanrowdat[2],meanrowdat[3],meanrowdat[4]))#,table[0][5]))
+
+    f.write("\n\n")
+
+    titlestring='time elapsed for tumor' + str(tumor) + 'after iteration_'+str(errordata.shape[4])#+'_noise level_'#+str(tumor1table(0,0,noiselev,0,0))
+    f.write("," + titlestring+",\n")
+    f.write(",," + headerstring+",\n")
+
+    for n in range(errordata.shape[2]):
+        rowstring='noise='+str(modelerrors[n])
+        rowdat=errordata[tumor,:,n,0,iterd-1]
+        f.write(","+rowstring+",{},{},{},{},{}\n".format(meanrowdat[0],meanrowdat[1],meanrowdat[2],meanrowdat[3],meanrowdat[4]))#,table[0][5]))
+
+    f.write("\n\n")
+    iterd=itermid
+
+    titlestring='Error as a function of Gaussian noise level, for tumor' + str(tumor) + 'after iteration_'+str(iterd)#+'_noise level_'#+str(tumor1table(0,0,noiselev,0,0))
+    headerstring = ",".join(aclabellist)
+    # f = open(fname +errtyp+ ".csv", 'wb')
+    f.write("," + titlestring+",\n")
+    f.write(",," + headerstring+",\n")
+    for n in range(errordata.shape[2]):
+        rowstring='noise='+str(modelerrors[n])
+        rowdat=errordata[tumor,:,n,:,iterd-1]
+        meanrowdat=rowdat.mean(axis=1)
+        f.write(","+rowstring+",{},{},{},{},{}\n".format(meanrowdat[0],meanrowdat[1],meanrowdat[2],meanrowdat[3],meanrowdat[4]))#,table[0][5]))
+    f.write("\n\n")
+
+    titlestring='time elapsed for tumor' + str(tumor) + 'after iteration_'+str(errordata.shape[4])#+'_noise level_'#+str(tumor1table(0,0,noiselev,0,0))
+    f.write("," + titlestring+",\n")
+    f.write(",," + headerstring+",\n")
+
+    for n in range(errordata.shape[2]):
+        rowstring='noise='+str(modelerrors[n])
+        rowdat=errordata[tumor,:,n,0,iterd-1]
+        f.write(","+rowstring+",{},{},{},{},{}\n".format(meanrowdat[0],meanrowdat[1],meanrowdat[2],meanrowdat[3],meanrowdat[4]))#,table[0][5]))
 
     f.close()
-
-def plot_ph2_error(errorsrem,labels):    
+def plot_ph2_error(fname,errorslist,labels,acfunctions,modelerrors,errtyp):    
     #for e in errors:
     #         plt.plot(e)
-    fig = plt.figure(figsize=(3, 9))
-    ax1 = fig.add_subplot(111)
-    # ax2 = fig.add_subplot(212)
-    ax=[ax1]
-    tum1rem = errorsrem[0]
-    tum2rem = errorsrem[1]
+    fig = plt.figure(figsize=(8, 8))
+    ax1 = fig.add_subplot(221)
+    ax2 = fig.add_subplot(222)
+    ax3 = fig.add_subplot(223)
+
+    ax4 = fig.add_subplot(224)
+
+    ax=[ax1,ax2,ax3,ax4]
+    
+    # tum2rem = errorsrem[1]
     colors = ['blue','red','green','orange','magenta','cyan']
 
     # for i in range(0,tum1left.shape[0]):
@@ -478,22 +552,24 @@ def plot_ph2_error(errorsrem,labels):
     #         #    exp = tum1left[i][j][e]
     #         #    print exp.shape
     #         ax[0].plot(expl,color=colors[i])
-    for i in range(0,tum1rem.shape[0]):
-        for j in range(0,tum1rem.shape[1]):
-            expl=tum1left[i][j]
-            expl=np.mean(expl,axis=0)
+    for k in range(0,errorslist.shape[2]):
+        for i in range(0,errorslist.shape[0]):
+            for j in range(0,errorslist.shape[1]):
+        
+                expl=errorslist[i,j,k,:,:]
+                expl=np.mean(expl,axis=0)
 
-            # expr=tum1rem[i][j]
-            # expr=np.mean(expr,axis=0)
-            #or e in range(0,tum1rem.shape[2]):
-            #    exp = tum1rem[i][j][e]
-            ax[0].plot(expl,color=colors[i])
+                ax[k].plot(expl,color=colors[j])
+        ax[k].set_title(errtyp+ 'level='+str(modelerrors[k]))
             # ax[1].plot(expr,color=colors[i])
             # ax[2].plot(expr+expl,color=colors[i])
+        if k == 3:
+            ax[k].legend(acfunctions, loc='upper right')
+
     # ym=.08*.08
     # ym=.001
     # ax[0].set_ylim(.00, ym)
-    ax[0].set_title('error_leftover')
+    #ax[0].set_title('error_leftover')
     # ax[1].set_ylim(.00, ym)
     # ax[1].set_title('error_removed')
     # ax[2].set_ylim(.00, ym)
@@ -504,8 +580,9 @@ def plot_ph2_error(errorsrem,labels):
 
     # plt.xlim(0, 100)
     plt.ylabel(" Error")
-    plt.legend(labels.flatten(), loc='upper right')
     # plt.savefig("image_pairs/"+surface_name+'/'+name)
     # plt.close()
     plt.show()
+    plt.savefig(fname + errtyp+".pdf", bbox_inches='tight')
+
     return

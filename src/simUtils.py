@@ -33,26 +33,26 @@ measmax=9
 #######################################
 # polygon test functions for simulating phase2: 
 #######################################
-squaretumor=np.array([[-.01,-.01],[.02,-.01],[.02,.02],[-.01,.02]])
+squaretumor=.5*np.array([[-.01,-.01],[.02,-.01],[.02,.02],[-.01,.02]])
 # quaretumor=Polygon(quaretumor)
 thintumor=np.array([[2.25,0.25],[2.75,2.25],[2.75,2.75],[2.25,2.75]])
 rantumor=.02*np.array([[2.25,0.75],[3.25,1.25],[2.75,2.25],[2.75,2.75],[2.25,2.75],[2.,1.25]])-.04
 
-phantomsquareGT=np.array([[.001,.019],[.02,.019],[.02,.03],[.001,.03]])
+phantomsquareGT=np.array([[.007,.02],[.015,.02],[.015,.028],[.007,.028]])
 
 # make circular tumor
 rad=.0125/2.
-loc=[0.01,.03]
+loc=[0.0229845803642/2.0,.03]
 simCircle = Point(loc[0],loc[1]).buffer(rad)
 simCircle = np.array(simCircle.exterior.coords)
-rad=.0125
+rad=.0125/2.
 loc=[0.0229845803642/2.0,.035]
 expCircle = Point(loc[0],loc[1]).buffer(rad)
 expCircle = np.array(expCircle.exterior.coords)
 
 # create horseshow
 rad=.007
-loc=[0.0229845803642/2.0-.002,.015]
+loc=[0.0229845803642/2.0-.002,.02]
 circle = Point(loc[0],loc[1]).buffer(rad)
 circle = np.array(circle.exterior.coords)
 semicircle=circle[circle[:,0]>=loc[0]]
@@ -235,7 +235,7 @@ def getSimulatedProbeMeas(surface, workspace, sample_points):
                      z,
                      sigma_t]).T
 
-def SimulateStiffnessMeas(poly, sample_locations, noiselev = .05):
+def SimulateStiffnessMeas(poly, sample_locations, noiselev,tiltlev):
     """Simulate measurements from palpation (tapping mode) for the test
     functions above inputs: *surface: a function defining a test surface
     *locations: list of points [[x1,y1],[x2,y2]] outputs: *xx,yy, z,
@@ -244,13 +244,18 @@ def SimulateStiffnessMeas(poly, sample_locations, noiselev = .05):
     This functions would be replaced by experiment
 
     """
+    
     # unpack
     xx, yy = sample_locations.T
 
-    # this is a simulated measurement, add noise
-    
+    # simulation measurement without noise
     z = makeMeasurement_LS(sample_locations, poly)
+
+    # add Gaussian noise
     z = z + noiselev*np.random.randn(z.shape[0])
+
+    # add bias noise (angle input needs to be converted to z offset)
+    z = z+yy*np.tan(tiltlev)#np.tan(np.deg2rad(tiltlev))
 
     return xx, yy, z
 
@@ -268,13 +273,13 @@ def plotSimulatedStiffnessMeas(poly, workspace, xpos=None, sensornoise = .03):
     plt.plot(y.flatten(), meas.flatten(), linewidth=3.0)
     plt.show()
 
-def getSimulateStiffnessMeas(sample_points,surface,noiselev):
+def getSimulateStiffnessMeas(sample_points,surface,noiselev=.05,tiltlev=0):
     """wrapper function for SimulateProbeMeas hetero. GP model requires
     defining the variance for each measurement standard stationary
     kernel doesn't need this
 
     """
-    xx,yy,z = SimulateStiffnessMeas(surface, sample_points,noiselev)
+    xx,yy,z = SimulateStiffnessMeas(surface, sample_points,noiselev,tiltlev)
 
     # we assume Gaussian measurement noise:
     noise=.05
@@ -303,7 +308,6 @@ def getRecordedExperimentalStiffnessMeas(sample_points,surface=None,noiselev=Non
 
     stiffnesses[sample_points[:,0]>x.max()-buffx]=z.mean()/1000.0
     stiffnesses[sample_points[:,0]<x.min()+buffx]=z.mean()/1000.0
-    # print z[x>x.min()+buffx]
     output = np.zeros((len(sample_points), 3))
     output[:,:2] = sample_points
     output[:,2] = stiffnesses

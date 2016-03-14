@@ -292,11 +292,14 @@ def plot_acq():
                                       directory, [0,0],plot_data,level=level,
                                       iternum=j, projection3D=False)
 def gradfd(mean,workspace):
+    # reshape mean into grid
     meansq = mean.reshape(workspace.res,workspace.res)
-
-    grad = np.gradient(meansq)
-    dx,dy = grad
-    fd = np.sqrt((dx**2+dy**2))
+    # space between values
+    dx=(workspace.bounds[0][1]-workspace.bounds[0][0])/float(workspace.res)
+    dy=(workspace.bounds[1][1]-workspace.bounds[1][0])/float(workspace.res)
+    grad = np.gradient(meansq,dy,dx)
+    dMdx,dMdy = grad
+    fd = np.sqrt((dMdx**2+dMdy**2))
 
     # buffx=.02*workspace.bounds[0][1]
     # buffy=.02*workspace.bounds[1][1]

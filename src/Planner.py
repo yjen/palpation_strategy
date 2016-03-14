@@ -97,10 +97,10 @@ def UCB_dGPIS2(model, workspace, level=0, x=None, acquisition_par=[0,0,0], numpo
 
     buffx=.05*(workspace.bounds[0][1]-workspace.bounds[0][0])
     buffy=.05*(workspace.bounds[1][1]-workspace.bounds[1][0])
-    f_acqu[workspace.x[:,0]<workspace.bounds[0][0]+buffx]=f_acqu.min()
-    f_acqu[workspace.x[:,1]<workspace.bounds[1][0]+buffy]=f_acqu.min()
-    f_acqu[workspace.x[:,0]>workspace.bounds[0][1]-buffx]=f_acqu.min()
-    f_acqu[workspace.x[:,1]>workspace.bounds[1][1]-buffy]=f_acqu.min()
+    f_acqu[workspace.x[:,0]<workspace.bounds[0][0]+buffx]=f_acqu.mean()
+    f_acqu[workspace.x[:,1]<workspace.bounds[1][0]+buffy]=f_acqu.mean()
+    f_acqu[workspace.x[:,0]>workspace.bounds[0][1]-buffx]=f_acqu.mean()
+    f_acqu[workspace.x[:,1]>workspace.bounds[1][1]-buffy]=f_acqu.mean()
     # else: 
     #     f_acqu=sigma
 
@@ -147,10 +147,10 @@ def UCB_dGPIS(model, workspace, level=0, x=None, acquisition_par=[0,0], numpoint
 
     buffx=.1*(workspace.bounds[0][1]-workspace.bounds[0][0])
     buffy=.1*(workspace.bounds[1][1]-workspace.bounds[1][0])
-    f_acqu[workspace.x[:,0]<workspace.bounds[0][0]+buffx]=f_acqu.min()
-    f_acqu[workspace.x[:,1]<workspace.bounds[1][0]+buffy]=f_acqu.min()
-    f_acqu[workspace.x[:,0]>workspace.bounds[0][1]-buffx]=f_acqu.min()
-    f_acqu[workspace.x[:,1]>workspace.bounds[1][1]-buffy]=f_acqu.min()
+    f_acqu[workspace.x[:,0]<workspace.bounds[0][0]+buffx]=f_acqu.mean()
+    f_acqu[workspace.x[:,1]<workspace.bounds[1][0]+buffy]=f_acqu.mean()
+    f_acqu[workspace.x[:,0]>workspace.bounds[0][1]-buffx]=f_acqu.mean()
+    f_acqu[workspace.x[:,1]>workspace.bounds[1][1]-buffy]=f_acqu.mean()
     # else: 
     #     f_acqu=sigma
 
@@ -165,6 +165,7 @@ def MaxVar_GP(model, workspace, level=0,x=None, acquisition_par=0):
         x=workspace.x
     #x = multigrid(bounds, res)
     mean, sigma = get_moments(model, x)   
+    sigma=sigma/sigma.max()
     sigmasq = sigma.reshape(workspace.res,workspace.res)
   
     sigmasq[:,0:10]=0
@@ -193,39 +194,40 @@ def UCB_GP(model, workspace, level=0, x=None, acquisition_par=.8  ):
     # mean=np.abs(mean - np.mean(mean)) #difference of mean from overall average
 
     sigma=sigma/sigma.max()
-    f_acqu = acquisition_par * (mean) +  sigma
+
+    f_acqu = acquisition_par*sigma + (1-acquisition_par)* (mean)#acquisition_par * (mean) +  sigma
 
     buffx=.1*(workspace.bounds[0][1]-workspace.bounds[0][0])
     buffy=.1*(workspace.bounds[1][1]-workspace.bounds[1][0])
-    f_acqu[workspace.x[:,0]<workspace.bounds[0][0]+buffx]=f_acqu.min()
-    f_acqu[workspace.x[:,1]<workspace.bounds[1][0]+buffy]=f_acqu.min()
-    f_acqu[workspace.x[:,0]>workspace.bounds[0][1]-buffx]=f_acqu.min()
-    f_acqu[workspace.x[:,1]>workspace.bounds[1][1]-buffy]=f_acqu.min()
+    f_acqu[workspace.x[:,0]<workspace.bounds[0][0]+buffx]=f_acqu.mean()
+    f_acqu[workspace.x[:,1]<workspace.bounds[1][0]+buffy]=f_acqu.mean()
+    f_acqu[workspace.x[:,0]>workspace.bounds[0][1]-buffx]=f_acqu.mean()
+    f_acqu[workspace.x[:,1]>workspace.bounds[1][1]-buffy]=f_acqu.mean()
     return x, f_acqu  # note: returns negative value for posterior 
 
-def dmaxAcquisition(model, workspace, acfun, xinit=[.2,.3], numpoints=1, level=0):
-    """
-    Selects numpoints number of points that are maximal from the list of AcquisitionFunctionVals
-    """
-    dx=.1
-    x=[xinit]
-    for n in range(numpoints):
-        _, current_ac = acfun(model, workspace, x=x[n], level=level)
-        testpts=x[n]+np.array([[dx,0],[-dx,0],[-dx,-dx],[0,dx],[dx,dx],[dx,-dx],[-dx,dx],[0,-dx]])
-        allpts=np.vstack((x[n],testpts))
-        allpts, new_acqu = acfun(model, workspace, x= allpts,level=level)
+# def dmaxAcquisition(model, workspace, acfun, xinit=[.2,.3], numpoints=1, level=0):
+#     """
+#     Selects numpoints number of points that are maximal from the list of AcquisitionFunctionVals
+#     """
+#     dx=.1
+#     x=[xinit]
+#     for n in range(numpoints):
+#         _, current_ac = acfun(model, workspace, x=x[n], level=level)
+#         testpts=x[n]+np.array([[dx,0],[-dx,0],[-dx,-dx],[0,dx],[dx,dx],[dx,-dx],[-dx,dx],[0,-dx]])
+#         allpts=np.vstack((x[n],testpts))
+#         allpts, new_acqu = acfun(model, workspace, x= allpts,level=level)
 
-        grad=new_acqu-current_ac  
-        i=0
-        ind = np.argpartition(new_acqu.flatten(), -1)[-1-i]
-        newpt = allpts[ind]
-        while (newpt[0]>workspace.bounds[0][1] or newpt[0]<workspace.bounds[0][0] or 
-                newpt[1]>workspace.bounds[1][1] or newpt[1]<workspace.bounds[1][0]):
-            i = i+1
-            ind = np.argpartition(new_acqu.flatten(), -1)[-1-i]
-            newpt = allpts[ind]
-        x.append(newpt)
-    return np.array(x[1:])
+#         grad=new_acqu-current_ac  
+#         i=0
+#         ind = np.argpartition(new_acqu.flatten(), -1)[-1-i]
+#         newpt = allpts[ind]
+#         while (newpt[0]>workspace.bounds[0][1] or newpt[0]<workspace.bounds[0][0] or 
+#                 newpt[1]>workspace.bounds[1][1] or newpt[1]<workspace.bounds[1][0]):
+#             i = i+1
+#             ind = np.argpartition(new_acqu.flatten(), -1)[-1-i]
+#             newpt = allpts[ind]
+#         x.append(newpt)
+#     return np.array(x[1:])
 # def d_UCB_GP(model,x,acquisition_par=1):
 #     """
 #     Derivative of the Upper Confidence Band
@@ -249,8 +251,16 @@ def UCB_GPIS(model, workspace, level=0, x=None, acquisition_par=.1 ):
     # if bound.shape[0]>0:
     sdf=abs(mean-level)
     sdf=sdf/sdf.max()
-    f_acqu = - sdf +  acquisition_par*sigma
+    f_acqu =acquisition_par*sigma - (1-acquisition_par)* (sdf)
+    #f_acqu = - sdf +  acquisition_par*sigma
     f_acqu=f_acqu+abs(min(f_acqu)) 
+    buffx=.1*(workspace.bounds[0][1]-workspace.bounds[0][0])
+
+    buffy=.1*(workspace.bounds[1][1]-workspace.bounds[1][0])
+    f_acqu[workspace.x[:,0]<workspace.bounds[0][0]+buffx]=f_acqu.mean()
+    f_acqu[workspace.x[:,1]<workspace.bounds[1][0]+buffy]=f_acqu.mean()
+    f_acqu[workspace.x[:,0]>workspace.bounds[0][1]-buffx]=f_acqu.mean()
+    f_acqu[workspace.x[:,1]>workspace.bounds[1][1]-buffy]=f_acqu.mean()
     # else: 
     # f_acqu=sigma
 
@@ -269,7 +279,7 @@ def UCB_GPIS_implicitlevel(model, workspace, level=0, x=None, acquisition_par=[.
     sigma=sigma/sigma.max()
     lev=(mean.max()-mean.min())+mean.min()
     # print lev
-    implev=acquisition_par[1]*lev
+    implev=acquisition_par[0]*lev
     bound=getLevelSet (workspace, mean, implev)
     bound=bound.flatten()
     # if bound.shape[0]>0:
@@ -277,17 +287,18 @@ def UCB_GPIS_implicitlevel(model, workspace, level=0, x=None, acquisition_par=[.
     sdf=sdf/sdf.max()
     # print -sdf.max()
     # print sigma.mean()
-    f_acqu = - sdf +  acquisition_par[0]*sigma
+    f_acqu =acquisition_par[1]*sigma - (1-acquisition_par[1])* (sdf)
+    #f_acqu = - sdf +  acquisition_par[0]*sigma
     f_acqu=f_acqu+abs(min(f_acqu)) 
     #else: 
     #    f_acqu=sigma
 
     buffx=.1*(workspace.bounds[0][1]-workspace.bounds[0][0])
     buffy=.1*(workspace.bounds[1][1]-workspace.bounds[1][0])
-    f_acqu[workspace.x[:,0]<workspace.bounds[0][0]+buffx]=f_acqu.min()
-    f_acqu[workspace.x[:,1]<workspace.bounds[1][0]+buffy]=f_acqu.min()
-    f_acqu[workspace.x[:,0]>workspace.bounds[0][1]-buffx]=f_acqu.min()
-    f_acqu[workspace.x[:,1]>workspace.bounds[1][1]-buffy]=f_acqu.min()
+    f_acqu[workspace.x[:,0]<workspace.bounds[0][0]+buffx]=f_acqu.mean()
+    f_acqu[workspace.x[:,1]<workspace.bounds[1][0]+buffy]=f_acqu.mean()
+    f_acqu[workspace.x[:,0]>workspace.bounds[0][1]-buffx]=f_acqu.mean()
+    f_acqu[workspace.x[:,1]>workspace.bounds[1][1]-buffy]=f_acqu.mean()
 
     return x, f_acqu  # note: returns negative value for posterior minimization
 
@@ -428,6 +439,7 @@ def batch_optimization(model,workspace,aqfunction, n_inbatch, xinit, GP_params, 
             model = update_GP(np.hstack((X, Y)),params=GP_params)
             xgrid,AcquisitionFunctionVals = aqfunction(model, workspace, level=level, x=None, acquisition_par=acquisition_par )
             X_new = maxAcquisition(workspace, AcquisitionFunctionVals, numpoints=1)
+
             X_batch = np.vstack((X_batch,X_new))
             k+=1 
         X_batch=np.vstack((xinit,X_batch))

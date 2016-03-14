@@ -71,7 +71,7 @@ def update_GP_ph1(measurements, nStereoMeas, method='heteroscedastic'):
     else:
         assert (method=="homoscedastic")or(method=="heteroscedastic")
 
-    m.optimize()
+    # m.optimize()
     
     # print m
     # xgrid = np.vstack([self.x1.reshape(self.x1.size),
@@ -110,7 +110,9 @@ def update_GP(measurements,method='nonhet',params=[1,.006,1e-5,0]):
         theta = params[1] # lengthscale
         noise = params[2]
         kern = GPy.kern.RBF(2,variance=var,lengthscale=theta)+GPy.kern.Bias(2,variance=params[3])
-        m = GPy.models.GPRegression(X,Y,kern)
+        # kern = GPy.kern.RBF(2)
+
+        m = GPy.models.GPRegression(X,Y,kern,normalizer=True)
         # m.Gaussian_noise.fix(noise)
     #     m.optimize_restarts(num_restarts = 10)
     # m.optimize()
