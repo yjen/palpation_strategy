@@ -55,9 +55,9 @@ from itertools import combinations
 
 
 
-def UCB_dGPIS(model, workspace, level=0, x=None, acquisition_par=[0,0], numpoints=1):
+def UCB_dGPIS2(model, workspace, level=0, x=None, acquisition_par=[0,0,0], numpoints=1):
     """
-    choose next sample points based on maximizing prior variance
+    choose next sample points based on maximizing prior variance + delta in mean + mean
     """
     #x = multigrid(bounds, res)
     mean, sigma = get_moments(model, workspace.x)  
@@ -68,7 +68,7 @@ def UCB_dGPIS(model, workspace, level=0, x=None, acquisition_par=[0,0], numpoint
 
     fd=np.array([fd.flatten()]).T
     fd=fd/fd.max()
-    implev=acquisition_par[1]*(fd.max()-fd.min())+fd.min()
+    implev=acquisition_par[0]*(fd.max()-fd.min())+fd.min()
     # print mean.shape
     # print fd.shape
 
@@ -84,7 +84,13 @@ def UCB_dGPIS(model, workspace, level=0, x=None, acquisition_par=[0,0], numpoint
     # sdf=-mean
     # print -sdf.max()
     # print sigma.mean()
-    f_acqu = -sdf +  acquisition_par[0]*sigma
+
+    mean=mean/mean.max()
+    mean=np.abs(mean - np.mean(mean))
+
+    f_acqu =  acquisition_par[1]*sigma + acquisition_par[2]*mean - (1-acquisition_par[1]-acquisition_par[2])*sdf
+    # f_acqu =  -sigma*sdf
+    
     #else:
     #f_acqu = sigma
     # f_acqu=abs(f_acqu)+abs(min(f_acqu)) 
@@ -99,6 +105,57 @@ def UCB_dGPIS(model, workspace, level=0, x=None, acquisition_par=[0,0], numpoint
     #     f_acqu=sigma
 
     return workspace.x, f_acqu  # note: returns negative value for posterior minimization
+
+
+def UCB_dGPIS(model, workspace, level=0, x=None, acquisition_par=[0,0], numpoints=1):
+    """
+    choose next sample points based on maximizing prior variance
+    Note to self: the params have been flipped acquisition_par= [0.2,0.3] is now [0.3, 0.2]    
+    """
+    #x = multigrid(bounds, res)
+    mean, sigma = get_moments(model, workspace.x)  
+    sigma=sigma/sigma.max()   
+    fd= gradfd(mean,workspace)
+    fd=fd/np.max(fd)
+    fd[np.isinf(fd)]=0
+
+    fd=np.array([fd.flatten()]).T
+    fd=fd/fd.max()
+    implev=acquisition_par[0]*(fd.max()-fd.min())+fd.min()
+    # print mean.shape
+    # print fd.shape
+
+    bound=getLevelSet (workspace, fd, implev)
+    #fd=fd.flatten()
+
+    # f_acqu = 1*sigma.flatten()+acquisition_par*fd.flatten()
+    # f_acqu=np.array([f_acqu]).T
+    # print bound.shape[0]
+    #if bound.shape[0]>0:
+    sdf=abs(fd-implev)
+    sdf=sdf/sdf.max()
+    # sdf=-mean
+    # print -sdf.max()
+    # print sigma.mean()
+
+    f_acqu =  acquisition_par[1]*sigma - (1-acquisition_par[1])*sdf
+    # f_acqu =  -sigma*sdf
+    
+    #else:
+    #f_acqu = sigma
+    # f_acqu=abs(f_acqu)+abs(min(f_acqu)) 
+
+    buffx=.05*(workspace.bounds[0][1]-workspace.bounds[0][0])
+    buffy=.05*(workspace.bounds[1][1]-workspace.bounds[1][0])
+    f_acqu[workspace.x[:,0]<workspace.bounds[0][0]+buffx]=f_acqu.min()
+    f_acqu[workspace.x[:,1]<workspace.bounds[1][0]+buffy]=f_acqu.min()
+    f_acqu[workspace.x[:,0]>workspace.bounds[0][1]-buffx]=f_acqu.min()
+    f_acqu[workspace.x[:,1]>workspace.bounds[1][1]-buffy]=f_acqu.min()
+    # else: 
+    #     f_acqu=sigma
+
+    return workspace.x, f_acqu  # note: returns negative value for posterior minimization
+
 
 def MaxVar_GP(model, workspace, level=0,x=None, acquisition_par=0):
     """
@@ -133,6 +190,8 @@ def UCB_GP(model, workspace, level=0, x=None, acquisition_par=.8  ):
     # print 'mean=', mean.max()
     # print 'sigma=',sigma.max()
     mean=mean/mean.max()
+    # mean=np.abs(mean - np.mean(mean)) #difference of mean from overall average
+
     sigma=sigma/sigma.max()
     f_acqu = acquisition_par * (mean) +  sigma
 
