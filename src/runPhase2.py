@@ -128,12 +128,12 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP,
         UCB_GP_acpar=.7 # set parameters for acquiisition functions: balancing mean vs. var in prioritizing search
         UCB_GPIS_acpar=.2
 
-        UCB_GPIS_implicit_acpar=[.2,.7]
+        UCB_GPIS_implicit_acpar=[.8,.2]
         UCB_dGP_acpar=[1.1,.2]
-        UCB_dGP_acpar=[1.1,.5]
+        UCB_dGP_acpar=[.5,.7]
 
         # GP_params= [6,.005,.0001,7] # parameters for gaussian process update
-        GP_params= [14,.003,.02,63] # parameters for gaussian process update
+        GP_params= [14,.003,.002,63] # parameters for gaussian process update
 
     else:   #params for simulation
         UCB_GP_acpar=.5
@@ -245,7 +245,7 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP,
 
 if __name__ == "__main__":
     dirname='tt'
-    run_single_phase2_simulation(horseshoe, dirname, AcFunction=UCB_GP, control='Max', plot=True, tiltlev=1,smode='Sim',iters=20)
+    run_single_phase2_simulation(horseshoe, dirname, AcFunction=UCB_dGPIS, control='Max', plot=True, tiltlev=1,smode='RecordedExp',iters=20)
     # outleft,outrem,aclabellist=run_phase2_full()
     # plot_error(outrem,outleft,aclabellist)
 

@@ -288,7 +288,7 @@ def getSimulateStiffnessMeas(sample_points,surface,noiselev=.05,tiltlev=0):
                      z,
                      sigma_t]).T
 
-def getRecordedExperimentalStiffnessMeas(sample_points,surface=None,noiselev=None):
+def getRecordedExperimentalStiffnessMeas(sample_points,surface=None,noiselev=None,tiltlev=None):
     filename = '../scripts/dense_grid.p'
     data_dict = pickle.load(open(filename, "rb"))
     data = np.array(data_dict['data'])
