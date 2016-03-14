@@ -816,9 +816,9 @@ class Palpation():
         rospy.sleep(0.5)
         for i in range(len(points_x)):
             measurement = self.execute_point_scan_probe(points_x[i], points_y[i])
-            if i%4 == 0:
-                measurements.append(measurement)
-            rospy.sleep(0.1)
+            # if i%2 == 0:
+            measurements.append(measurement)
+            # rospy.sleep(0.2)
         return measurements
 
     def execute_point_scan_probe(self, x, y):
@@ -852,13 +852,13 @@ class Palpation():
         new_height = new_pose_tissue_frame.position.z
 
 
-        curr_pose = self.psm1.get_current_cartesian_position()
-        if np.linalg.norm(np.array(curr_pose.position.tolist())- np.array(pose.position.tolist())) > 0.003:
-            self.psm1.move_cartesian_frame_linear_interpolation(pose, 0.005, False)
-        else:
-            a = posemath.fromMsg(pose.msg.Pose())
-            self.psm1.move_cartesian_frame(a, True)
-        # self.psm1.move_cartesian_frame_linear_interpolation(pose, 0.005, False)        
+        # curr_pose = self.psm1.get_current_cartesian_position()
+        # if np.linalg.norm(np.array(curr_pose.position.tolist())- np.array(pose.position.tolist())) > 0.005:
+        #     self.psm1.move_cartesian_frame_linear_interpolation(pose, 0.005, False)
+        # else:
+        #     a = posemath.fromMsg(pose.msg.Pose())
+        #     self.psm1.move_cartesian_frame(a, True)
+        self.psm1.move_cartesian_frame_linear_interpolation(pose, 0.005, False)        
 
 
         if old_height - new_height >= 0.002:

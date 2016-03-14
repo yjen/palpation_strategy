@@ -144,7 +144,7 @@ def run_phase2_full():
 if __name__ == "__main__":
     dirname='tt'
 
-    run_single_phase2_simulation(expCircle, dirname, AcFunction=UCB_GPIS_implicitlevel, control='Max', plot=True, smode='Exp',iters=20)
+    run_single_phase2_simulation(expCircle, dirname, AcFunction=UCB_GPIS, control='Max', plot=True, smode='Exp',iters=20)
     # outleft,outrem,aclabellist=run_phase2_full()
     # plot_ph2_error(outrem,outleft,aclabellist)
 

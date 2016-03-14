@@ -98,7 +98,7 @@ def getExperimentalStiffnessMeas(sample_points,surface=None):
     x2 = []
     y2 = []
 
-    distance = 0.0005
+    distance = 0.0025
     for i in range(len(x)-1):
         x2.append(x[i])
         y2.append(y[i])

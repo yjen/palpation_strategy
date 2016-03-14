@@ -94,7 +94,7 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, con
         UCB_GPIS_acpar=.2
 
         UCB_GPIS_implicit_acpar=[.2,.7]
-        UCB_dGP_acpar=[1.1,.5]
+        UCB_dGP_acpar=[1.5,.8]
 
         # GP_params= [6,.005,.0001,7] # parameters for gaussian process update
         GP_params= [14,.003,.02,63] # parameters for gaussian process update
@@ -222,7 +222,7 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, con
 
 if __name__ == "__main__":
     dirname='tt'
-    run_single_phase2_simulation(horseshoe, dirname, AcFunction=UCB_dGPIS, control='Max', plot=True, smode='RecordedExp',iters=20)
+    run_single_phase2_simulation(horseshoe, dirname, AcFunction=UCB_GPIS, control='Max', plot=True, smode='RecordedExp',iters=20)
     # outleft,outrem,aclabellist=run_phase2_full()
     # plot_error(outrem,outleft,aclabellist)
 

@@ -91,7 +91,7 @@ def update_GP(measurements,method='nonhet',params=[1,.006,1e-5,0]):
         m = GPy.models.GPRegression(X,Y,kern)
         # m.Gaussian_noise.fix(noise)
     #     m.optimize_restarts(num_restarts = 10)
-    # m.optimize()
+    m.optimize()
     # print m
     # xgrid = np.vstack([self.x1.reshape(self.x1.size),
     #                    self.x2.reshape(self.x2.size)]).T
