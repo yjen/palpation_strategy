@@ -33,26 +33,26 @@ measmax=9
 #######################################
 # polygon test functions for simulating phase2: 
 #######################################
-squaretumor=np.array([[-.01,-.01],[.02,-.01],[.02,.02],[-.01,.02]])
+squaretumor=.5*np.array([[-.01,-.01],[.02,-.01],[.02,.02],[-.01,.02]])
 # quaretumor=Polygon(quaretumor)
 thintumor=np.array([[2.25,0.25],[2.75,2.25],[2.75,2.75],[2.25,2.75]])
 rantumor=.02*np.array([[2.25,0.75],[3.25,1.25],[2.75,2.25],[2.75,2.75],[2.25,2.75],[2.,1.25]])-.04
 
-phantomsquareGT=np.array([[.001,.019],[.02,.019],[.02,.03],[.001,.03]])
+phantomsquareGT=np.array([[.007,.02],[.015,.02],[.015,.028],[.007,.028]])
 
 # make circular tumor
 rad=.0125/2.
-loc=[0.01,.03]
+loc=[0.0229845803642/2.0,.03]
 simCircle = Point(loc[0],loc[1]).buffer(rad)
 simCircle = np.array(simCircle.exterior.coords)
-rad=.0125
+rad=.0125/2.
 loc=[0.0229845803642/2.0,.035]
 expCircle = Point(loc[0],loc[1]).buffer(rad)
 expCircle = np.array(expCircle.exterior.coords)
 
 # create horseshow
 rad=.007
-loc=[0.0229845803642/2.0-.002,.015]
+loc=[0.0229845803642/2.0-.002,.02]
 circle = Point(loc[0],loc[1]).buffer(rad)
 circle = np.array(circle.exterior.coords)
 semicircle=circle[circle[:,0]>=loc[0]]
@@ -90,8 +90,17 @@ def getInterpolatedStereoMeas(surface, workspace):
     #z = np.pad(z,((5,5),(5,5)),mode='edge')
     z = getStereoDepthMap(surface)
     #z = np.pad(z,((5,5),(5,5)),mode='edge')
-    z[z<0]=0
-    # z[z>500]=500
+        
+    z[z<5]= 5
+    z[z>30]=5 #if dont know its baseline
+
+    #delete measurements outside range
+    # z = z[z<=30]
+    # z = z[z>=5]
+
+    # import IPython
+    # IPython.embed()
+
     res = z.shape[0]
     x = np.linspace(workspace.bounds[0][0], workspace.bounds[0][1], num = res)
     y = np.linspace(workspace.bounds[1][0], workspace.bounds[1][1], num = res)
@@ -140,9 +149,14 @@ def getSimulatedStereoMeas(surface, workspace, plot=False, block=False):
     should fix these functions so they're not necessary by default...
     """
     xx, yy, z = SimulateStereoMeas(surface, workspace)
-    # we assume Gaussian measurement noise:
-    sigma_g = 1
-    focalplane=workspace.bounds[1][1]/2.0
+    
+    # todo: noise due to  offset uncertainty    
+    focalplane=(workspace.bounds[1][1]-workspace.bounds[1][0])/2.0
+    # we subtract yy from focal plane as an estimate for looking at it obliquely
+    sigma_offset=(yy-focalplane)
+
+    sigma_offset = sigma_offset.ravel()/np.max(sigma_offset) #normalize
+    
     # noise component due to curvature:
     # finite differencing
     #xgrid = np.vstack([xx.flatten(), yy.flatten()]).T
@@ -150,12 +164,17 @@ def getSimulatedStereoMeas(surface, workspace, plot=False, block=False):
     dx,dy = grad
     sigma_fd = np.sqrt(dx**2+dy**2)
     
-    sigma_fd[np.isinf(sigma_fd)]=0
+    sigma_fd[np.isinf(sigma_fd)]=0 
 
-    # todo: noise due to  offset uncertainty
-    sigma_offset=(yy-focalplane)**2
-    # weighted total noise for measurements
-    sigma_total = sigma_g + 0*sigma_fd  + .0005*sigma_offset
+    sigma_fd = sigma_fd.ravel()/np.max(sigma_fd)  #normalize
+
+    # we assume Gaussian measurement noise:
+    sigma_g = 0.05
+
+    # weighted total variance for measurements
+    sigma_total = sigma_g + sigma_fd  + 0.2*sigma_offset
+    # sigma_total = sigma_g + 0*sigma_fd*sigma_offset
+
 
     if plot==True:
         # plot the surface from disparity
@@ -209,14 +228,14 @@ def getSimulatedProbeMeas(surface, workspace, sample_points):
     """
     xx,yy,z = SimulateProbeMeas(surface, workspace, sample_points)
     # we assume Gaussian measurement noise:
-    noise=100
+    noise=0.2 #assuming there is a 0.2 variance in height in mm
     sigma_t = np.full(z.shape, noise)
 
     return np.array([xx, yy,
                      z,
                      sigma_t]).T
 
-def SimulateStiffnessMeas(poly, sample_locations, sensornoise = .05):
+def SimulateStiffnessMeas(poly, sample_locations, noiselev,tiltlev):
     """Simulate measurements from palpation (tapping mode) for the test
     functions above inputs: *surface: a function defining a test surface
     *locations: list of points [[x1,y1],[x2,y2]] outputs: *xx,yy, z,
@@ -225,13 +244,18 @@ def SimulateStiffnessMeas(poly, sample_locations, sensornoise = .05):
     This functions would be replaced by experiment
 
     """
+    
     # unpack
     xx, yy = sample_locations.T
 
-    # this is a simulated measurement, add noise
-    
+    # simulation measurement without noise
     z = makeMeasurement_LS(sample_locations, poly)
-    z = z + sensornoise*np.random.randn(z.shape[0])
+
+    # add Gaussian noise
+    z = z + noiselev*np.random.randn(z.shape[0])
+
+    # add bias noise (angle input needs to be converted to z offset)
+    z = z+yy*np.tan(tiltlev)#np.tan(np.deg2rad(tiltlev))
 
     return xx, yy, z
 
@@ -249,13 +273,13 @@ def plotSimulatedStiffnessMeas(poly, workspace, xpos=None, sensornoise = .03):
     plt.plot(y.flatten(), meas.flatten(), linewidth=3.0)
     plt.show()
 
-def getSimulateStiffnessMeas(sample_points,surface):
+def getSimulateStiffnessMeas(sample_points,surface,noiselev=.05,tiltlev=0):
     """wrapper function for SimulateProbeMeas hetero. GP model requires
     defining the variance for each measurement standard stationary
     kernel doesn't need this
 
     """
-    xx,yy,z = SimulateStiffnessMeas(surface, sample_points)
+    xx,yy,z = SimulateStiffnessMeas(surface, sample_points,noiselev,tiltlev)
 
     # we assume Gaussian measurement noise:
     noise=.05
@@ -264,7 +288,7 @@ def getSimulateStiffnessMeas(sample_points,surface):
                      z,
                      sigma_t]).T
 
-def getRecordedExperimentalStiffnessMeas(sample_points,surface=None):
+def getRecordedExperimentalStiffnessMeas(sample_points,surface=None,noiselev=None):
     filename = '../scripts/dense_grid.p'
     data_dict = pickle.load(open(filename, "rb"))
     data = np.array(data_dict['data'])
@@ -284,7 +308,6 @@ def getRecordedExperimentalStiffnessMeas(sample_points,surface=None):
 
     stiffnesses[sample_points[:,0]>x.max()-buffx]=z.mean()/1000.0
     stiffnesses[sample_points[:,0]<x.min()+buffx]=z.mean()/1000.0
-    # print z[x>x.min()+buffx]
     output = np.zeros((len(sample_points), 3))
     output[:,:2] = sample_points
     output[:,2] = stiffnesses

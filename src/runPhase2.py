@@ -17,11 +17,22 @@ import pickle
 ##############################
 # Phase 2
 ###############################
-def evalerror_ph2(tumor,workspace,mean,variance,level):
-    GroundTruth = np.vstack((tumor,tumor[0]))
-    GroundTruth = Polygon(GroundTruth)
+def evalerror_ph2(tumor,workspace,mean,variance,level,tiltlev=0):
+    # GroundTruth = np.vstack((tumor,tumor[0]))
+
+    # if tiltlev>0:
+    #     level=.5*(mean.max()-mean.min())+mean.min()
+    #     grad=gradfd(mean,workspace)
+    #     level=.5*(grad.max()-grad.min())+grad.min()
+
+    #     boundaryestimate = getLevelSet (workspace, grad, level, allpoly=True)
+
+    # #level=level*(measmax-measmin)+measmin
+    # else:
+    level=.5*(measmax-measmin)+measmin
+    GroundTruth = Polygon(tumor)
     # see: http://toblerity.org/shapely/manual.html
-    boundaryestimate = getLevelSet (workspace, mean, level)
+    boundaryestimate = getLevelSet (workspace, mean, level, allpoly=True)
     offsetboundary=[]
 
     for i in range(0,boundaryestimate.shape[0]):
@@ -39,23 +50,39 @@ def evalerror_ph2(tumor,workspace,mean,variance,level):
             except AttributeError:
                  bnd=[]
             offsetboundary.append(bnd)
-    
+
+    arealist=[0]
+    bnlist=[0]
+    err=0
+    area=0
     if len(offsetboundary)>0:
-        err=0
+        
         for b in offsetboundary:
             if len(b)>3:
                 bn=Polygon(b)
-                c1=GroundTruth.symmetric_difference(bn)
-                if c1.geom_type == 'Polygon':
-                    err = c1.area
-                elif c1.geom_type == 'MultiPolygon':
-                    for p in c1:
-                        err=err+p.area
+                arealoc=bn.area
+                if arealoc>area:
+                    area=arealoc
+                    c1 = GroundTruth.symmetric_difference(bn)
+                    if c1.geom_type == 'Polygon':
+                        err=c1.area
+                         
+                    elif c1.geom_type == 'MultiPolygon':
+                        err1=0
+                        for p in c1:
+                            err1=err1+p.area
+                        err=err1
+                # print err
                     # patchp = PolygonPatch(p, fc='red', ec='red', alpha=0.5, zorder=2)
-                    #     data[4].add_patch(patchp)    
-    else:
-        err=(workspace.bounds[0][1]-workspace.bounds[0][0])*(workspace.bounds[1][1]-workspace.bounds[1][0])
-    # if err==0:
+                    #     data[4].add_patch(patchp) 
+    # error=max(errlist)   
+    error=err
+    if area==0 and err==0:
+        error=GroundTruth.area#(workspace.bounds[0][1]-workspace.bounds[0][0])*(workspace.bounds[1][1]-workspace.bounds[1][0])
+
+    # else:
+    #     err=(workspace.bounds[0][1]-workspace.bounds[0][0])*(workspace.bounds[1][1]-workspace.bounds[1][0])
+    # # if err==0:
     #     err=(workspace.bounds[0][1]-workspace.bounds[0][0])*(workspace.bounds[1][1]-workspace.bounds[1][0])
     # print GroundTruth
     # if len(boundaryestimate)>3:
@@ -71,9 +98,10 @@ def evalerror_ph2(tumor,workspace,mean,variance,level):
     # else:
     #     err=.100
     #     tumorleft=.100
-    return err, 0
+    return 10000.0*error
 
-def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, control='Max', plot=False, smode='RecordedExp',iters=20):
+def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, 
+    control='Max', noiselev=.05,tiltlev=0,plot=False, smode='RecordedExp',iters=20):
     if smode=='RecordedExp': 
         getmeasurements=getRecordedExperimentalStiffnessMeas
         bounds=((.0,0.0229845803642),(.0,0.0577416388862))
@@ -85,26 +113,35 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, con
 
         getmeasurements=getSimulateStiffnessMeas
         bounds=((.0,0.025),(.0,0.05))
+        # bounds=((.0,0.05),(.0,0.025))
+        # bounds=((.0,0.05),(.0,0.05))
+
         #               bounds=((-.04,.04),(-.04,.04))
     else: 
         print 'invalid mode!'
     
+    # set level set to look for-- this should correspond to something, max FI?
+    levelrel=.5
+    level = levelrel*(measmax-measmin)+measmin #pick something between min/max deflection
+
     if smode=='RecordedExp' or smode=='Exp': 
         UCB_GP_acpar=.7 # set parameters for acquiisition functions: balancing mean vs. var in prioritizing search
         UCB_GPIS_acpar=.2
 
         UCB_GPIS_implicit_acpar=[.2,.7]
-        UCB_dGP_acpar=[1.5,.8]
+        UCB_dGP_acpar=[1.1,.2]
+        UCB_dGP_acpar=[1.1,.5]
 
         # GP_params= [6,.005,.0001,7] # parameters for gaussian process update
         GP_params= [14,.003,.02,63] # parameters for gaussian process update
 
     else:   #params for simulation
-        UCB_GP_acpar=3
+        UCB_GP_acpar=.5
         UCB_GPIS_acpar=.5
-        UCB_GPIS_implicit_acpar=[.5,.8]
-        UCB_dGP_acpar=[2,.5]
+        UCB_GPIS_implicit_acpar=[.7,.5]
+        UCB_dGP_acpar=[.5,.7]
         GP_params= [25,.0033,.004,52]
+        # GP_params= [.22,.0033,.004,52]
 
     if AcFunction==UCB_GPIS:
         acquisition_par=UCB_GPIS_acpar
@@ -122,20 +159,12 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, con
 
     # initialize workspace object
     workspace = Workspace(bounds,gridres)
-    # print workspace.bounds
-    # plotSimulatedStiffnessMeas(phantomname, workspace, xpos=0.01, sensornoise = .05)
 
-    # set level set to look for-- this should correspond to something, max FI?
-    level = .5*(measmax-measmin)+measmin #pick something between min/max deflection
-    # print "level=",level
-
-    # print level
     plot_data = None
     means = []
     sigmas = []
     acqvals = []
-    healthyremoveds=[]
-    tumorlefts=[]
+    errors=[]
     sampled_points = []
     measures = []
 
@@ -148,15 +177,9 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, con
     ###############
     next_samples_points = randompoints(bounds, 5) #randompoints(bounds, 100)
 
-    # next_samples_points=solve_tsp_dynamic(next_samples_points)    # collect initial meausrements
+    tiltlev=np.arctan2(tiltlev*(measmax-measmin),workspace.bounds[1][1])
 
-    # if mode =='RecordedExp':
-    #     meas = getRecordedExperimentalStiffnessMeas(next_samples_points)
-    # if mode =='Exp':
-    #     meas = getExperimentalStiffnessMeas(next_samples_points)
-    # else:        
-    #     meas = getSimulateStiffnessMeas(phantomname, next_samples_points)
-    meas = getmeasurements(next_samples_points,phantomname)
+    meas = getmeasurements(next_samples_points,phantomname,noiselev=noiselev,tiltlev=tiltlev)
 
     measnew = meas
     for j in range (iters): #(1,100,1)
@@ -178,10 +201,10 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, con
         means.append(mean)
         sigmas.append(sigma)
         measures.append(meas)
-        healthyremoved,tumorleft= evalerror_ph2(phantomname, workspace, mean,sigma,level)
-        healthyremoveds.append(healthyremoved)
-        tumorlefts.append(tumorleft)
+        error= evalerror_ph2(phantomname, workspace, mean,sigma,.5,tiltlev)
+        errors.append(error)
 
+        print 'error=',error
         # select next sampling points. for now, just use Mac--dMax and Erg need work.
         bnd=getLevelSet (workspace, mean, level)
 
@@ -202,9 +225,9 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, con
             plt.pause(0.0001)  
             plot_data = plot_beliefGPIS(phantomname, workspace, mean, sigma,
                                       AqcuisFunction, measnew,
-                                      directory, [healthyremoveds,tumorlefts],plot_data,level=level,
+                                      directory, errors,plot_data,level=level,
                                       iternum=j, projection3D=False)
-        measnew = getmeasurements(next_samples_points,phantomname)
+        measnew = getmeasurements(next_samples_points,phantomname,noiselev=noiselev,tiltlev=tiltlev)
         # print measnew.max()
         # if mode=='Exp':
         #     measnew = getExperimentalStiffnessMeas(next_samples_points)
@@ -217,12 +240,12 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, con
         meas = np.append(meas,measnew,axis=0)
 
     # plt.show(block=False)
-    return means, sigmas, acqvals, measures, healthyremoveds, tumorlefts, j, gpmodel
+    return means, sigmas, acqvals, measures, errors, j, gpmodel
 
 
 if __name__ == "__main__":
     dirname='tt'
-    run_single_phase2_simulation(horseshoe, dirname, AcFunction=UCB_GPIS, control='Max', plot=True, smode='RecordedExp',iters=20)
+    run_single_phase2_simulation(horseshoe, dirname, AcFunction=UCB_GP, control='Max', plot=True, tiltlev=None,smode='RecordedExp',iters=20)
     # outleft,outrem,aclabellist=run_phase2_full()
     # plot_error(outrem,outleft,aclabellist)
 
