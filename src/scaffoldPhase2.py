@@ -59,7 +59,7 @@ def save_data(arr, fname, aclabellist, noiselevels):
     f.close()
     return
 
-NUM_EXPERIMENTS = 5
+NUM_EXPERIMENTS = 1
 
 tumors = [simCircle,horseshoe]              # add another model ?
 # textures = ["_lam", "_text", "_spec", "_st"]
@@ -68,11 +68,11 @@ tumors = [simCircle,horseshoe]              # add another model ?
 # acquisition functions:  MaxVar_GP, UCB_GP, EI_GP, UCB_GPIS, EI_IS, MaxVar_plus_gradient
 # MaxVar_plus_gradient(model, workspace, level=0, x=None, acquisition_par=0,numpoints=1)
 aqfunctions = [MaxVar_GP,UCB_GP,UCB_GPIS,UCB_GPIS_implicitlevel,UCB_dGPIS]#MaxVar_plus_gradient
-aqfunctionsnames = ["MaxVar_GP","UCB_GP","UCB_GPIS","UCB_GPIS_implicitlevel","UCB_sGPIS" ]#, "random"]"MaxVar_plus_gradient"
+aqfunctionsnames = ["UCB_GPIS","MaxVar_GP","UCB_GP","UCB_GPIS","UCB_GPIS_implicitlevel","UCB_sGPIS" ]#, "random"]"MaxVar_plus_gradient"
 
 controls =["Max"]
 
-noiselevels = []
+noiselevels = [.8,.5,.1,.05]
 
 stiffnessmax = []
 def run_phase2_full():
@@ -88,10 +88,10 @@ def run_phase2_full():
         acqerrlistremoved=[]
         aclabellist=[]
         for j, acq in enumerate(aqfunctions):
-            conterrlistleft=[]
-            conterrlistremoved=[]
-            contlabellist=[]  
-            for m, cont in enumerate(controls):
+            noiseerrlistleft=[]
+            noiseerrlistremoved=[]
+            noiselabellist=[]  
+            for m, noiselev in enumerate(noiselevels):
                 # if i*len(textures) + j != 0:        # Use this to run only the nth surface
                 #     continue
                 its = [0.0, 0.0]
@@ -102,10 +102,10 @@ def run_phase2_full():
                     # disparityMeas = None
                     # for l, method in enumerate(methods):
                     start = time.time()
-                    dirname = str(i) + '_' + aqfunctionsnames[j] + '_' + cont
+                    dirname = str(i) + '_' + aqfunctionsnames[j]+'_'+str(noiselev)+'_exp_'+str(k)
 
                     means, sigmas, acqvals, measures, healthyremoved, tumorleft, num_iters, gpmodel = run_single_phase2_simulation(
-                        tumor, dirname, AcFunction=acq, control=cont, plot=True, smode='Sim',iters=20)
+                        tumor, dirname, AcFunction=acq, noiselev=noiselev, plot=True, smode='Sim',iters=20)
                     plt.close() 
                     end = time.time()
                     time_elapsed = end - start # in seconds
@@ -125,12 +125,12 @@ def run_phase2_full():
                 # save_table(iter_table, "phase2_iterations")
                 # save_table(error_table, "phase2_errors")
                 # save_table(error_table1, "phase2_errors1")
-                conterrlistleft.append(experrlistleft)
-                conterrlistremoved.append(experrlistremoved)
-                contlabellist.append(dirname)
-            acqerrlistleft.append(conterrlistleft)
-            acqerrlistremoved.append(conterrlistremoved)
-            aclabellist.append(contlabellist)
+                noiseerrlistleft.append(experrlistleft)
+                noiseerrlistremoved.append(experrlistremoved)
+                noiselabellist.append(dirname)
+            acqerrlistleft.append(noiseerrlistleft)
+            acqerrlistremoved.append(noiseerrlistremoved)
+            aclabellist.append(noiselabellist)
         # plot_error(errors_per_method, "phase1_error_exp"+str(k), surf+text)
 
         tumorerrlistleft.append(acqerrlistleft)
@@ -143,7 +143,7 @@ def run_phase2_full():
 
 if __name__ == "__main__":
     dirname='tt'
-    run_single_phase2_simulation(rantumor, dirname, AcFunction=UCB_dGPIS, control='Max', plot=True, smode='RecordedExp',iters=20)
-    #     outleft,outrem,aclabellist=run_phase2_full()
+    # run_single_phase2_simulation(rantumor, dirname, AcFunction=UCB_dGPIS, control='Max', plot=True, smode='Sim',iters=20)
+    outleft,outrem,aclabellist=run_phase2_full()
     #     plot_ph2_error(outrem,outleft,aclabellist)
 

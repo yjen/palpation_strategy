@@ -216,7 +216,7 @@ def getSimulatedProbeMeas(surface, workspace, sample_points):
                      z,
                      sigma_t]).T
 
-def SimulateStiffnessMeas(poly, sample_locations, sensornoise = .05):
+def SimulateStiffnessMeas(poly, sample_locations, noiselev = .05):
     """Simulate measurements from palpation (tapping mode) for the test
     functions above inputs: *surface: a function defining a test surface
     *locations: list of points [[x1,y1],[x2,y2]] outputs: *xx,yy, z,
@@ -231,7 +231,7 @@ def SimulateStiffnessMeas(poly, sample_locations, sensornoise = .05):
     # this is a simulated measurement, add noise
     
     z = makeMeasurement_LS(sample_locations, poly)
-    z = z + sensornoise*np.random.randn(z.shape[0])
+    z = z + noiselev*np.random.randn(z.shape[0])
 
     return xx, yy, z
 
@@ -249,13 +249,13 @@ def plotSimulatedStiffnessMeas(poly, workspace, xpos=None, sensornoise = .03):
     plt.plot(y.flatten(), meas.flatten(), linewidth=3.0)
     plt.show()
 
-def getSimulateStiffnessMeas(sample_points,surface):
+def getSimulateStiffnessMeas(sample_points,surface,noiselev):
     """wrapper function for SimulateProbeMeas hetero. GP model requires
     defining the variance for each measurement standard stationary
     kernel doesn't need this
 
     """
-    xx,yy,z = SimulateStiffnessMeas(surface, sample_points)
+    xx,yy,z = SimulateStiffnessMeas(surface, sample_points,noiselev)
 
     # we assume Gaussian measurement noise:
     noise=.05
@@ -264,7 +264,7 @@ def getSimulateStiffnessMeas(sample_points,surface):
                      z,
                      sigma_t]).T
 
-def getRecordedExperimentalStiffnessMeas(sample_points,surface=None):
+def getRecordedExperimentalStiffnessMeas(sample_points,surface=None,noiselev=None):
     filename = '../scripts/dense_grid.p'
     data_dict = pickle.load(open(filename, "rb"))
     data = np.array(data_dict['data'])
