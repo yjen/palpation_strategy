@@ -242,7 +242,8 @@ def plot_acq():
     #Initializing
     ###############
 
-    means, sigmas, acqvals, measures, healthyremoved, tumorleft, num_iters,gpmodel = run_single_phase2_simulation(phantomname, dirname, AcFunction=UCB_GPIS, control='Max', plot=False, exp=False,iters=2)
+    means, sigmas, acqvals, measures, healthyremoved, tumorleft, num_iters,gpmodel = run_single_phase2_simulation(
+        phantomname, dirname, AcFunction=UCB_GPIS, control='Max', plot=False, exp=False,iters=2)
 
 
     AcFunctions=[UCB_GPIS_implicitlevel,MaxVar_plus_gradient,UCB_GP,UCB_GPIS,MaxVar_GP]

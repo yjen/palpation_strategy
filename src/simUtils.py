@@ -25,7 +25,7 @@ from descartes import PolygonPatch
 # simulation pipeline
 #######################################
 IMG_SIZE = 50
-offset=.001
+offset=.002
 measmin=7
 measmax=9
 # measmin=9
@@ -41,8 +41,8 @@ rantumor=.02*np.array([[2.25,0.75],[3.25,1.25],[2.75,2.25],[2.75,2.75],[2.25,2.7
 phantomsquareGT=np.array([[.001,.019],[.02,.019],[.02,.03],[.001,.03]])
 
 # make circular tumor
-rad=.0125
-loc=[0,0]
+rad=.0125/2.
+loc=[0.01,.03]
 simCircle = Point(loc[0],loc[1]).buffer(rad)
 simCircle = np.array(simCircle.exterior.coords)
 rad=.0125
@@ -51,8 +51,8 @@ expCircle = Point(loc[0],loc[1]).buffer(rad)
 expCircle = np.array(expCircle.exterior.coords)
 
 # create horseshow
-rad=.005
-loc=[0.0229845803642/3.0,.035]
+rad=.007
+loc=[0.0229845803642/2.0-.002,.015]
 circle = Point(loc[0],loc[1]).buffer(rad)
 circle = np.array(circle.exterior.coords)
 semicircle=circle[circle[:,0]>=loc[0]]
@@ -216,7 +216,7 @@ def getSimulatedProbeMeas(surface, workspace, sample_points):
                      z,
                      sigma_t]).T
 
-def SimulateStiffnessMeas(poly, sample_locations, sensornoise = .01):
+def SimulateStiffnessMeas(poly, sample_locations, sensornoise = .05):
     """Simulate measurements from palpation (tapping mode) for the test
     functions above inputs: *surface: a function defining a test surface
     *locations: list of points [[x1,y1],[x2,y2]] outputs: *xx,yy, z,
@@ -235,17 +235,18 @@ def SimulateStiffnessMeas(poly, sample_locations, sensornoise = .01):
 
     return xx, yy, z
 
-def plotSimulatedStiffnessMeas(poly, workspace, ypos=None, sensornoise = .03):
-    if ypos==None:
-       ypos=(workspace.bounds[1][1]-workspace.bounds[1][0])/2.0+workspace.bounds[1][0]
-    x = np.arange(workspace.bounds[0][0], workspace.bounds[0][1], 1/float(10000))
-    y = np.zeros(x.shape)+ypos
+def plotSimulatedStiffnessMeas(poly, workspace, xpos=None, sensornoise = .03):
+    if xpos==None:
+       xpos=(workspace.bounds[0][1]-workspace.bounds[0][0])/2.0+workspace.bounds[0][0]
+
+    y = np.arange(workspace.bounds[1][0], workspace.bounds[1][1], 1/float(1000))
+    x = np.zeros(y.shape)+xpos
     sample_locations = np.array([x,y]).T
 
     meas = SimulateStiffnessMeas(poly, sample_locations, sensornoise=sensornoise)
     meas = meas[2]
 
-    plt.plot(x.flatten(), meas.flatten(), linewidth=3.0)
+    plt.plot(y.flatten(), meas.flatten(), linewidth=3.0)
     plt.show()
 
 def getSimulateStiffnessMeas(sample_points,surface):
@@ -257,7 +258,7 @@ def getSimulateStiffnessMeas(sample_points,surface):
     xx,yy,z = SimulateStiffnessMeas(surface, sample_points)
 
     # we assume Gaussian measurement noise:
-    noise=.0001
+    noise=.05
     sigma_t = np.full(z.shape, noise)
     return np.array([xx, yy,
                      z,
@@ -354,8 +355,9 @@ def SixhumpcamelSurface(xx,yy):
 #######################################
 # Functions for simulating deflection measurements
 #######################################
+#def sigmoid(dist, alpha=1014, a=0.0, b=1.0):
 
-def sigmoid(dist, alpha=1014, a=0.0, b=1.0):
+def sigmoid(dist, alpha=1400, a=0.0, b=1.0):
     """  
     a, b: base and max readings of the probe with and without tumor
     dist = xProbe-xEdge
