@@ -89,8 +89,8 @@ def UCB_dGPIS(model, workspace, level=0, x=None, acquisition_par=[0,0], numpoint
     #f_acqu = sigma
     # f_acqu=abs(f_acqu)+abs(min(f_acqu)) 
 
-    buffx=.05*(workspace.bounds[0][1]-workspace.bounds[0][0])
-    buffy=.05*(workspace.bounds[1][1]-workspace.bounds[1][0])
+    buffx=.1*(workspace.bounds[0][1]-workspace.bounds[0][0])
+    buffy=.1*(workspace.bounds[1][1]-workspace.bounds[1][0])
     f_acqu[workspace.x[:,0]<workspace.bounds[0][0]+buffx]=f_acqu.min()
     f_acqu[workspace.x[:,1]<workspace.bounds[1][0]+buffy]=f_acqu.min()
     f_acqu[workspace.x[:,0]>workspace.bounds[0][1]-buffx]=f_acqu.min()
@@ -136,8 +136,8 @@ def UCB_GP(model, workspace, level=0, x=None, acquisition_par=.8  ):
     sigma=sigma/sigma.max()
     f_acqu = acquisition_par * (mean) +  sigma
 
-    buffx=.05*(workspace.bounds[0][1]-workspace.bounds[0][0])
-    buffy=.05*(workspace.bounds[1][1]-workspace.bounds[1][0])
+    buffx=.1*(workspace.bounds[0][1]-workspace.bounds[0][0])
+    buffy=.1*(workspace.bounds[1][1]-workspace.bounds[1][0])
     f_acqu[workspace.x[:,0]<workspace.bounds[0][0]+buffx]=f_acqu.min()
     f_acqu[workspace.x[:,1]<workspace.bounds[1][0]+buffy]=f_acqu.min()
     f_acqu[workspace.x[:,0]>workspace.bounds[0][1]-buffx]=f_acqu.min()
@@ -223,8 +223,8 @@ def UCB_GPIS_implicitlevel(model, workspace, level=0, x=None, acquisition_par=[.
     #else: 
     #    f_acqu=sigma
 
-    buffx=.05*(workspace.bounds[0][1]-workspace.bounds[0][0])
-    buffy=.05*(workspace.bounds[1][1]-workspace.bounds[1][0])
+    buffx=.1*(workspace.bounds[0][1]-workspace.bounds[0][0])
+    buffy=.1*(workspace.bounds[1][1]-workspace.bounds[1][0])
     f_acqu[workspace.x[:,0]<workspace.bounds[0][0]+buffx]=f_acqu.min()
     f_acqu[workspace.x[:,1]<workspace.bounds[1][0]+buffy]=f_acqu.min()
     f_acqu[workspace.x[:,0]>workspace.bounds[0][1]-buffx]=f_acqu.min()
