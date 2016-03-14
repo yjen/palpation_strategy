@@ -55,44 +55,46 @@ from itertools import combinations
 
 
 
-def UCB_dGP(model, workspace, level=0, x=None, acquisition_par=[0,0],numpoints=1):
+def UCB_dGPIS(model, workspace, level=0, x=None, acquisition_par=[0,0], numpoints=1):
     """
     choose next sample points based on maximizing prior variance
     """
     #x = multigrid(bounds, res)
-    mean, sigma = get_moments(model, workspace.x)     
+    mean, sigma = get_moments(model, workspace.x)  
+    sigma=sigma/sigma.max()   
     fd= gradfd(mean,workspace)
     fd=fd/np.max(fd)
     fd[np.isinf(fd)]=0
 
     fd=np.array([fd.flatten()]).T
-    fd=fd/fd.mean()
-    # lev=(fd.max()-fd.min())+fd.min()
-    # print lev
+    fd=fd/fd.max()
+    implev=acquisition_par[1]*(fd.max()-fd.min())+fd.min()
     # print mean.shape
     # print fd.shape
 
-    # implev=acquisition_par[1]*lev
-    # bound=getLevelSet (workspace, fd, implev)
+    bound=getLevelSet (workspace, fd, implev)
     #fd=fd.flatten()
 
     # f_acqu = 1*sigma.flatten()+acquisition_par*fd.flatten()
     # f_acqu=np.array([f_acqu]).T
     # print bound.shape[0]
-    # if bound.shape[0]>0:
-        # sdf=abs(fd-level)
-        # sdf=-mean
-        # print -sdf.max()
-        # print sigma.mean()
-    f_acqu = fd +  acquisition_par[0]*sigma
-    f_acqu=abs(f_acqu)+abs(min(f_acqu)) 
+    #if bound.shape[0]>0:
+    sdf=abs(fd-implev)
+    sdf=sdf/sdf.max()
+    # sdf=-mean
+    # print -sdf.max()
+    # print sigma.mean()
+    f_acqu = -sdf +  acquisition_par[0]*sigma
+    #else:
+    #f_acqu = sigma
+    # f_acqu=abs(f_acqu)+abs(min(f_acqu)) 
 
     buffx=.05*(workspace.bounds[0][1]-workspace.bounds[0][0])
     buffy=.05*(workspace.bounds[1][1]-workspace.bounds[1][0])
-    f_acqu[workspace.x[:,0]<workspace.bounds[0][0]+buffx]=0
-    f_acqu[workspace.x[:,1]<workspace.bounds[1][0]+buffy]=0
-    f_acqu[workspace.x[:,0]>workspace.bounds[0][1]-buffx]=0
-    f_acqu[workspace.x[:,1]>workspace.bounds[1][1]-buffy]=0
+    f_acqu[workspace.x[:,0]<workspace.bounds[0][0]+buffx]=f_acqu.min()
+    f_acqu[workspace.x[:,1]<workspace.bounds[1][0]+buffy]=f_acqu.min()
+    f_acqu[workspace.x[:,0]>workspace.bounds[0][1]-buffx]=f_acqu.min()
+    f_acqu[workspace.x[:,1]>workspace.bounds[1][1]-buffy]=f_acqu.min()
     # else: 
     #     f_acqu=sigma
 
@@ -114,6 +116,7 @@ def MaxVar_GP(model, workspace, level=0,x=None, acquisition_par=0):
     sigmasq[-10:,:]=0
 
     f_acqu = sigmasq.flatten()
+
     return x, f_acqu  # note: returns negative value for posterior minimization
 
 def UCB_GP(model, workspace, level=0, x=None, acquisition_par=.8  ):
@@ -129,7 +132,16 @@ def UCB_GP(model, workspace, level=0, x=None, acquisition_par=.8  ):
     mean, sigma = get_moments(model, x)     
     # print 'mean=', mean.max()
     # print 'sigma=',sigma.max()
+    mean=mean/mean.max()
+    sigma=sigma/sigma.max()
     f_acqu = acquisition_par * (mean) +  sigma
+
+    buffx=.05*(workspace.bounds[0][1]-workspace.bounds[0][0])
+    buffy=.05*(workspace.bounds[1][1]-workspace.bounds[1][0])
+    f_acqu[workspace.x[:,0]<workspace.bounds[0][0]+buffx]=f_acqu.min()
+    f_acqu[workspace.x[:,1]<workspace.bounds[1][0]+buffy]=f_acqu.min()
+    f_acqu[workspace.x[:,0]>workspace.bounds[0][1]-buffx]=f_acqu.min()
+    f_acqu[workspace.x[:,1]>workspace.bounds[1][1]-buffy]=f_acqu.min()
     return x, f_acqu  # note: returns negative value for posterior 
 
 def dmaxAcquisition(model, workspace, acfun, xinit=[.2,.3], numpoints=1, level=0):
@@ -171,15 +183,17 @@ def UCB_GPIS(model, workspace, level=0, x=None, acquisition_par=.1 ):
     #x = multigrid(bounds, res)
     # print 'ac=',acquisition_par
     mean, sigma = get_moments(model, x)  
-    bound=getLevelSet (workspace, mean, level)
+    bound = getLevelSet (workspace, mean, level)
+    sigma=sigma/sigma.max()
     # bound=bound.flatten()
     # print 'bnd=', bound
-    if bound.shape[0]>0:
-        sdf=abs(mean-level)
-        f_acqu = - sdf +  acquisition_par*sigma
-        f_acqu=f_acqu+abs(min(f_acqu)) 
-    else: 
-        f_acqu=sigma
+    # if bound.shape[0]>0:
+    sdf=abs(mean-level)
+    sdf=sdf/sdf.max()
+    f_acqu = - sdf +  acquisition_par*sigma
+    f_acqu=f_acqu+abs(min(f_acqu)) 
+    # else: 
+    # f_acqu=sigma
 
     return x, f_acqu  # note: returns negative value for posterior minimization
 
@@ -193,26 +207,28 @@ def UCB_GPIS_implicitlevel(model, workspace, level=0, x=None, acquisition_par=[.
     # print 'run'
     # print acquisition_par
     mean, sigma = get_moments(model, x)  
+    sigma=sigma/sigma.max()
     lev=(mean.max()-mean.min())+mean.min()
     # print lev
     implev=acquisition_par[1]*lev
     bound=getLevelSet (workspace, mean, implev)
-    # bound=bound.flatten(axis=0)
-    if bound.shape[0]>0:
-        sdf=abs(mean-level)
-        # print -sdf.max()
-        # print sigma.mean()
-        f_acqu = - sdf +  acquisition_par[0]*sigma
-        f_acqu=f_acqu+abs(min(f_acqu)) 
-    else: 
-        f_acqu=sigma
+    bound=bound.flatten()
+    # if bound.shape[0]>0:
+    sdf=abs(mean-level)
+    sdf=sdf/sdf.max()
+    # print -sdf.max()
+    # print sigma.mean()
+    f_acqu = - sdf +  acquisition_par[0]*sigma
+    f_acqu=f_acqu+abs(min(f_acqu)) 
+    #else: 
+    #    f_acqu=sigma
 
     buffx=.05*(workspace.bounds[0][1]-workspace.bounds[0][0])
     buffy=.05*(workspace.bounds[1][1]-workspace.bounds[1][0])
-    f_acqu[workspace.x[:,0]<workspace.bounds[0][0]+buffx]=0
-    f_acqu[workspace.x[:,1]<workspace.bounds[1][0]+buffy]=0
-    f_acqu[workspace.x[:,0]>workspace.bounds[0][1]-buffx]=0
-    f_acqu[workspace.x[:,1]>workspace.bounds[1][1]-buffy]=0
+    f_acqu[workspace.x[:,0]<workspace.bounds[0][0]+buffx]=f_acqu.min()
+    f_acqu[workspace.x[:,1]<workspace.bounds[1][0]+buffy]=f_acqu.min()
+    f_acqu[workspace.x[:,0]>workspace.bounds[0][1]-buffx]=f_acqu.min()
+    f_acqu[workspace.x[:,1]>workspace.bounds[1][1]-buffy]=f_acqu.min()
 
     return x, f_acqu  # note: returns negative value for posterior minimization
 
@@ -225,30 +241,30 @@ def UCB_GPIS_implicitlevel(model, workspace, level=0, x=None, acquisition_par=[.
 #     df_acqu = acquisition_par * dmdx +  dsdx
 #     return df_acqu
 
-def EI_GP(model, workspace, level=0, x=None, acquisition_par = 0 ):
-    """
-    Expected Improvement
-    """
-    if x==None:
-        x=workspace.x
-    mean, sigma = get_moments(model, x)     
-    fmax = max(model.predict(model.X)[0])
-    phi, Phi, _ = get_quantiles(fmax, mean, sigma, acquisition_par=acquisition_par)    
-    f_acqu = (-fmax + mean - acquisition_par) * Phi + sigma * phi
-    return x, f_acqu  # note: returns negative value for posterior minimization 
+# def EI_GP(model, workspace, level=0, x=None, acquisition_par = 0 ):
+#     """
+#     Expected Improvement
+#     """
+#     if x==None:
+#         x=workspace.x
+#     mean, sigma = get_moments(model, x)     
+#     fmax = max(model.predict(model.X)[0])
+#     phi, Phi, _ = get_quantiles(fmax, mean, sigma, acquisition_par=acquisition_par)    
+#     f_acqu = (-fmax + mean - acquisition_par) * Phi + sigma * phi
+#     return x, f_acqu  # note: returns negative value for posterior minimization 
 
-def EI_GPIS(model, workspace,  level=0, x=None, acquisition_par =0):
-    """
-    Expected Improvement
-    """
-    if x==None:
-        x=workspace.x
-    mean, sigma = get_moments(model, x)     
-    sdf=abs(mean-level)
-    fmin = min(abs(model.predict(model.X)[0]-level))
-    phi, Phi, _ = get_quantiles(fmin, sdf, sigma, acquisition_par=acquisition_par)    
-    f_acqu = (-sdf+fmin + acquisition_par) * Phi + sigma * phi
-    return x, f_acqu  # note: returns negative value for posterior minimization 
+# def EI_GPIS(model, workspace,  level=0, x=None, acquisition_par =0):
+#     """
+#     Expected Improvement
+#     """
+#     if x==None:
+#         x=workspace.x
+#     mean, sigma = get_moments(model, x)     
+#     sdf=abs(mean-level)
+#     fmin = min(abs(model.predict(model.X)[0]-level))
+#     phi, Phi, _ = get_quantiles(fmin, sdf, sigma, acquisition_par=acquisition_par)    
+#     f_acqu = (-sdf+fmin + acquisition_par) * Phi + sigma * phi
+#     return x, f_acqu  # note: returns negative value for posterior minimization 
 
 # def UCBISacquisition_function(model, boundaryestimate, level, numpoints=1):
 #     """

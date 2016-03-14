@@ -9,6 +9,7 @@ from runPhase2 import *
 # from simUtils import *
 from model_fit import *
 from plotscripts import *
+import time
 # from figures import SIZE, BLUE, GRAY
 # from shapely.geometry import Point
 # from descartes import PolygonPatch
@@ -25,16 +26,16 @@ from plotscripts import *
 def save_table(table, name):
     f = open(name + ".csv", 'wb')
     # header
-    f.write(",,UCB_GPIS_implicitlevel,UCB_GBIS,UCB_GB,MaxVar_GP\n") #MaxVar_plus_gradient
+    f.write(",,MaxVar_GP,UCB_GB,UCB_GBIS,UCB_GPIS_implicitlevel,UCB_dGPIS,\n") #MaxVar_plus_gradient
     # data in table
     # f.write("flat,lam,{},{}\n".format(table[0][0], table[0][1]))
-    f.write(",tumor1: iterations,{},{},{}\n".format(table[0][0], table[0][1],table[0][2],table[0][3]))#,table[0][4]))
-    f.write(",tumor1: healthy tissue removed,{},{},{}\n".format(table[1][0], table[1][1],table[1][2],table[1][3]))#,table[1][4]))
-    f.write(",tumor1: tumor left behind,{},{},{}\n".format(table[2][0], table[2][1],table[2][2],table[2][3]))#,table[2][4]))
+    f.write(",tumor1: iterations,{},{},{}\n".format(table[0][0], table[0][1],table[0][2],table[0][3],table[0][4]))#,table[0][5]))
+    f.write(",tumor1: healthy tissue removed,{},{},{}\n".format(table[1][0], table[1][1],table[1][2],table[1][3],table[1][4]))
+    f.write(",tumor1: tumor left behind,{},{},{}\n".format(table[2][0], table[2][1],table[2][2],table[2][3],table[2][4]))#,table[2][5]))
 
-    f.write(",tumor2: iterations,{},{},{}\n".format(table[3][0], table[3][1],table[3][2],table[3][3]))#,table[3][4]))
-    f.write(",tumor2: healthy tissue removed,{},{},{}\n".format(table[4][0], table[4][1],table[4][2],table[4][3]))#,table[4][4]))
-    f.write(",tumor2: tumor left behind,{},{},{}\n".format(table[5][0], table[5][1],table[5][2],table[5][3]))#,table[5][4]))
+    f.write(",tumor2: iterations,{},{},{}\n".format(table[3][0], table[3][1],table[3][2],table[3][3],table[3][4]))#,table[3][5]))
+    f.write(",tumor2: healthy tissue removed,{},{},{}\n".format(table[4][0], table[4][1],table[4][2],table[4][3],table[4][4]))#,table[4][5]))
+    f.write(",tumor2: tumor left behind,{},{},{}\n".format(table[5][0], table[5][1],table[5][2],table[5][3],table[5][4]))#,table[5][5]))
 
     # f.write(",st,{},{}\n".format(table[0][0], table[0][1]))
 
@@ -46,34 +47,34 @@ def save_table(table, name):
     f.close()
     return
 
-def save_data(arr, dirname, name):
-    directory=dirname
-
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-    f = open(directory+'/data_'+name, 'w')
+def save_data(arr, fname, aclabellist, noiselevels):
+    # directory=dirname
+    arr=np.array(arr).tolist()
+    #aclabellist=np.array(aclabellist.flatten()).tolist()
+    arr=[arr,aclabellist,noiselevels]
+    # if not os.path.exists(directory):
+    #     os.makedirs(directory)
+    f = open('data_'+fname, 'w')
     f.write(str(np.array(arr).tolist()))
     f.close()
     return
 
 NUM_EXPERIMENTS = 5
 
-
-tumors = [squaretumor,rantumor]              # add another model ?
-stops = [[6.4, 0.01, 3.6, 0.0],
-         [0.0, 0.36, 0.0, 0.0]]                 # TODO change 0.0's (variance is not monotonically decreasing)
+tumors = [simCircle,horseshoe]              # add another model ?
 # textures = ["_lam", "_text", "_spec", "_st"]
     # lambert, texture, specular, specular + texture
 
 # acquisition functions:  MaxVar_GP, UCB_GP, EI_GP, UCB_GPIS, EI_IS, MaxVar_plus_gradient
 # MaxVar_plus_gradient(model, workspace, level=0, x=None, acquisition_par=0,numpoints=1)
-aqfunctions = [UCB_GPIS_implicitlevel,UCB_GPIS,UCB_GP,MaxVar_GP]#MaxVar_plus_gradient
-aqfunctionsnames = ["UCB_GPIS_implicitlevel","UCB_GPIS","UCB_GP", "MaxVar_GP"]#, "random"]"MaxVar_plus_gradient"
+aqfunctions = [MaxVar_GP,UCB_GP,UCB_GPIS,UCB_GPIS_implicitlevel,UCB_dGPIS]#MaxVar_plus_gradient
+aqfunctionsnames = ["MaxVar_GP","UCB_GP","UCB_GPIS","UCB_GPIS_implicitlevel","UCB_sGPIS" ]#, "random"]"MaxVar_plus_gradient"
 
 controls =["Max"]
 
+noiselevels = []
 
-
+stiffnessmax = []
 def run_phase2_full():
 
     # iter_table = np.zeros((len(aqfunctions)+len(controls),len(tumors)))
@@ -104,7 +105,7 @@ def run_phase2_full():
                     dirname = str(i) + '_' + aqfunctionsnames[j] + '_' + cont
 
                     means, sigmas, acqvals, measures, healthyremoved, tumorleft, num_iters, gpmodel = run_single_phase2_simulation(
-                        tumor, dirname, AcFunction=acq, control=cont, plot=True, mode='RecordedExp')
+                        tumor, dirname, AcFunction=acq, control=cont, plot=True, smode='Sim',iters=20)
                     plt.close() 
                     end = time.time()
                     time_elapsed = end - start # in seconds
@@ -134,12 +135,15 @@ def run_phase2_full():
 
         tumorerrlistleft.append(acqerrlistleft)
         tumorerrlistremoved.append(acqerrlistremoved)
-    return np.array(tumorerrlistleft),np.array(tumorerrlistremoved),np.array(aclabellist)
+        timestr = time.strftime("%Y-%m-%d-%H:%M:%S")
+        np.save('ph2error'+'_'+'a',aqfunctionsnames,noiselevels)
+    return np.array(error),np.array(aclabellist)
 
 
 
 if __name__ == "__main__":
     dirname='tt'
+
     run_single_phase2_simulation(expCircle, dirname, AcFunction=UCB_GPIS_implicitlevel, control='Max', plot=True, smode='Exp',iters=20)
     # outleft,outrem,aclabellist=run_phase2_full()
     # plot_ph2_error(outrem,outleft,aclabellist)

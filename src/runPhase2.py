@@ -55,6 +55,8 @@ def evalerror_ph2(tumor,workspace,mean,variance,level):
                     #     data[4].add_patch(patchp)    
     else:
         err=(workspace.bounds[0][1]-workspace.bounds[0][0])*(workspace.bounds[1][1]-workspace.bounds[1][0])
+    # if err==0:
+    #     err=(workspace.bounds[0][1]-workspace.bounds[0][0])*(workspace.bounds[1][1]-workspace.bounds[1][0])
     # print GroundTruth
     # if len(boundaryestimate)>3:
     #     try: 
@@ -82,7 +84,7 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, con
     elif smode=='Sim':
 
         getmeasurements=getSimulateStiffnessMeas
-        bounds=((.0,0.0229845803642),(.0,0.0577416388862))
+        bounds=((.0,0.025),(.0,0.05))
         #               bounds=((-.04,.04),(-.04,.04))
     else: 
         print 'invalid mode!'
@@ -90,23 +92,25 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, con
     if smode=='RecordedExp' or smode=='Exp': 
         UCB_GP_acpar=.7 # set parameters for acquiisition functions: balancing mean vs. var in prioritizing search
         UCB_GPIS_acpar=.2
-        UCB_GPIS_implicit_acpar=[.2,.8]
-        UCB_dGP_acpar=[1,.9]
+
+        UCB_GPIS_implicit_acpar=[.2,.7]
+        UCB_dGP_acpar=[1.1,.5]
+
         # GP_params= [6,.005,.0001,7] # parameters for gaussian process update
         GP_params= [14,.003,.02,63] # parameters for gaussian process update
 
     else:   #params for simulation
-        UCB_GP_acpar=.13
-        UCB_GPIS_acpar=.8
-        UCB_GPIS_implicit_acpar=[4,.8]
+        UCB_GP_acpar=3
+        UCB_GPIS_acpar=.5
+        UCB_GPIS_implicit_acpar=[.5,.8]
         UCB_dGP_acpar=[2,.5]
-        GP_params= [.3,.007,1e-4,52]
+        GP_params= [25,.0033,.004,52]
 
     if AcFunction==UCB_GPIS:
         acquisition_par=UCB_GPIS_acpar
     elif AcFunction==UCB_GP:
         acquisition_par=UCB_GP_acpar
-    elif AcFunction==UCB_dGP:
+    elif AcFunction==UCB_dGPIS:
          acquisition_par=UCB_dGP_acpar
     elif AcFunction==UCB_GPIS_implicitlevel:
         acquisition_par=UCB_GPIS_implicit_acpar
@@ -119,11 +123,12 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, con
     # initialize workspace object
     workspace = Workspace(bounds,gridres)
     # print workspace.bounds
-    # plotSimulatedStiffnessMeas(phantomname, workspace, ypos=0, sensornoise = .05)
+    # plotSimulatedStiffnessMeas(phantomname, workspace, xpos=0.01, sensornoise = .05)
 
     # set level set to look for-- this should correspond to something, max FI?
     level = .5*(measmax-measmin)+measmin #pick something between min/max deflection
-    print "level=",level
+    # print "level=",level
+
     # print level
     plot_data = None
     means = []
@@ -142,7 +147,9 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, con
     #Initializing
     ###############
     next_samples_points = randompoints(bounds, 5) #randompoints(bounds, 100)
-    next_samples_points=solve_tsp_dynamic(next_samples_points)    # collect initial meausrements
+
+    # next_samples_points=solve_tsp_dynamic(next_samples_points)    # collect initial meausrements
+
     # if mode =='RecordedExp':
     #     meas = getRecordedExperimentalStiffnessMeas(next_samples_points)
     # if mode =='Exp':
@@ -152,7 +159,6 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, con
     meas = getmeasurements(next_samples_points,phantomname)
 
     measnew = meas
-    print  'f'
     for j in range (iters): #(1,100,1)
 
         # print "iteration = ", j
@@ -181,7 +187,8 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, con
 
         if control=='Max':         
             
-            next_samples_points = batch_optimization(gpmodel, workspace, AcFunction, 5, meas[-1][0:2], GP_params,level=level, acquisition_par=acquisition_par)
+            next_samples_points = batch_optimization(gpmodel, workspace, AcFunction, 10, 
+                meas[-1][0:2], GP_params,level=level, acquisition_par=acquisition_par)
         # elif control=='dMax':
         #     next_samples_points = dmaxAcquisition(gpmodel, workspace, AcFunction, meas[-1][0:2],
         #                                         numpoints=10, level=level)
@@ -215,7 +222,7 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, con
 
 if __name__ == "__main__":
     dirname='tt'
-    run_single_phase2_simulation(horseshoe, dirname, AcFunction=UCB_dGP, control='Max', plot=True, smode='RecordedExp',iters=30)
+    run_single_phase2_simulation(horseshoe, dirname, AcFunction=UCB_dGPIS, control='Max', plot=True, smode='RecordedExp',iters=20)
     # outleft,outrem,aclabellist=run_phase2_full()
     # plot_error(outrem,outleft,aclabellist)
 
