@@ -90,8 +90,17 @@ def getInterpolatedStereoMeas(surface, workspace):
     #z = np.pad(z,((5,5),(5,5)),mode='edge')
     z = getStereoDepthMap(surface)
     #z = np.pad(z,((5,5),(5,5)),mode='edge')
-    z[z<0]=0
-    # z[z>500]=500
+        
+    z[z<5]= 5
+    z[z>30]=5 #if dont know its baseline
+
+    #delete measurements outside range
+    # z = z[z<=30]
+    # z = z[z>=5]
+
+    # import IPython
+    # IPython.embed()
+
     res = z.shape[0]
     x = np.linspace(workspace.bounds[0][0], workspace.bounds[0][1], num = res)
     y = np.linspace(workspace.bounds[1][0], workspace.bounds[1][1], num = res)

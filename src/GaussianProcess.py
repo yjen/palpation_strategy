@@ -54,10 +54,10 @@ def update_GP_ph1(measurements, nStereoMeas, method='heteroscedastic'):
         # likelihood = GPy.likelihoods.HeteroscedasticGaussian(Y_metadata)
         # m.predict(np.array([[0.3]]),Y_metadata={'output_index':np.zeros((1,1))[:,None].astype(int)})
 
-        # m = GPy.models.GPHeteroscedasticRegression(X,Y,kern, Y_metadata=Y_meta)
-        m = GPy.models.GPHeteroscedasticRegression(X,Y,kern)
-        m['.*het_Gauss.variance'] = abs(noise)
-        m.het_Gauss.variance.fix() # We can fix the noise term, since we already know it        
+        m = GPy.models.GPHeteroscedasticRegression(X,Y,kern, Y_metadata=Y_meta)
+        # m = GPy.models.GPHeteroscedasticRegression(X,Y,kern)
+        m['.*het_Gauss.variance'] = abs(noise) #specify observation of the noise. 
+        # m.het_Gauss.variance.fix() # We can fix the noise term, since we already know it        
 
     elif method=="homoscedastic":
         # var = 100 # variance
@@ -71,7 +71,7 @@ def update_GP_ph1(measurements, nStereoMeas, method='heteroscedastic'):
     else:
         assert (method=="homoscedastic")or(method=="heteroscedastic")
 
-    # m.optimize()
+    m.optimize()
     
     # print m
     # xgrid = np.vstack([self.x1.reshape(self.x1.size),
