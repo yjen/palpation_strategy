@@ -140,9 +140,14 @@ def getSimulatedStereoMeas(surface, workspace, plot=False, block=False):
     should fix these functions so they're not necessary by default...
     """
     xx, yy, z = SimulateStereoMeas(surface, workspace)
-    # we assume Gaussian measurement noise:
-    sigma_g = 1
-    focalplane=workspace.bounds[1][1]/2.0
+    
+    # todo: noise due to  offset uncertainty    
+    focalplane=(workspace.bounds[1][1]-workspace.bounds[1][0])/2.0
+    # we subtract yy from focal plane as an estimate for looking at it obliquely
+    sigma_offset=(yy-focalplane)
+
+    sigma_offset = sigma_offset.ravel()/np.max(sigma_offset) #normalize
+    
     # noise component due to curvature:
     # finite differencing
     #xgrid = np.vstack([xx.flatten(), yy.flatten()]).T
@@ -150,12 +155,17 @@ def getSimulatedStereoMeas(surface, workspace, plot=False, block=False):
     dx,dy = grad
     sigma_fd = np.sqrt(dx**2+dy**2)
     
-    sigma_fd[np.isinf(sigma_fd)]=0
+    sigma_fd[np.isinf(sigma_fd)]=0 
 
-    # todo: noise due to  offset uncertainty
-    sigma_offset=(yy-focalplane)**2
-    # weighted total noise for measurements
-    sigma_total = sigma_g + 0*sigma_fd  + .0005*sigma_offset
+    sigma_fd = sigma_fd.ravel()/np.max(sigma_fd)  #normalize
+
+    # we assume Gaussian measurement noise:
+    sigma_g = 0.05
+
+    # weighted total variance for measurements
+    sigma_total = sigma_g + sigma_fd  + 0.2*sigma_offset
+    # sigma_total = sigma_g + 0*sigma_fd*sigma_offset
+
 
     if plot==True:
         # plot the surface from disparity
@@ -209,7 +219,7 @@ def getSimulatedProbeMeas(surface, workspace, sample_points):
     """
     xx,yy,z = SimulateProbeMeas(surface, workspace, sample_points)
     # we assume Gaussian measurement noise:
-    noise=100
+    noise=0.2 #assuming there is a 0.2 variance in height in mm
     sigma_t = np.full(z.shape, noise)
 
     return np.array([xx, yy,
