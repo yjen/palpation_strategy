@@ -76,8 +76,8 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, con
         getmeasurements=getRecordedExperimentalStiffnessMeas
         bounds=((.0,0.0229845803642),(.0,0.0577416388862))
     elif smode=='Exp':
-        getmeasurements=getExperimentalStiffnessMeas
         from expUtils import *
+        getmeasurements=getExperimentalStiffnessMeas
         bounds=calculate_boundary("../scripts/env_registration.p")
     elif smode=='Sim':
 
@@ -90,7 +90,7 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, con
     if smode=='RecordedExp' or smode=='Exp': 
         UCB_GP_acpar=.7 # set parameters for acquiisition functions: balancing mean vs. var in prioritizing search
         UCB_GPIS_acpar=.2
-        UCB_GPIS_implicit_acpar=[.2,.9]
+        UCB_GPIS_implicit_acpar=[.2,.8]
         UCB_dGP_acpar=[1,.9]
         # GP_params= [6,.005,.0001,7] # parameters for gaussian process update
         GP_params= [14,.003,.02,63] # parameters for gaussian process update
@@ -122,7 +122,7 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, con
     # plotSimulatedStiffnessMeas(phantomname, workspace, ypos=0, sensornoise = .05)
 
     # set level set to look for-- this should correspond to something, max FI?
-    level = .8*(measmax-measmin)+measmin #pick something between min/max deflection
+    level = .5*(measmax-measmin)+measmin #pick something between min/max deflection
     print "level=",level
     # print level
     plot_data = None
@@ -141,8 +141,8 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, con
     ###############
     #Initializing
     ###############
-    next_samples_points = randompoints(bounds, 10) #randompoints(bounds, 100)
-    # next_samples_points=solve_tsp_dynamic(next_samples_points)    # collect initial meausrements
+    next_samples_points = randompoints(bounds, 5) #randompoints(bounds, 100)
+    next_samples_points=solve_tsp_dynamic(next_samples_points)    # collect initial meausrements
     # if mode =='RecordedExp':
     #     meas = getRecordedExperimentalStiffnessMeas(next_samples_points)
     # if mode =='Exp':

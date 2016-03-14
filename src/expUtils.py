@@ -88,15 +88,17 @@ def getExperimentalStiffnessMeas(sample_points,surface=None):
     x = sample_points[:, 0]
     y = sample_points[:, 1]
 
-    """CHANGE THIS"""
+    #"""CHANGE THIS"""
 
-    x = [0.001, 0.005, 0.02, 0.005, 0.02]
-    y = [0.005, 0.025, 0.01, 0.03, 0.04]
+    #x = [0.001, 0.005, 0.02, 0.005, 0.02]
+    #y = [0.005, 0.025, 0.01, 0.03, 0.04]
+    #x = sample_points.T[0]
+    #y = sample_points.T[1]
 
     x2 = []
     y2 = []
 
-    distance = 0.005
+    distance = 0.0005
     for i in range(len(x)-1):
         x2.append(x[i])
         y2.append(y[i])

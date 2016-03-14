@@ -36,7 +36,7 @@ def stiffness_map(probe_data):
     # display stiffness map
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    ax.scatter(projected_points[:,0], projected_points[:,1], projected_points[:,2], c='r', marker='o')
+    ax.scatter(projected_points[:,0], projected_points[:,1], projected_points[:,2], c='r', marker='.')
     plt.show()
 
 def stiffness_map_combined(probe_data1, probe_data2):
