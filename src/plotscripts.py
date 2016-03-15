@@ -348,13 +348,15 @@ def plot_error(surface, workspace, mean, sigma, aq, meas, dirname=None, data=Non
     if plotmeas==True:
         data[4].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=20,
                     cmap=cm.coolwarm)
+    
     data[4].set_title("Estimate Variance")
 
     data[5].imshow(np.flipud(aq), cmap=cm.coolwarm, vmax=2,
-                       extent=(xx.min(), xx.max(), yy.min(),yy.max() )
-    if plotmeas==True:
-        data[5].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=20,
-                    cmap=cm.coolwarm)
+                       extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
+    
+    if plotmeas == True :
+        data[5].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=20, cmap=cm.coolwarm)
+    
     data[5].set_title("Acquisition function")
 
     # plot the aquis function
