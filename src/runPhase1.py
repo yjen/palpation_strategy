@@ -144,11 +144,11 @@ def run_single_phase1_experiment(surfacename, method, disparityMeas=None, block=
         if method in {"maxVarGrad", "maxVar"}:        
             xgrid, AqcuisFunction = AcFunction(gpmodel, workspace)
         elif method in {"UCB_dGPIS"}:
-            xgrid, AqcuisFunction = AcFunction(gpmodel, workspace, acquisition_par=[0.99,0.8])                
+            xgrid, AqcuisFunction = AcFunction(gpmodel, workspace, acquisition_par=[0.99,0.8])
         elif method in {"UCB_dGPIS2"}:
-            xgrid, AqcuisFunction = AcFunction(gpmodel, workspace, acquisition_par=[0.95,0.5, 0.25])                
+            xgrid, AqcuisFunction = AcFunction(gpmodel, workspace, acquisition_par=[0.95,0.6, 0.2])
         elif method in {"UCB_GP"}:
-            xgrid, AqcuisFunction = AcFunction(gpmodel, workspace, acquisition_par=[0.25])                
+            xgrid, AqcuisFunction = AcFunction(gpmodel, workspace, acquisition_par=[0.25])         
         else:
             print "ERROR: invalid method in runPhase1.py!"
             sys.exit(1)
@@ -193,8 +193,9 @@ def run_single_phase1_experiment(surfacename, method, disparityMeas=None, block=
 if __name__ == "__main__":
 
     surfacename = "smooth_sin1_text"
-    # run_single_phase1_experiment(surfacename, method="maxVar", block=True)
-    # run_single_phase1_experiment(surfacename, method="UCB_dGPIS", block=True)
-    run_single_phase1_experiment(surfacename, method="UCB_dGPIS2", block=True)
-    # run_single_phase1_experiment(surfacename, method="UCB_GP", block=True)
+    # run_single_phase1_experiment(surfacename, method="maxVar", block=True) #var
+    # run_single_phase1_experiment(surfacename, method="UCB_GP", block=True) #var+mean
+    run_single_phase1_experiment(surfacename, method="UCB_dGPIS", block=True) #var+gradMean
+    # run_single_phase1_experiment(surfacename, method="UCB_dGPIS2", block=True) #var+mean+gradMean
+    
     # todo: stereo variance should dependd on which model we are testing on -- based on goodness of fit of disparity calc

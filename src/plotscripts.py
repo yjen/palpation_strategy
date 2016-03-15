@@ -346,7 +346,7 @@ def plot_error(surface, workspace, mean, sigma, aq, meas, dirname=None, data=Non
        # data[3].plot_surface(xx, yy, sigma.reshape(workspace.res,workspace.res), rstride=1, cstride=1,
                          # cmap=cm.coolwarm, linewidth=0, antialiased=False)
     # else:
-    data[4].imshow(np.flipud(sigma), cmap=cm.coolwarm, vmax=0.5,
+    data[4].imshow(np.flipud(sigma), cmap=cm.coolwarm, vmax=1.0,
                        extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
     if plotmeas==True:
         data[4].scatter(meas.T[0], meas.T[1], s=10,
