@@ -58,7 +58,7 @@ def getExperimentalStereoMeas(surface, workspace, plot = True):
     #                 z]).T
     pass
 
-def getExperimentalStiffnessMeas(sample_points,surface=None,noiselev=None):
+def getExperimentalStiffnessMeas(sample_points,surface=None,noiselev=None, tiltlev=None):
     """
     needs to be written
     """
