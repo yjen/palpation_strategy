@@ -194,7 +194,7 @@ if __name__ == "__main__":
 
     surfacename = "smooth_sin1_text"
     # run_single_phase1_experiment(surfacename, method="maxVar", block=True)
-    run_single_phase1_experiment(surfacename, method="UCB_dGPIS", block=True)
-    # run_single_phase1_experiment(surfacename, method="UCB_dGPIS2", block=True)
+    # run_single_phase1_experiment(surfacename, method="UCB_dGPIS", block=True)
+    run_single_phase1_experiment(surfacename, method="UCB_dGPIS2", block=True)
     # run_single_phase1_experiment(surfacename, method="UCB_GP", block=True)
     # todo: stereo variance should dependd on which model we are testing on -- based on goodness of fit of disparity calc
