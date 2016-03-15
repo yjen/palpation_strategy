@@ -71,6 +71,9 @@ def run_single_phase1_experiment(surfacename, method, disparityMeas=None, block=
     elif method=='UCB_GP':
         AcFunction=UCB_GP
         Acfunctionname="UCB_GP"
+    elif method=='random':
+        AcFunction=MaxVar_GP #just filler
+        Acfunctionname="random"
     else:
         print "ERROR: invalid acquisition method specified in runPhase1.py!"
         sys.exit(1)
@@ -93,7 +96,7 @@ def run_single_phase1_experiment(surfacename, method, disparityMeas=None, block=
     errors=[]
     sigma = 1000.0
 
-    if method in {"UCB_dGPIS"}:
+    if method in {"random","UCB_dGPIS", "UCB_dGPIS2"}:
         maxIters = 100
     else:
         maxIters = 50
@@ -131,8 +134,11 @@ def run_single_phase1_experiment(surfacename, method, disparityMeas=None, block=
         # IPython.embed()
 
         # update Gaussian process
-        if i>1:
+        if i>0:
             gpmodel = update_GP_ph1(meas, nStereoMeas,  method='heteroscedastic')
+
+            #call update function and pass in the existing model and it will utilize only the new measurements
+            # gpmodel = update_GP_ph1(meastouchonly, method='heteroscedastic', model=gpmodel)
 
         # evaluate mean, sigma on a grid
         mean, sigma = get_moments(gpmodel, workspace.x)
@@ -144,21 +150,32 @@ def run_single_phase1_experiment(surfacename, method, disparityMeas=None, block=
         if method in {"maxVarGrad", "maxVar"}:        
             xgrid, AqcuisFunction = AcFunction(gpmodel, workspace)
         elif method in {"UCB_dGPIS"}:
-            xgrid, AqcuisFunction = AcFunction(gpmodel, workspace, acquisition_par=[0.99,0.8])                
+            if surfacename in {"smooth_sin1_st", "smooth_sin1_spec"}:
+                xgrid, AqcuisFunction = AcFunction(gpmodel, workspace, acquisition_par=[0.99,0.95])                
+            else:
+                xgrid, AqcuisFunction = AcFunction(gpmodel, workspace, acquisition_par=[0.95,0.7])                
         elif method in {"UCB_dGPIS2"}:
-            xgrid, AqcuisFunction = AcFunction(gpmodel, workspace, acquisition_par=[0.95,0.5, 0.25])                
+            if surfacename in {"smooth_sin1_st", "smooth_sin1_spec"}:
+                xgrid, AqcuisFunction = AcFunction(gpmodel, workspace, acquisition_par=[0.98,0.9, 0.07])                
+            else:
+                xgrid, AqcuisFunction = AcFunction(gpmodel, workspace, acquisition_par=[0.95,0.4, 0.37])                
         elif method in {"UCB_GP"}:
-            xgrid, AqcuisFunction = AcFunction(gpmodel, workspace, acquisition_par=[0.25])                
-        else:
-            print "ERROR: invalid method in runPhase1.py!"
-            sys.exit(1)
+            if surfacename in {"smooth_sin1_st", "smooth_sin1_spec"}:
+                xgrid, AqcuisFunction = AcFunction(gpmodel, workspace, acquisition_par=[0.25])                
+            else:
+                xgrid, AqcuisFunction = AcFunction(gpmodel, workspace, acquisition_par=[0.25])                
 
         # choose points to probe based on maxima of acquisition function
         if method in AcFunctionSet:
             next_samples_points = maxAcquisition(workspace, AqcuisFunction,
                                                    numpoints=1)
         elif method == "random":
-            next_samples_points =  randompoints(bounds, 1)
+            # can exit at i=2, have already sampled hundred points
+            if i>1: 
+                print "Random Acquisition Function, have already sampled",maxIters, "points" 
+                break
+            xgrid, AqcuisFunction = AcFunction(gpmodel, workspace)
+            next_samples_points =  randompoints(bounds, maxIters)
             
         else:
             print "ERROR: invalid method in runPhase1.py!"
@@ -174,7 +191,8 @@ def run_single_phase1_experiment(surfacename, method, disparityMeas=None, block=
         # Plot everything
         time.sleep(0.0001)
         plt.pause(0.0001)
-        if (shouldPlot):
+        
+        if (shouldPlot) and (i%10==0 or i==maxIters or method=="random"):
             # plot_data = plot_error(surface, workspace, mean, sigma, AqcuisFunction, meastouchonly, dirname=directory, data=plot_data, projection3D=False, iternum=i)
             # plot but not save
             plot_data = plot_error(surface, workspace, mean, sigma, AqcuisFunction, meastouchonly, dirname=None, data=plot_data, projection3D=False, iternum=i)
@@ -189,12 +207,18 @@ def run_single_phase1_experiment(surfacename, method, disparityMeas=None, block=
     return disparityMeas, means, sigmas, sampled_points, measures, errors, i
 
 
-
 if __name__ == "__main__":
 
-    surfacename = "smooth_sin1_text"
+    surfacename = "smooth_sin1_spec"
+    #Note have to use different parameters for specularity. 
+    # In that case disparity calculations fail, hence need to increase weight on the variance term to encourage exploration.
+
+    run_single_phase1_experiment(surfacename, method="random", block=True)
     # run_single_phase1_experiment(surfacename, method="maxVar", block=True)
     # run_single_phase1_experiment(surfacename, method="UCB_dGPIS", block=True)
-    run_single_phase1_experiment(surfacename, method="UCB_dGPIS2", block=True)
+    # run_single_phase1_experiment(surfacename, method="UCB_dGPIS2", block=True)
     # run_single_phase1_experiment(surfacename, method="UCB_GP", block=True)
+
     # todo: stereo variance should dependd on which model we are testing on -- based on goodness of fit of disparity calc
+
+

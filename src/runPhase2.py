@@ -176,6 +176,7 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP,
     #Initializing
     ###############
     next_samples_points = randompoints(bounds, 5) #randompoints(bounds, 100)
+    samplepoints_uninterp=next_samples_points
 
     tiltlev=np.arctan2(tiltlev*(measmax-measmin),workspace.bounds[1][1])
 
@@ -220,13 +221,23 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP,
             print 'RANDOM'
         # print next_samples_points
         # Plot everything
+        #print samplepoints_uninterp.shape
+        #print next_samples_points.shape
+        #import IPython; IPython.embed()
+        #samplepoints_uninterp
+        samplepoints_uninterp=np.vstack((next_samples_points,samplepoints_uninterp))
+
+        samplepoints_uninterp=np.vstack((samplepoints_uninterp,next_samples_points))
+        #print meas.shape
+        #print samplepoints_uninterp.shape
         if plot==True:
             time.sleep(0.0001)
             plt.pause(0.0001)  
             plot_data = plot_beliefGPIS(phantomname, workspace, mean, sigma,
-                                      AqcuisFunction, measnew,
+                                      AqcuisFunction, samplepoints_uninterp,
                                       directory, errors,plot_data,level=level,
                                       iternum=j, projection3D=False)
+
         measnew = getmeasurements(next_samples_points,phantomname,noiselev=noiselev,tiltlev=tiltlev)
         # print measnew.max()
         # if mode=='Exp':
@@ -245,7 +256,9 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP,
 
 if __name__ == "__main__":
     dirname='tt'
+
     run_single_phase2_simulation(horseshoe, dirname, AcFunction=UCB_dGPIS, control='Max', plot=True, tiltlev=1,smode='RecordedExp',iters=20)
+
     # outleft,outrem,aclabellist=run_phase2_full()
     # plot_error(outrem,outleft,aclabellist)
 

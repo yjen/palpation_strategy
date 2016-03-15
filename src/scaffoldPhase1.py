@@ -12,7 +12,7 @@ stops = [[1.343, 1.343, 1.343, 1.343],
          [1.343, 1.343, 1.343, 1.343]]
 textures = [ "_text", "_spec", "_st","_lam"]
     # lambert, texture, specular, specular + texture
-methods = ["random", "maxVar"]#,"maxVarGrad"]
+methods = ["random", "maxVarGrad", "maxVar", "UCB_dGPIS", "UCB_dGPIS2", "UCB_GP"]
 
 
 def save_data(arr, name, surface_name):

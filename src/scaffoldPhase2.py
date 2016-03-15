@@ -10,6 +10,7 @@ from runPhase2 import *
 from model_fit import *
 from plotscripts import *
 import time
+import pickle
 
 def save_table(table, name):
     f = open(name + ".csv", 'wb')
@@ -112,7 +113,7 @@ def run_phase2_full(vary_tilt=False):
                 print error_table
                 # save_table(iter_table, "phase2_iterations")
                 # save_table(error_table, "phase2_errors")
-                # save_table(error_table1, "phase2_errors1")
+                # save_table(error_table1, "phase2_esaverrors1")
                 noiseerrlist.append(experrlist)
                 noisetimelist.append(exptimelist)
                 noiselabellist.append(dirname)
@@ -131,15 +132,22 @@ def run_phase2_full(vary_tilt=False):
 
 
 if __name__ == "__main__":
-    dirname='tt'
-    vary_tilt=True
+    timestr = time.strftime("%Y-%m-%d-%H:%M:%S")
+    dirname ='ph2_exp'+timestr
+
+    vary_tilt=False
 
     if vary_tilt==False:
         noisetype='measurement noise'
     else:
         noisetype='measurement bias'
-    #run_single_phase2_simulation(simCircle, dirname, AcFunction=UCB_GP, control='Max', plot=True, smode='Sim',iters=20)
-    errorlist,timelist,aclabellist,modelerrors,fname=run_phase2_full(vary_tilt=vary_tilt)
-    plot_ph2_error(fname,errorlist,aclabellist,aqfunctionsnames,modelerrors,noisetype)
-    make_error_table(fname,noisetype)
+    means, sigmas, acqvals, measures, error, num_iters, gpmodel=run_single_phase2_simulation(
+        simCircle, dirname, AcFunction=UCB_dGPIS, control='Max', plot=True, smode='Exp',iters=5)
+
+    alldata=np.array([means, sigmas, acqvals, measures, error, num_iters, gpmodel])
+
+    pickle.dump(alldata, open(dirname+'/data.p', "wb"))
+    #errorlist,timelist,aclabellist,modelerrors,fname=run_phase2_full(vary_tilt=vary_tilt)
+    #plot_ph2_error(fname,errorlist,aclabellist,aqfunctionsnames,modelerrors,noisetype)
+    #make_error_table(fname,noisetype)
 
