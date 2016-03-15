@@ -351,7 +351,7 @@ def plot_error(surface, workspace, mean, sigma, aq, meas, dirname=None, data=Non
     data[4].set_title("Estimate Variance")
 
     data[5].imshow(np.flipud(aq), cmap=cm.coolwarm, vmax=2,
-                       extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
+                       extent=(xx.min(), xx.max(), yy.min(),yy.max() )
     if plotmeas==True:
         data[5].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=20,
                     cmap=cm.coolwarm)
