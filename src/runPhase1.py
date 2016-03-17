@@ -80,8 +80,8 @@ def run_single_phase1_experiment(surfacename, method, disparityMeas=None, block=
     
     if shouldPlot:
         directory='phase1_'+surfacename+'_'+Acfunctionname
-        if not os.path.exists(directory):
-            os.makedirs(directory)
+        # if not os.path.exists(directory):
+        #     os.makedirs(directory)
     ##############################
     # Phase 1
     ###############################
@@ -101,12 +101,13 @@ def run_single_phase1_experiment(surfacename, method, disparityMeas=None, block=
     else:
         maxIters = 50
 
+    maxIters = 100
     while i < maxIters: # or np.max(sigma) > stops:
         print "iteration =", i
         if i==0:
             # initialize measurement from stereo data
             if disparityMeas is None:
-                disparityMeas = getSimulatedStereoMeas(surface, workspace, plot=False, block=block)                
+                disparityMeas = getSimulatedStereoMeas(surface, workspace, plot=False, block=False)                
 
             nStereoMeas = np.shape(disparityMeas)[0]            
             meas = np.copy(disparityMeas)
@@ -192,7 +193,7 @@ def run_single_phase1_experiment(surfacename, method, disparityMeas=None, block=
         time.sleep(0.0001)
         plt.pause(0.0001)
         
-        if (shouldPlot) and (i%10==0 or i==maxIters or method=="random"):
+        if (shouldPlot) and (i==0 or i==maxIters-1):
             # plot_data = plot_error(surface, workspace, mean, sigma, AqcuisFunction, meastouchonly, dirname=directory, data=plot_data, projection3D=False, iternum=i)
             # plot but not save
             plot_data = plot_error(surface, workspace, mean, sigma, AqcuisFunction, meastouchonly, dirname=None, data=plot_data, projection3D=False, iternum=i)

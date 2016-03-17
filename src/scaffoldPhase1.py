@@ -5,14 +5,14 @@ import matplotlib.pyplot as plt
 from runPhase1 import *
 from plotscripts import *
 
-NUM_EXPERIMENTS = 5
+NUM_EXPERIMENTS = 1
 
-surfaces = ["smooth_sin1","flat"]              # add another model ?
+surfaces = ["flat", "smooth_sin1"]              # add another model ?
 stops = [[1.343, 1.343, 1.343, 1.343],
          [1.343, 1.343, 1.343, 1.343]]
 textures = [ "_text", "_spec", "_st","_lam"]
     # lambert, texture, specular, specular + texture
-methods = ["random", "maxVarGrad", "maxVar", "UCB_dGPIS", "UCB_dGPIS2", "UCB_GP"]
+methods = ["random", "maxVar", "UCB_dGPIS2"]  #["random", "maxVarGrad", "maxVar", "UCB_dGPIS", "UCB_dGPIS2", "UCB_GP"]
 
 
 def save_data(arr, name, surface_name):
@@ -25,21 +25,21 @@ def save_table(table, name):
     formatter = ",{}"*len(methods) + "\n"
     f = open(name + ".csv", 'wb')
     # header
-    f.write(",,Random Probings,Max Variance,Max Variance Gradient\n")
+    f.write(",," + ",".join(methods) + "\n")
     # data in table
-    f.write(("flat,lam"+formatter).format(*table[0]))
-    f.write((",text"+formatter).format(*table[1]))
-    f.write((",spec"+formatter).format(*table[2]))
-    f.write((",st"+formatter).format(*table[3]))
-
-    f.write(("S,lam"+formatter).format(*table[4]))
-    f.write((",text"+formatter).format(*table[5]))
-    f.write((",spec"+formatter).format(*table[6]))
-    f.write((",st"+formatter).format(*table[7]))
-
+    for i, s in enumerate(surfaces):
+        for j, mat in enumerate(textures):
+            if i == 0:
+                f.write((surfaces+","+textures[1:]+formatter).format(*table[i*len(textures)+j]))
+            else:
+                f.write((","+textures[1:]+formatter).format(*table[i*len(textures)+j]))
     f.close()
     return
 
+"""
+Note: Will not work if the experiments are different numbers of iterations!
+Assumes all experiments for a given mesh, and material have the same number of iterations.
+"""
 def plot_error(errors, name, surface_name):
     errors = np.array(errors)
     errors = np.mean(errors, axis=0)
@@ -60,8 +60,8 @@ def run_phase1_full():
     error_table = np.zeros((len(surfaces)*len(textures), len(methods)))
     for i, surf in enumerate(surfaces):
         for j, text in enumerate(textures):
-            # if i*len(textures) + j != 0:        # Use this to run only the nth surface
-            #     continue
+            if i*len(textures) + j not in [0,4,5]:        # Use this to run only the nth surface
+                continue
             errors_per_experiment = []
             for k in range(NUM_EXPERIMENTS): # repeat experiment number of times
                 disparityMeas = None
@@ -69,7 +69,8 @@ def run_phase1_full():
                 for l, method in enumerate(methods):
                     print "Running " + surf+text + " "+ method + ":"
                     start = time.time()
-                    disparityMeas, means, sigmas, sampled_points, measures, errors, num_iters = run_single_phase1_experiment(surf+text, method, disparityMeas, False, stops[i][j], shouldPlot=False)
+                    shouldPlot = True if l == 2 else False
+                    disparityMeas, means, sigmas, sampled_points, measures, errors, num_iters = run_single_phase1_experiment(surf+text, method, disparityMeas, False, stops[i][j], shouldPlot=shouldPlot)
                     end = time.time()
                     time_elapsed = end - start # in seconds
                     # plot or save/record everything
@@ -81,7 +82,7 @@ def run_phase1_full():
                     save_table(error_table, "phase1_errors")
                     errors_per_method.append(errors)
                 errors_per_experiment.append(errors_per_method)
-            plot_error(errors_per_experiment, "phase1_error", surf+text)
+            # plot_error(errors_per_experiment, "phase1_error", surf+text)
     return
 
 

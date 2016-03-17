@@ -270,6 +270,15 @@ def plot_error(surface, workspace, mean, sigma, aq, meas, dirname=None, data=Non
 
     # evaluate the RMSerror
     error =np.sqrt((GroundTruth-np.squeeze(mean))**2)
+
+    plt.imsave("estimate_final_mean.png", np.flipud(mean), cmap=cm.coolwarm, vmin=0, vmax=20)
+    plt.imsave("estimate_final_error.png", np.flipud(error), cmap=cm.coolwarm,vmin=0, vmax=20)
+    plt.close()
+
+
+    return None
+
+
     # GroundTruth = gridreshape(GroundTruth,workspace)
     # error = gridreshape(error,workspace)
     if data is None:
