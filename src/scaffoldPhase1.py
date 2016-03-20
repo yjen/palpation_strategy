@@ -5,12 +5,14 @@ import matplotlib.pyplot as plt
 from runPhase1 import *
 from plotscripts import *
 
-NUM_EXPERIMENTS = 1
+NUM_EXPERIMENTS = 2
 
 surfaces = ["smooth_sin1","flat"]              # add another model ?
 stops = [[1.343, 1.343, 1.343, 1.343],
          [1.343, 1.343, 1.343, 1.343]]
-textures = [ "_text", "_spec", "_st","_lam"]
+# textures = [ "_text", "_spec", "_st","_lam"]
+textures = ["_spec", "_st","_lam", "_text"]
+
     # lambert, texture, specular, specular + texture
 # methods = ["random", "maxVarGrad", "maxVar", "UCB_dGPIS", "UCB_dGPIS2", "UCB_GP"]
 # methods = ["random", "maxVar", "UCB_GP", "UCB_dGPIS", "UCB_dGPIS2"]
