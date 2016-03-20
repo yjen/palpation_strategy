@@ -177,7 +177,7 @@ def MaxVar_GP(model, workspace, level=0,x=None, acquisition_par=0):
 
     return x, f_acqu  # note: returns negative value for posterior minimization
 
-def UCB_GP(model, workspace, level=0, x=None, acquisition_par=.8  ):
+def UCB_GP(model, workspace, level=0, x=None, acquisition_par=.8):
     """
     .8 for ph 1
     Upper Confidence Band
@@ -195,7 +195,7 @@ def UCB_GP(model, workspace, level=0, x=None, acquisition_par=.8  ):
 
     sigma=sigma/sigma.max()
 
-    f_acqu = acquisition_par*sigma + (1-acquisition_par)* (mean)#acquisition_par * (mean) +  sigma
+    f_acqu = acquisition_par*sigma + (1-acquisition_par)*mean  #acquisition_par * (mean) +  sigma
 
     buffx=.1*(workspace.bounds[0][1]-workspace.bounds[0][0])
     buffy=.1*(workspace.bounds[1][1]-workspace.bounds[1][0])

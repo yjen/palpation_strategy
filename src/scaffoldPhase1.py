@@ -5,15 +5,16 @@ import matplotlib.pyplot as plt
 from runPhase1 import *
 from plotscripts import *
 
-NUM_EXPERIMENTS = 5
+NUM_EXPERIMENTS = 1
 
 surfaces = ["smooth_sin1","flat"]              # add another model ?
 stops = [[1.343, 1.343, 1.343, 1.343],
          [1.343, 1.343, 1.343, 1.343]]
 textures = [ "_text", "_spec", "_st","_lam"]
     # lambert, texture, specular, specular + texture
-methods = ["random", "maxVarGrad", "maxVar", "UCB_dGPIS", "UCB_dGPIS2", "UCB_GP"]
-
+# methods = ["random", "maxVarGrad", "maxVar", "UCB_dGPIS", "UCB_dGPIS2", "UCB_GP"]
+# methods = ["random", "maxVar", "UCB_GP", "UCB_dGPIS", "UCB_dGPIS2"]
+methods = ["random", "maxVar", "UCB_GP", "UCB_dGPIS2"]
 
 def save_data(arr, name, surface_name):
     f = open("image_pairs/"+surface_name+'/'+name, 'w')

@@ -34,8 +34,14 @@ def evalerror(surface, workspace, mean):
     GroundTruth = interp(x,y)
     # integrate error
     dx = workspace.bounds[0][1]/np.float(workspace.res)
-    error = np.sum(np.sqrt((GroundTruth-np.squeeze(mean))**2))*dx**2
-    return error / 10e6 # error/mm^2 to error/m^2 conversion
+    #this is the incorrect error calculcation
+    # error = np.sum(np.sqrt((GroundTruth-np.squeeze(mean))**2))*dx**2
+    # return error / 10e6 # error/mm^2 to error/m^2 conversion
+
+    numPoints = len(x)*len(y)
+    error = np.sqrt(np.sum((GroundTruth-np.squeeze(mean))**2)/numPoints)    
+    
+    return error # this is in mm
 
 def run_single_phase1_experiment(surfacename, method, disparityMeas=None, block=False, stops=1.343, shouldPlot=True):
     # set workspace boundary
@@ -96,10 +102,11 @@ def run_single_phase1_experiment(surfacename, method, disparityMeas=None, block=
     errors=[]
     sigma = 1000.0
 
-    if method in {"random","UCB_dGPIS", "UCB_dGPIS2"}:
-        maxIters = 100
-    else:
-        maxIters = 50
+    # if method in {"random","UCB_GP", "UCB_dGPIS", "UCB_dGPIS2"}:
+    #     maxIters = 200
+    # else:
+    #     maxIters = 50
+    maxIters = 100        
 
     while i < maxIters: # or np.max(sigma) > stops:
         print "iteration =", i
@@ -161,9 +168,9 @@ def run_single_phase1_experiment(surfacename, method, disparityMeas=None, block=
                 xgrid, AqcuisFunction = AcFunction(gpmodel, workspace, acquisition_par=[0.95,0.4, 0.37])                
         elif method in {"UCB_GP"}:
             if surfacename in {"smooth_sin1_st", "smooth_sin1_spec"}:
-                xgrid, AqcuisFunction = AcFunction(gpmodel, workspace, acquisition_par=[0.25])                
+                xgrid, AqcuisFunction = AcFunction(gpmodel, workspace, acquisition_par=0.95)                
             else:
-                xgrid, AqcuisFunction = AcFunction(gpmodel, workspace, acquisition_par=[0.25])                
+                xgrid, AqcuisFunction = AcFunction(gpmodel, workspace, acquisition_par=0.8)                
 
         # choose points to probe based on maxima of acquisition function
         if method in AcFunctionSet:
@@ -186,17 +193,20 @@ def run_single_phase1_experiment(surfacename, method, disparityMeas=None, block=
         measnew = getSimulatedProbeMeas(surface, workspace, next_samples_points)
         measures.append(measnew)
         error = evalerror(surface, workspace, mean)
+        if i==0: 
+            print"only disparity error:", error
+        elif i==maxIters-1 or (method=="random" and i>0):
+            print"Final error:", error
         errors.append(error)
-        
-        # Plot everything
-        time.sleep(0.0001)
-        plt.pause(0.0001)
-        
+                
         if (shouldPlot) and (i%10==0 or i==maxIters or method=="random"):
+            # Plot everything
+            time.sleep(0.0001)
+            plt.pause(0.0001)
             # plot_data = plot_error(surface, workspace, mean, sigma, AqcuisFunction, meastouchonly, dirname=directory, data=plot_data, projection3D=False, iternum=i)
             # plot but not save
             plot_data = plot_error(surface, workspace, mean, sigma, AqcuisFunction, meastouchonly, dirname=None, data=plot_data, projection3D=False, iternum=i)
-        
+
         i=i+1
 
     plt.show(block=block)
@@ -209,15 +219,17 @@ def run_single_phase1_experiment(surfacename, method, disparityMeas=None, block=
 
 if __name__ == "__main__":
 
-    surfacename = "smooth_sin1_spec"
+    # surfacename = "smooth_sin1_spec"
+    surfacename = "smooth_sin1_text"
     #Note have to use different parameters for specularity. 
     # In that case disparity calculations fail, hence need to increase weight on the variance term to encourage exploration.
 
-    run_single_phase1_experiment(surfacename, method="random", block=True)
+    # run_single_phase1_experiment(surfacename, method="random", block=True)
     # run_single_phase1_experiment(surfacename, method="maxVar", block=True)
-    # run_single_phase1_experiment(surfacename, method="UCB_dGPIS", block=True)
-    # run_single_phase1_experiment(surfacename, method="UCB_dGPIS2", block=True)
     # run_single_phase1_experiment(surfacename, method="UCB_GP", block=True)
+    # run_single_phase1_experiment(surfacename, method="UCB_dGPIS", block=True)
+    run_single_phase1_experiment(surfacename, method="UCB_dGPIS2", block=True)
+    
 
     # todo: stereo variance should dependd on which model we are testing on -- based on goodness of fit of disparity calc
 
