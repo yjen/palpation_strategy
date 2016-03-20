@@ -1,9 +1,9 @@
 ,,Random Probings,Max Variance,Max Variance Gradient
-flat,lam,4.0,4.0
-,text,0.0,0.0
-,spec,0.0,0.0
-,st,0.0,0.0
-S,lam,0.0,0.0
-,text,0.0,0.0
-,spec,0.0,0.0
-,st,0.0,0.0
+flat,lam,2.0,100.0,50.0,50.0
+,text,0.0,0.0,0.0,0.0
+,spec,0.0,0.0,0.0,0.0
+,st,0.0,0.0,0.0,0.0
+S,lam,0.0,0.0,0.0,0.0
+,text,0.0,0.0,0.0,0.0
+,spec,0.0,0.0,0.0,0.0
+,st,0.0,0.0,0.0,0.0
