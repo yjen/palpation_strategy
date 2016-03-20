@@ -10,8 +10,11 @@ NUM_EXPERIMENTS = 2
 surfaces = ["smooth_sin1","flat"]              # add another model ?
 stops = [[1.343, 1.343, 1.343, 1.343],
          [1.343, 1.343, 1.343, 1.343]]
-# textures = [ "_text", "_spec", "_st","_lam"]
-textures = ["_spec", "_st","_lam", "_text"]
+#this is just a hack to get results for each faster
+textures = [ "_text", "_spec", "_st","_lam"]
+# textures = ["_spec", "_st","_lam", "_text"]
+# textures = ["_st","_lam", "_text", "_spec"]
+# textures = ["_lam", "_text","_spec", "_st"]
 
     # lambert, texture, specular, specular + texture
 # methods = ["random", "maxVarGrad", "maxVar", "UCB_dGPIS", "UCB_dGPIS2", "UCB_GP"]

@@ -219,8 +219,11 @@ def run_single_phase1_experiment(surfacename, method, disparityMeas=None, block=
 
 if __name__ == "__main__":
 
+    surfacename = "smooth_sin1_text"    
     # surfacename = "smooth_sin1_spec"
-    surfacename = "smooth_sin1_text"
+    # surfacename = "smooth_sin1_st"    
+    # surfacename = "smooth_sin1_lam"    
+    
     #Note have to use different parameters for specularity. 
     # In that case disparity calculations fail, hence need to increase weight on the variance term to encourage exploration.
 
