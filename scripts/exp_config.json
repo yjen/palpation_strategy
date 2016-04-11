@@ -1,0 +1,15 @@
+{
+    "exp_name" : "default_experiment",
+    "probe_depth": 0.0,
+    "surface_registration_file": "env_registration.p",
+    "tissue_dimensions": [0.025, 0.50],
+    "position_offset": [0.0, 0.0, 0.030],
+    "rotation_offset":[0.0, 0.0, 0.0],
+    "row_start": 0.0,
+    "row_end": 1.0,
+    "number_rows": 10,
+    "scans_per_row": 2,
+    "pick_up_tool": true,
+    "raster_speed": 0.01,
+    "additional_notes": "This is a sample config file"
+}
