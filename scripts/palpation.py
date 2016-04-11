@@ -160,7 +160,7 @@ class Palpation():
         nw = self.data_dict['nw']
         ne = self.data_dict['ne']
         sw = self.data_dict['sw']
-        return compute_tissue_pose(nw,ne,sw)
+        return self.compute_tissue_pose(nw,ne,sw)
 
     def load_tissue_pose_from_registration_brick_pose(self):
         # tissue pose offsets:
@@ -176,12 +176,12 @@ class Palpation():
         self.tissue_length = 0.028
 
     def compute_tissue_pose(self, nw, ne, sw):
-        x = -0.01
-        y = 0.1
-        z = 0.01
-        roll = 1.5 # in degrees
-        yaw = 2
-        pitch = 3.5
+        # x = -0.01
+        # y = 0.1
+        # z = 0.01
+        # roll = 1.5 # in degrees
+        # yaw = 2
+        # pitch = 3.5
 
         nw_position = np.hstack(np.array(nw.position))
         ne_position = np.hstack(np.array(ne.position))
@@ -198,10 +198,10 @@ class Palpation():
         rotation_matrix = np.array([u,v,w]).transpose()
         # offset = np.dot(rotation_matrix, np.array([-0.009, 0.100, 0.01]))
         pose = tfx.pose(origin, rotation_matrix, frame=nw.frame)
-        pose = pose.as_tf()*tfx.transform([x,y,z])*tfx.transform(tfx.rotation_tb(0, 0, roll))*tfx.transform(tfx.rotation_tb(0, pitch, 0))*tfx.transform(tfx.rotation_tb(yaw, 0, 0))
+        # pose = pose.as_tf()*tfx.transform([x,y,z])*tfx.transform(tfx.rotation_tb(0, 0, roll))*tfx.transform(tfx.rotation_tb(0, pitch, 0))*tfx.transform(tfx.rotation_tb(yaw, 0, 0))
         self.tissue_pose = pose
-        self.tissue_width = 0.05
-        self.tissue_length = 0.025
+        # self.tissue_width = 0.05
+        # self.tissue_length = 0.025
         return pose
 
 
@@ -258,16 +258,24 @@ class Palpation():
     ##################################################################################
     # PROBING METHODS
     ##################################################################################
+    def deunicodify_hook(self, pairs):
+        new_pairs = []
+        for key, value in pairs:
+            if isinstance(value, unicode):
+                value = value.encode('utf-8')
+            if isinstance(key, unicode):
+                key = key.encode('utf-8')
+            new_pairs.append((key, value))
+        return dict(new_pairs)
+
     def execute_raster(self, config_file):
         # load exp config
-        json_data = open(config_file)
-        config = json.load(json_data)
+        config = json.load(open(config_file), object_pairs_hook=self.deunicodify_hook)
 
         # transform scan plane
         tissue_pose = self.load_environment_registration(config["surface_registration_file"])
-        tissue_pose = tissue_pose.as_tf()*tfx.pose(config["position_offset"]).as_tf()
         roll, pitch, yaw = config['rotation_offset']
-        tissue_pose = tissue_pose.as_tf()*tfx.transform(tfx.tb_angles(roll))*tfx.transform(tfx.tb_angles(pitch))*tfx.transform(tfx.tb_angles(yaw))
+        tissue_pose = tissue_pose.as_tf()*tfx.transform(config["position_offset"])*tfx.transform(tfx.rotation_tb(0, 0, roll))*tfx.transform(tfx.rotation_tb(0, pitch, 0))*tfx.transform(tfx.rotation_tb(yaw, 0, 0))
 
         def go_to_pose(x, y, z, speed):
             # construct tool rotation
@@ -1108,3 +1116,6 @@ class Palpation():
             rospy.sleep(0.1)
         self.probe_save_locations("probe_locations.p")
 
+if __name__ == '__main__':
+    palp = Palpation()
+    palp.execute_raster("exp_config.json")
