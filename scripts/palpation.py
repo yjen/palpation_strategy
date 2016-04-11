@@ -11,6 +11,7 @@ import pickle
 from probe_visualizations import stiffness_map
 from tf_conversions import posemath
 import json
+import os
 
 
 class Palpation():
@@ -216,7 +217,7 @@ class Palpation():
         # get gripper position
         origin = np.hstack(np.array(tissue_pose.position))
         # offset = np.dot(frame, np.array([0.02, 0.09, 0.06]))
-        offset = np.dot(frame, np.array([0.02, 0.0, 0.06]))
+        offset = np.dot(frame, np.array([0.02, 0.0, 0.03]))
 
         pose = tfx.pose(origin + offset, rotation_matrix, frame=tissue_pose.frame)
 
@@ -272,10 +273,16 @@ class Palpation():
         # load exp config
         config = json.load(open(config_file), object_pairs_hook=self.deunicodify_hook)
 
+        # create directory to save the data
+        directory = "exp_data"
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+
         # transform scan plane
         tissue_pose = self.load_environment_registration(config["surface_registration_file"])
         roll, pitch, yaw = config['rotation_offset']
         tissue_pose = tissue_pose.as_tf()*tfx.transform(config["position_offset"])*tfx.transform(tfx.rotation_tb(0, 0, roll))*tfx.transform(tfx.rotation_tb(0, pitch, 0))*tfx.transform(tfx.rotation_tb(yaw, 0, 0))
+        self.tissue_pose = tissue_pose
 
         def go_to_pose(x, y, z, speed):
             # construct tool rotation
@@ -293,14 +300,14 @@ class Palpation():
             self.pick_up_tool()
 
         # move to start point
-        go_to_pose(row_start, 0.0, 0.02, self.speed)
+        go_to_pose(config["x_start"], 0.0, 0.02, self.speed)
         w, l = config["tissue_dimensions"]
 
         # scan rows
         self.probe_stop_reset()
         forward_probe_data = []
         backward_probe_data = []
-        for i in config["number_rows"]:
+        for i in range(config["number_rows"]):
             # are we scanning multiple rows?
             if config["number_rows"] > 1:
                 step = 1.0/(config["number_rows"]-1)
@@ -308,13 +315,15 @@ class Palpation():
                 step = 0.0
 
             for _ in range(config["scans_per_row"]):
-                x = (row_start*(1.0-i*step) + i*steprow_end)*w
+                x = (config["x_start"]*(1.0-i*step) + i*step*config["x_end"])*w
+                y_start = config['y_start']*l
+                y_end = config['y_end']*l
 
                 # scan in forward direction
-                go_to_pose(x, 0.0, 0.0, config["raster_speed"])
+                go_to_pose(x, y_start, 0.0, config["raster_speed"])
                 rospy.sleep(0.5)
                 self.probe_start()
-                go_to_pose(x, l, 0.0, config["raster_speed"])
+                go_to_pose(x, y_end, 0.0, config["raster_speed"])
                 rospy.sleep(0.5)
                 self.probe_pause()
 
@@ -324,7 +333,7 @@ class Palpation():
 
                 # scan in reverse direction
                 self.probe_start()
-                go_to_pose(x, 0.0, 0.0, config["raster_speed"])
+                go_to_pose(x, y_start, 0.0, config["raster_speed"])
                 rospy.sleep(0.5)
                 self.probe_pause()
 
@@ -334,7 +343,7 @@ class Palpation():
 
                 # save recorded data to file after each scan
                 data = [config, forward_probe_data, backward_probe_data]
-                filename = "exp_data/"+config["exp_name"]+".p"
+                filename = directory+"/"+config["exp_name"]+".p"
                 pickle.dump(data, open(filename, "wb"))
 
     def execute_scan_points_continuous(self, n):
