@@ -240,7 +240,7 @@ class Palpation():
         raw_input("Place tool on gripper and press any key to continue: ")
         # self.psm1.set_gripper_angle(70.0)
         # rospy.sleep(1.0)
-        self.psm1.set_gripper_angle(90)
+        self.psm1.set_gripper_angle(60)
 
     def drop_off_tool(self):
         tissue_pose = self.tissue_pose
