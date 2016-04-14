@@ -12,7 +12,15 @@ from probe_visualizations import stiffness_map
 from tf_conversions import posemath
 import json
 import os
+import sys
+import signal
 
+# define a signal handler to exit cleanly
+def signal_handler(signal, frame):
+    print "Exiting palpation script"
+    sys.exit(0)
+
+signal.signal(signal.SIGINT, signal_handler)
 
 class Palpation():
     def __init__(self):
