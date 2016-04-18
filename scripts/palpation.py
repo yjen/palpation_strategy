@@ -287,14 +287,15 @@ class Palpation():
             os.makedirs(directory)
 
         # transform scan plane
+        w, l = config["tissue_dimensions"]
         tissue_pose = self.load_environment_registration(config["surface_registration_file"])
         roll, pitch, yaw = config['rotation_offset']
-        tissue_pose = tissue_pose.as_tf()*tfx.transform(config["position_offset"])*tfx.transform(tfx.rotation_tb(0, 0, roll))*tfx.transform(tfx.rotation_tb(0, pitch, 0))*tfx.transform(tfx.rotation_tb(yaw, 0, 0))
+        tissue_pose = tissue_pose.as_tf()*tfx.transform(config["position_offset"])*tfx.transform([w/2.0, l/2.0, 0.0])*tfx.transform(tfx.rotation_tb(0, 0, roll))*tfx.transform(tfx.rotation_tb(0, pitch, 0))*tfx.transform(tfx.rotation_tb(yaw, 0, 0))*tfx.transform([w/-2.0,  l/-2.0, 0.0])
         self.tissue_pose = tissue_pose
 
         def go_to_pose(x, y, z, speed):
             # construct tool rotation
-            origin = np.hstack(np.array(tissue_pose.position))
+            origin = np.hstack(np.array(self.tissue_pose.position))
             frame = np.array(tissue_pose.orientation.matrix)
             u, v, w = frame.T[0], frame.T[1], frame.T[2]
             rotation_matrix = np.array([v, u, -w]).transpose()
@@ -308,7 +309,7 @@ class Palpation():
             self.pick_up_tool()
 
         # move to start point
-        go_to_pose(config["x_start"], 0.0, 0.02, self.speed)
+        go_to_pose(config["x_start"]*w, 0.0, 0.02, self.speed)
         w, l = config["tissue_dimensions"]
 
         # scan rows
@@ -322,11 +323,12 @@ class Palpation():
             else:
                 step = 0.0
 
+            y_start = config['y_start']*l
+            y_end = config['y_end']*l
+
             for _ in range(config["scans_per_row"]):
                 x = (config["x_start"]*(1.0-i*step) + i*step*config["x_end"])*w
-                y_start = config['y_start']*l
-                y_end = config['y_end']*l
-
+                
                 # scan in forward direction
                 go_to_pose(x, y_start, 0.0, config["raster_speed"])
                 rospy.sleep(0.5)
@@ -353,6 +355,47 @@ class Palpation():
                 data = [config, forward_probe_data, backward_probe_data]
                 filename = directory+"/"+config["exp_name"]+".p"
                 pickle.dump(data, open(filename, "wb"))
+
+    def execute_raster_random(self, config_file):
+        # load exp config
+        config = json.load(open(config_file), object_pairs_hook=self.deunicodify_hook)
+
+        # create directory to save the data
+        directory = "exp_data"
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+
+        # transform scan plane
+        tissue_pose = self.load_environment_registration(config["surface_registration_file"])
+        roll, pitch, yaw = config['rotation_offset']
+        tissue_pose = tissue_pose.as_tf()*tfx.transform(config["position_offset"])*tfx.transform(tfx.rotation_tb(0, 0, roll))*tfx.transform(tfx.rotation_tb(0, pitch, 0))*tfx.transform(tfx.rotation_tb(yaw, 0, 0))
+        self.tissue_pose = tissue_pose
+
+        def go_to_pose(x, y, z, speed):
+            # construct tool rotation
+            origin = np.hstack(np.array(tissue_pose.position))
+            frame = np.array(tissue_pose.orientation.matrix)
+            u, v, w = frame.T[0], frame.T[1], frame.T[2]
+            rotation_matrix = np.array([v, u, -w]).transpose()
+
+            offset = np.dot(frame, np.array([x, y, z + config['probe_depth']]))
+            pose = tfx.pose(origin+offset, rotation_matrix, frame=self.tissue_pose.frame)
+            self.psm1.move_cartesian_frame_linear_interpolation(pose, speed, False)
+
+        # pick up tool if necessary
+        if config["pick_up_tool"]:
+            self.pick_up_tool()
+
+        # move to start point
+        go_to_pose(config["x_start"], 0.0, 0.02, self.speed)
+        w, l = config["tissue_dimensions"]
+
+        # move to random points on surface
+        for _ in range(20):
+            x = np.random.uniform(0.0, w)
+            y = np.random.uniform(0.0, l)
+            go_to_pose(x, y, 0.0, config["raster_speed"])
+            rospy.sleep(0.2)
 
     def execute_scan_points_continuous(self, n):
         poses = []
@@ -1135,4 +1178,4 @@ class Palpation():
 
 if __name__ == '__main__':
     palp = Palpation()
-    palp.execute_raster("exp_config.json")
+    palp.execute_raster("exp_config_rotated.json")

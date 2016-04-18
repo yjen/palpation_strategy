@@ -1,10 +1,10 @@
 {
-    "exp_name" : "rotated_tissue_exp",
+    "exp_name" : "rotated_tissue_exp4",
     "probe_depth": -0.003,
     "surface_registration_file": "env_registration.p",
     "tissue_dimensions": [0.020, 0.040],
-    "position_offset": [-0.007, 0.11, 0.047],
-    "rotation_offset":[-0.0, 4.0, -91.0],
+    "position_offset": [-0.000, 0.105, 0.047],
+    "rotation_offset":[-0.0, 2.0, -91.0],
     "x_start": 0.0,
     "x_end": 1.0,
     "y_start": 0.0,

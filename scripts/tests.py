@@ -21,7 +21,7 @@ def test_raster_scan_tilted_L2R():
     palp.execute_raster_tilted(0, 1)
 
 def test_raster_scan_tilted_R2L():
-    palp = Palpation()
+    opepalp = Palpation()
     try:
         palp.load_environment_registration("env_registration.p")
     except Exception as e:
