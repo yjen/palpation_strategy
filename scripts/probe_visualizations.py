@@ -396,14 +396,14 @@ if __name__ == '__main__':
     #second coord 5 random_exp6
     #second coord -5 random_exp7
     #second coord 0 random_exp8
-    #4 9
-    #3 10
-    #2 11
-    #1 12
+    #second coord 4 9
+    #second coord 3 10
+    #second coord 2 11
+    #second coord 1 12
 
-    #3 13 is full ground truth
-    #2.5 14FIRST is full ground truth
-    #2.25 14 is full ground truth
+    #second coord 3 13 is full ground truth
+    #second coord 2.5 14FIRST is full ground truth
+    #second coord 2.25 14 is full ground truth
 
 
     #15 is w/ block not pushed down, -0.006 indentation
@@ -415,7 +415,44 @@ if __name__ == '__main__':
     #21 -0.006
     #22 -0.004
     #23 -0.009 full ground truth
+
+    #GROUND TRUTH FOR HORSESHOE TUMOR
+    #exp_config.json params: 
+    # "exp_name" : "random_exp23",
+    # "probe_depth": -0.009,
+    # "surface_registration_file": "env_registration.p",
+    # "tissue_dimensions": [0.027, 0.072],
+    # "position_offset": [-0.003, 0.082, 0.047],
+    # "rotation_offset":[1, 2.25, 4.0], 
+    # "x_start": 0.0,
+    # "x_end": 1.0,
+    # "y_start": 0.0,
+    # "y_end": 1.0,
+    # "number_rows": 20,
+    # "scans_per_row": 1,
+    # "pick_up_tool": false,
+    # "raster_speed": 0.005,
+    # "additional_notes": "Move across random points on surface"
+
+    #GROUND TRUTH FOR CIRCLE TUMOR
+    # "exp_name" : "random_exp14",
+    # "probe_depth": -0.006,
+    # "surface_registration_file": "env_registration.p",
+    # "tissue_dimensions": [0.027, 0.072],
+    # "position_offset": [-0.003, 0.082, 0.047],
+    # "rotation_offset":[1, 2.25, 4.0], 
+    # "x_start": 0.0,
+    # "x_end": 1.0,
+    # "y_start": 0.0,
+    # "y_end": 1.0,
+    # "number_rows": 20,
+    # "scans_per_row": 1,
+    # "pick_up_tool": false,
+    # "raster_speed": 0.005,
+    # "additional_notes": "Move across random points on surface"
+
+    # only difference should be probe_depth; -0.009 for horseshoe, -0.006 for circle
     
 
     #lol 
-    gen_figures("exp_data/random_exp23")
+    gen_figures("exp_data/random_exp24")
