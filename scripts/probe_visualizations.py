@@ -405,5 +405,17 @@ if __name__ == '__main__':
     #2.5 14FIRST is full ground truth
     #2.25 14 is full ground truth
 
+
+    #15 is w/ block not pushed down, -0.006 indentation
+    #16 -0.007
+    #17 -0.008
+    #18 -0.009 BEST
+    #19 -0.01
+    #20 -0.005
+    #21 -0.006
+    #22 -0.004
+    #23 -0.009 full ground truth
+    
+
     #lol 
-    gen_figures("exp_data/random_exp14")
+    gen_figures("exp_data/random_exp23")

@@ -343,8 +343,8 @@ class Palpation():
 
                 # scan in reverse direction
                 self.probe_start()
-                go_to_pose(x, y_end, 0.01, config["raster_speed"])
-                go_to_pose(x, y_start, 0.01, config["raster_speed"])
+                # go_to_pose(x, y_end, 0.01, config["raster_speed"])
+                go_to_pose(x, y_start, 0.0, config["raster_speed"])
                 rospy.sleep(0.5)
                 self.probe_pause()
 

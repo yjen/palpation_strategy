@@ -1,6 +1,6 @@
 {
-    "exp_name" : "random_exp16",
-    "probe_depth": -0.006,
+    "exp_name" : "random_exp23",
+    "probe_depth": -0.009,
     "surface_registration_file": "env_registration.p",
     "tissue_dimensions": [0.027, 0.072],
     "position_offset": [-0.003, 0.082, 0.047],
