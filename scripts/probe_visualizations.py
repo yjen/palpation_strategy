@@ -278,6 +278,96 @@ def plot_interpolated_recorded_data(data_dict):
     ax.scatter(xx, yy, zz, c='b', marker='o')
     plt.show()
 
+def gen_figures(file_name):
+    """ Displays a 3D scatter plot where x,y are points on the tissue surface and z is the probe measurement """
+
+    data_dict = pickle.load(open(file_name+".p", "rb"))
+    probe_data = data_dict[1]
+
+    positions_3d = np.array([np.array(a[1][0:3, 3].flatten())[0] for a in probe_data])
+    positions_3d -= np.mean(positions_3d,0)
+    U, s, V = np.linalg.svd(np.transpose(positions_3d), full_matrices = False)
+    plane_normal = U[:, 2]
+
+    # project points onto best fit plane
+    projected_points = np.array([a - np.dot(plane_normal, a)*plane_normal for a in positions_3d])
+
+    # axis align plane
+    projected_points = np.transpose(np.dot(np.linalg.inv(U), np.transpose(projected_points)))
+
+    # replace z-axis with stiffness
+    stiffness = np.array([a[0] for a in probe_data])
+    projected_points[:,2] = stiffness
+
+    # save forward heat map
+
+    fig = plt.figure()
+    plt.scatter(projected_points[:,0], projected_points[:,1], c=projected_points[:,2], marker='o', edgecolors='none', s=40, alpha=0.1)
+    plt.xlim(-0.04, 0.04)
+    plt.ylim(-0.04, 0.04)
+    plt.savefig(file_name+"forward.png")
+    plt.show()
+
+    probe_data = data_dict[2]
+
+    positions_3d = np.array([np.array(a[1][0:3, 3].flatten())[0] for a in probe_data])
+    positions_3d -= np.mean(positions_3d,0)
+    U, s, V = np.linalg.svd(np.transpose(positions_3d), full_matrices = False)
+    plane_normal = U[:, 2]
+
+    # project points onto best fit plane
+    projected_points = np.array([a - np.dot(plane_normal, a)*plane_normal for a in positions_3d])
+
+    # axis align plane
+    projected_points = np.transpose(np.dot(np.linalg.inv(U), np.transpose(projected_points)))
+
+    # replace z-axis with stiffness
+    stiffness = np.array([a[0] for a in probe_data])
+    projected_points[:,2] = stiffness
+
+
+    # save backward heat map
+    fig = plt.figure()
+    plt.scatter(projected_points[:,0], projected_points[:,1], c=projected_points[:,2], marker='o', edgecolors='none', s=40, alpha=0.1)
+    plt.xlim(-0.04, 0.04)
+    plt.ylim(-0.04, 0.04)
+    plt.savefig(file_name+"backward.png")
+    plt.show()
+
+
+def gen_figures_single_row(file_name):
+    data_dict = pickle.load(open(file_name+".p", "rb"))
+    probe_data1 = data_dict[1]
+    probe_data2 = data_dict[2]
+
+    index = len(probe_data1)
+    # combine the data
+    probe_data1
+
+    probe_data = probe_data1
+    positions_3d = np.array([np.array(a[1][0:3, 3].flatten())[0] for a in probe_data])
+    positions_3d -= np.mean(positions_3d,0)
+    U, s, V = np.linalg.svd(np.transpose(positions_3d), full_matrices = False)
+    plane_normal = U[:, 2]
+
+    # project points onto best fit plane
+    projected_points = np.array([a - np.dot(plane_normal, a)*plane_normal for a in positions_3d])
+
+    # axis align plane
+    projected_points = np.transpose(np.dot(np.linalg.inv(U), np.transpose(projected_points)))
+
+    # replace z-axis with stiffness
+    stiffness = np.array([a[0] for a in probe_data])
+    projected_points[:,2] = stiffness
+
+    # display stiffness map
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+
+    # ax.scatter(projected_points[:index,0], projected_points[:index,2], marker='.', edgecolors="none")
+    ax.scatter(projected_points[:,0], projected_points[:,2], marker='.', edgecolors="none")
+    plt.ylim(0, 3500)
+    plt.savefig(file_name+"single_row.png")
 
 if __name__ == '__main__':
     # load data
@@ -294,6 +384,26 @@ if __name__ == '__main__':
     # data1 = pickle.load(open("probe_data_newdvrk.p", "rb"))
     # data2 = pickle.load(open("probe_data_newdvrk_desired.p", "rb"))
     # plot_rotations_combined(data1, data2)
-    data_dict = pickle.load(open("exp_data/depth_exp1.p", "rb"))
-    import IPython; IPython.embed()
-    stiffness_map(data_dict)
+    
+    #random_exp4 is w/ probe depth -0.006, tissue_dim 0.024, 0.072, position offset 0, 0.082, 0.047, rotation offset 1, 0, 4, x=y=[0,1], #rows=20, scan/row=1, raster spd 0.005
+    #random_exp5 is w/ probe depth -0.006, tissue_dim 0.027, 0.072, position offset -0.003, 0.082, 0.047, rotation offset 1, 0, 4, x=y=[0,1], #rows=20, scan/row=1, raster spd 0.005
+
+    #first coordinate of rotation_offset controls height diff (z) left to right
+    #third coordinate of rotation_offset controls whether scan lines are
+    #parallel to block (from top-down view)
+    #second coordinate of rotation_offset controls height diff (z) top to bottom
+
+    #second coord 5 random_exp6
+    #second coord -5 random_exp7
+    #second coord 0 random_exp8
+    #4 9
+    #3 10
+    #2 11
+    #1 12
+
+    #3 13 is full ground truth
+    #2.5 14FIRST is full ground truth
+    #2.25 14 is full ground truth
+
+    #lol 
+    gen_figures("exp_data/random_exp14")

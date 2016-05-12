@@ -343,7 +343,8 @@ class Palpation():
 
                 # scan in reverse direction
                 self.probe_start()
-                go_to_pose(x, y_start, 0.0, config["raster_speed"])
+                go_to_pose(x, y_end, 0.01, config["raster_speed"])
+                go_to_pose(x, y_start, 0.01, config["raster_speed"])
                 rospy.sleep(0.5)
                 self.probe_pause()
 
@@ -355,6 +356,87 @@ class Palpation():
                 data = [config, forward_probe_data, backward_probe_data]
                 filename = directory+"/"+config["exp_name"]+".p"
                 pickle.dump(data, open(filename, "wb"))
+
+    def execute_raster_other_dir(self, config_file):
+        # load exp config
+        config = json.load(open(config_file), object_pairs_hook=self.deunicodify_hook)
+
+        # create directory to save the data
+        directory = "exp_data"
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+
+        # transform scan plane
+        w, l = config["tissue_dimensions"]
+        tissue_pose = self.load_environment_registration(config["surface_registration_file"])
+        roll, pitch, yaw = config['rotation_offset']
+        tissue_pose = tissue_pose.as_tf()*tfx.transform(config["position_offset"])*tfx.transform([w/2.0, l/2.0, 0.0])*tfx.transform(tfx.rotation_tb(0, 0, roll))*tfx.transform(tfx.rotation_tb(0, pitch, 0))*tfx.transform(tfx.rotation_tb(yaw, 0, 0))*tfx.transform([w/-2.0,  l/-2.0, 0.0])
+        self.tissue_pose = tissue_pose
+
+        def go_to_pose(x, y, z, speed):
+            # construct tool rotation
+            origin = np.hstack(np.array(self.tissue_pose.position))
+            frame = np.array(tissue_pose.orientation.matrix)
+            u, v, w = frame.T[0], frame.T[1], frame.T[2]
+            rotation_matrix = np.array([v, u, -w]).transpose()
+
+            offset = np.dot(frame, np.array([x, y, z + config['probe_depth']]))
+            pose = tfx.pose(origin+offset, rotation_matrix, frame=self.tissue_pose.frame)
+            self.psm1.move_cartesian_frame_linear_interpolation(pose, speed, False)
+
+        # pick up tool if necessary
+        if config["pick_up_tool"]:
+            self.pick_up_tool()
+
+        # move to start point
+        go_to_pose(config["x_start"]*w, 0.0, 0.02, self.speed)
+        w, l = config["tissue_dimensions"]
+
+        # scan rows
+        self.probe_stop_reset()
+        forward_probe_data = []
+        backward_probe_data = []
+        for i in range(config["number_rows"]):
+            # are we scanning multiple rows?
+            if config["number_rows"] > 1:
+                step = 1.0/(config["number_rows"]-1)
+            else:
+                step = 0.0
+
+            x_start = config['x_start']*w
+            x_end = config['x_end']*w
+
+            for _ in range(config["scans_per_row"]):
+                y = (config["y_start"]*(1.0-i*step) + i*step*config["y_end"])*l
+                
+                # scan in forward direction
+                go_to_pose(x_start, y, 0.0, config["raster_speed"])
+                rospy.sleep(0.5)
+                self.probe_start()
+                go_to_pose(x_end, y, 0.0, config["raster_speed"])
+                rospy.sleep(0.5)
+                self.probe_pause()
+
+                # add probe data to forward list
+                forward_probe_data.extend(self.probe_data[:])
+                self.probe_stop_reset()
+
+                # scan in reverse direction
+                self.probe_start()
+                go_to_pose(x_start, y, 0.0, config["raster_speed"])
+                rospy.sleep(0.5)
+                self.probe_pause()
+
+                # add probe data to backward list
+                backward_probe_data.extend(self.probe_data[:])
+                self.probe_stop_reset()
+
+                # save recorded data to file after each scan
+                data = [config, forward_probe_data, backward_probe_data]
+                filename = directory+"/"+config["exp_name"]+".p"
+                pickle.dump(data, open(filename, "wb"))
+
+
 
     def execute_raster_random(self, config_file):
         # load exp config
@@ -388,14 +470,21 @@ class Palpation():
 
         # move to start point
         go_to_pose(config["x_start"], 0.0, 0.02, self.speed)
+        go_to_pose(config["x_start"], 0.0, 0.00, self.speed)
         w, l = config["tissue_dimensions"]
 
+        self.probe_stop_reset()
+        self.probe_start()
         # move to random points on surface
-        for _ in range(20):
+        for _ in range(200):
             x = np.random.uniform(0.0, w)
             y = np.random.uniform(0.0, l)
             go_to_pose(x, y, 0.0, config["raster_speed"])
             rospy.sleep(0.2)
+
+        data = [config, self.probe_data[:]]
+        filename = directory+"/"+config["exp_name"]+".p"
+        pickle.dump(data, open(filename, "wb"))
 
     def execute_scan_points_continuous(self, n):
         poses = []
@@ -942,6 +1031,10 @@ class Palpation():
         self.probe_save("probe_data.p")
         # self.drop_off_tool()
 
+    def load_config(self, config_file):
+        self.config = json.load(open(config_file), object_pairs_hook=self.deunicodify_hook)
+        self.speed = self.config["raster_speed"]
+
     def probe_points_scan_callback(self, data):
         measurements = self.execute_point_scan_probes(data.x, data.y)
         m = FloatList()
@@ -963,20 +1056,32 @@ class Palpation():
         return measurements
 
     def execute_point_scan_probe(self, x, y):
-        speed = 0.02
+        speed = self.speed
         print("x: " + str(x))
         print("y: " + str(y))
-        if x < 0 or x > self.tissue_length or y < 0 or y > self.tissue_width:
-            return None
+        # if x < 0 or x > self.tissue_length or y < 0 or y > self.tissue_width:
+        #     return None
 
-        origin = np.hstack(np.array(self.tissue_pose.position))
+        config = self.config
+        w, l = config["tissue_dimensions"]
+        tissue_pose = self.load_environment_registration(config["surface_registration_file"])
+        roll, pitch, yaw = config['rotation_offset']
+        tissue_pose = tissue_pose.as_tf()*tfx.transform(config["position_offset"])*tfx.transform([w/2.0, l/2.0, 0.0])*tfx.transform(tfx.rotation_tb(0, 0, roll))*tfx.transform(tfx.rotation_tb(0, pitch, 0))*tfx.transform(tfx.rotation_tb(yaw, 0, 0))*tfx.transform([w/-2.0,  l/-2.0, 0.0])
+        self.tissue_pose = tissue_pose
+
+
+
+
+
+
+        # origin = np.hstack(np.array(self.tissue_pose.position))
         frame = np.array(self.tissue_pose.orientation.matrix)
 
-        u, v, w = frame.T[0], frame.T[1], frame.T[2]
+        # u, v, w = frame.T[0], frame.T[1], frame.T[2]
 
-        rotation_matrix = np.array([v, u, -w]).transpose()
+        # rotation_matrix = np.array([v, u, -w]).transpose()
 
-        z = self.probe_offset
+        z = 0
 
         # offset = np.dot(frame, np.array([x, y, z+0.01]))
         # pose = tfx.pose(origin+offset, rotation_matrix, frame=self.tissue_pose.frame)
@@ -986,7 +1091,7 @@ class Palpation():
         old_pose_tissue_frame = tfx.pose(frame).as_tf().inverse()*old_pose
         old_height = old_pose_tissue_frame.position.z
 
-        offset = np.dot(frame, np.array([x, y, z]))
+        offset = np.dot(frame, np.array([x, y, z + config['probe_depth']]))
         pose = tfx.pose(origin+offset, rotation_matrix, frame=self.tissue_pose.frame)
 
         new_pose_tissue_frame = tfx.pose(frame).as_tf().inverse()*pose
@@ -999,7 +1104,7 @@ class Palpation():
         # else:
         #     a = posemath.fromMsg(pose.msg.Pose())
         #     self.psm1.move_cartesian_frame(a, True)
-        self.psm1.move_cartesian_frame_linear_interpolation(pose, 0.005, False)
+        self.psm1.move_cartesian_frame_linear_interpolation(pose, speed, False)
 
 
         if old_height - new_height >= 0.002:
@@ -1178,4 +1283,7 @@ class Palpation():
 
 if __name__ == '__main__':
     palp = Palpation()
-    palp.execute_raster("exp_config_rotated.json")
+    palp.execute_raster("exp_config.json")
+
+    # palp.load_config("exp_config.json")
+    # rospy.spin()
