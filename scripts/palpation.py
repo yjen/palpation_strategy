@@ -120,25 +120,20 @@ class Palpation():
         self.data_dict = {}  # erase old environment state info
 
         # record tissue location
-        raw_input('Using PSM, teleop to the NW point on the tissue \
-                   surface and hit any key to record: ')
+        raw_input('Using PSM, teleop to the NW point on the tissue surface and hit any key to record: ')
         self.data_dict['nw'] = self.psm1.get_current_cartesian_position()
 
-        raw_input('Using PSM, teleop to the NE point on the tissue \
-                   surface and hit any key to record: ')
+        raw_input('Using PSM, teleop to the NE point on the tissue surface and hit any key to record: ')
         self.data_dict['ne'] = self.psm1.get_current_cartesian_position()
 
-        raw_input('Using PSM, teleop to the SW point on the tissue \
-                   surface and hit any key to record: ')
+        raw_input('Using PSM, teleop to the SW point on the tissue surface and hit any key to record: ')
         self.data_dict['sw'] = self.psm1.get_current_cartesian_position()
 
-        raw_input('Using PSM, teleop to the SE point on the tissue \
-                   surface and hit any key to record: ')
+        raw_input('Using PSM, teleop to the SE point on the tissue surface and hit any key to record: ')
         self.data_dict['se'] = self.psm1.get_current_cartesian_position()
 
         # record tool locations
-        raw_input('Using PSM, teleop to the picking location of the \
-                   PALPATION tool and hit any key to record: ')
+        raw_input('Using PSM, teleop to the picking location of the PALPATION tool and hit any key to record: ')
         self.data_dict['palpation_tool_pick_up_loc'] = self.psm1.get_current_cartesian_position()
 
         # compute tissue frame
@@ -344,7 +339,8 @@ class Palpation():
                 # scan in reverse direction
                 self.probe_start()
                 # go_to_pose(x, y_end, 0.01, config["raster_speed"])
-                go_to_pose(x, y_start, 0.0, config["raster_speed"])
+                # go_to_pose(x, y_start, 0.01, config["raster_speed"])
+                go_to_pose(x, y_start, 0.00, config["raster_speed"])
                 rospy.sleep(0.5)
                 self.probe_pause()
 
