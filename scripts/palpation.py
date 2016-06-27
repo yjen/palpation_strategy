@@ -48,8 +48,8 @@ class Palpation():
 
         # subscribe to probe data
         rospy.Subscriber("/probe/measurement", Float64, self.probe_callback)
-
-        # self.measurements_pub = rospy.Publisher("/palpation/measurements", FloatList)
+        rospy.Subscriber("/gaussian_process/pts_to_probe", Points, self.probe_points_callback)
+        self.measurements_pub = rospy.Publisher("/palpation/measurements", FloatList, queue_size=1)
 
 
 
@@ -384,7 +384,56 @@ class Palpation():
         filename = directory+"/"+config["exp_name"]+".p"
         pickle.dump(data, open(filename, "wb"))
 
-    def 
+    def test_Points_publisher(self):
+        publisher = rospy.Publisher("/palpation/probe_points", Points, queue_size=1)
+        rospy.sleep(1.0)
+        points = Points([0.1,0.2,0.3],[0.4,0.5, 0.6])
+        publisher.publish(points)
+
+
+    def test_callback(self, data):
+        print "Received Points"
+        print data
+
+    def probe_points_callback(self, data):
+        """ Listens for points to probe. Publishes probe measurements at each point """
+        # load exp config
+        config_file = "exp_config.json"
+        config = json.load(open(config_file), object_pairs_hook=self.deunicodify_hook)
+
+        # create directory to save the data
+        directory = "exp_data"
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+
+        # transform scan plane
+        tissue_pose = self.load_environment_registration(config["surface_registration_file"])
+        roll, pitch, yaw = config['rotation_offset']
+        tissue_pose = tissue_pose.as_tf()*tfx.transform(config["position_offset"])*tfx.transform(tfx.rotation_tb(0, 0, roll))*tfx.transform(tfx.rotation_tb(0, pitch, 0))*tfx.transform(tfx.rotation_tb(yaw, 0, 0))
+        self.tissue_pose = tissue_pose
+
+        def go_to_pose(x, y, z, speed):
+            # construct tool rotation
+            origin = np.hstack(np.array(tissue_pose.position))
+            frame = np.array(tissue_pose.orientation.matrix)
+            u, v, w = frame.T[0], frame.T[1], frame.T[2]
+            rotation_matrix = np.array([v, u, -w]).transpose()
+
+            offset = np.dot(frame, np.array([x, y, z + config['probe_depth']]))
+            pose = tfx.pose(origin+offset, rotation_matrix, frame=self.tissue_pose.frame)
+            self.psm1.move_cartesian_frame_linear_interpolation(pose, speed, False)
+
+        xs = data.x
+        ys = data.y
+        probe_measurements = []
+        for i in range(len(data.x)):
+            go_to_pose(xs[i], ys[i], 0.0, config["raster_speed"])
+            rospy.sleep(0.1)
+            probe_measurements.append(self.curr_probe_value)
+
+        self.measurements_pub.publish(FloatList(probe_measurements))
+
+
 
 
     def load_config(self, config_file):
@@ -393,4 +442,5 @@ class Palpation():
 
 if __name__ == '__main__':
     palp = Palpation()
-    palp.execute_raster("exp_config.json")
+    # rospy.spin()
+    # palp.execute_raster("exp_config.json")
