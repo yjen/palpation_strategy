@@ -26,8 +26,8 @@ from descartes import PolygonPatch
 #######################################
 IMG_SIZE = 50
 offset=.002
-measmin=7
-measmax=9
+measmin=3.2
+measmax=5.5
 # measmin=9
 # measmax=7
 #######################################

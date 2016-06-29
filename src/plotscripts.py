@@ -62,11 +62,11 @@ def plot_beliefGPIS(poly,workspace,mean,variance,aq,meas,dirname,errors,data=Non
     else:
         data[1].imshow(np.flipud(mean), cmap=cm.coolwarm, vmax=measmax, vmin=measmin-.5,
                        extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
-        data[1].scatter(meas.T[0], meas.T[1], s=10,
-                        cmap=cm.coolwarm)
+        #data[1].scatter(meas.T[0], meas.T[1], s=20,
+        #                cmap=cm.coolwarm)
         data[1].plot(meas.T[0], meas.T[1],'--k')
-        #data[1].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=20,
-        #            cmap=cm.coolwarm)
+        data[1].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=20,
+                    cmap=cm.coolwarm)
     data[1].set_title("Stiffness Mean")
     data[1].set_xlabel('x')
     data[1].set_ylabel('y')

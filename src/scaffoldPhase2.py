@@ -142,7 +142,7 @@ if __name__ == "__main__":
     else:
         noisetype='measurement bias'
     means, sigmas, acqvals, measures, error, num_iters, gpmodel=run_single_phase2_simulation(
-        simCircle, dirname, AcFunction=UCB_GPIS_implicitlevel, control='Max', plot=True, smode='Exp',iters=10)
+        simCircle, dirname, AcFunction=UCB_GPIS_implicitlevel, control='Max', plot=True, smode='Exp',iters=15)
 
     alldata=np.array([means, sigmas, acqvals, measures, error, num_iters, gpmodel])
 

@@ -442,5 +442,5 @@ class Palpation():
 
 if __name__ == '__main__':
     palp = Palpation()
-    # rospy.spin()
     # palp.execute_raster("exp_config.json")
+    rospy.spin()

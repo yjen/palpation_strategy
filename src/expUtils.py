@@ -43,7 +43,7 @@ from scipy import stats
 # note we are manually defining the tissue size
 def calculate_boundary(filename):
     tissue_length = 0.025
-    tissue_width = 0.05
+    tissue_width = 0.04
     return ((0, tissue_length), (0, tissue_width))
 
 

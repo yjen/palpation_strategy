@@ -123,12 +123,12 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP,
     # set level set to look for-- this should correspond to something, max FI?
     levelrel=.5
     level = levelrel*(measmax-measmin)+measmin #pick something between min/max deflection
-
+    #print smode
     if smode=='RecordedExp' or smode=='Exp': 
         UCB_GP_acpar=.7 # set parameters for acquiisition functions: balancing mean vs. var in prioritizing search
         UCB_GPIS_acpar=.2
 
-        UCB_GPIS_implicit_acpar=[.8,.2]
+        UCB_GPIS_implicit_acpar=[.8,.6]
         UCB_dGP_acpar=[1.1,.2]
         UCB_dGP_acpar=[.5,.7]
 
@@ -195,7 +195,10 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP,
         mean, sigma = get_moments(gpmodel, workspace.x)
 
         # evaluate selected aqcuisition function over the griddUCB_GPIS_implicit_acpar
-        xgrid, AqcuisFunction = AcFunction(gpmodel, workspace, level=level, acquisition_par=acquisition_par)
+        #print 'initmeas'
+        #print meas[-1][0:2]
+        neighborhood_size=.009
+        xgrid, AqcuisFunction = AcFunction(gpmodel, workspace, level=level, acquisition_par=acquisition_par,neighborhood_size=neighborhood_size,startpoint=meas[-1][0:2])
 
         # save data to lists
         acqvals.append(AqcuisFunction)
@@ -205,14 +208,14 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP,
         error= evalerror_ph2(phantomname, workspace, mean,sigma,.5,tiltlev)
         errors.append(error)
 
-        print 'error=',error
+        #print 'error=',error
         # select next sampling points. for now, just use Mac--dMax and Erg need work.
         bnd=getLevelSet (workspace, mean, level)
 
         if control=='Max':         
             
             next_samples_points = batch_optimization(gpmodel, workspace, AcFunction, 10, 
-                meas[-1][0:2], GP_params,level=level, acquisition_par=acquisition_par)
+                meas[-1][0:2], GP_params,level=level, acquisition_par=acquisition_par,neighborhood_size=neighborhood_size,startpoint=meas[-1][0:2])
         # elif control=='dMax':
         #     next_samples_points = dmaxAcquisition(gpmodel, workspace, AcFunction, meas[-1][0:2],
         #                                         numpoints=10, level=level)
@@ -234,7 +237,7 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP,
             time.sleep(0.0001)
             plt.pause(0.0001)  
             plot_data = plot_beliefGPIS(phantomname, workspace, mean, sigma,
-                                      AqcuisFunction, samplepoints_uninterp,
+                                      AqcuisFunction, meas,
                                       directory, errors,plot_data,level=level,
                                       iternum=j, projection3D=False)
 

@@ -302,7 +302,7 @@ def gen_figures(file_name):
     # save forward heat map
 
     fig = plt.figure()
-    plt.scatter(projected_points[:,0], projected_points[:,1], c=projected_points[:,2], marker='o', edgecolors='none', s=40, alpha=0.1)
+    plt.scatter(projected_points[20:,0], projected_points[20:,1], c=projected_points[20:,2], marker='o', edgecolors='none', s=40, alpha=0.05)
     plt.xlim(-0.04, 0.04)
     plt.ylim(-0.04, 0.04)
     plt.savefig(file_name+"forward.png")
@@ -370,89 +370,4 @@ def gen_figures_single_row(file_name):
     plt.savefig(file_name+"single_row.png")
 
 if __name__ == '__main__':
-    # load data
-    # probe_data1 = pickle.load(open("saved_palpation_data/single_row_raster_100x.p", "rb"))
-    # probe_data2 = pickle.load(open("saved_palpation_data/single_row_raster_reverse_30x.p", "rb"))
-    # probe_data3 = pickle.load(open("saved_palpation_data/point_probe_40x20x1.p"))
-    # single_row_stiffness_map(probe_data1, probe_data2, probe_data3)
-        #GPstiffness(probe_data)
-    # data1 = pickle.load(open("probe_data_L2R_old_tool_tilt.p", "rb"))
-    # data2 = pickle.load(open("probe_data_L2R_new_tool_tilt.p", "rb"))
-    # stiffness_map_combined(data1, data2)
-    # data = pickle.load(open("probe_data_L2R_old_tool_tilt.p", "rb"))
-    # plot_rotations(data)
-    # data1 = pickle.load(open("probe_data_newdvrk.p", "rb"))
-    # data2 = pickle.load(open("probe_data_newdvrk_desired.p", "rb"))
-    # plot_rotations_combined(data1, data2)
-    
-    #random_exp4 is w/ probe depth -0.006, tissue_dim 0.024, 0.072, position offset 0, 0.082, 0.047, rotation offset 1, 0, 4, x=y=[0,1], #rows=20, scan/row=1, raster spd 0.005
-    #random_exp5 is w/ probe depth -0.006, tissue_dim 0.027, 0.072, position offset -0.003, 0.082, 0.047, rotation offset 1, 0, 4, x=y=[0,1], #rows=20, scan/row=1, raster spd 0.005
-
-    #first coordinate of rotation_offset controls height diff (z) left to right
-    #third coordinate of rotation_offset controls whether scan lines are
-    #parallel to block (from top-down view)
-    #second coordinate of rotation_offset controls height diff (z) top to bottom
-
-    #second coord 5 random_exp6
-    #second coord -5 random_exp7
-    #second coord 0 random_exp8
-    #second coord 4 9
-    #second coord 3 10
-    #second coord 2 11
-    #second coord 1 12
-
-    #second coord 3 13 is full ground truth
-    #second coord 2.5 14FIRST is full ground truth
-    #second coord 2.25 14 is full ground truth
-
-
-    #15 is w/ block not pushed down, -0.006 indentation
-    #16 -0.007
-    #17 -0.008
-    #18 -0.009 BEST
-    #19 -0.01
-    #20 -0.005
-    #21 -0.006
-    #22 -0.004
-    #23 -0.009 full ground truth
-
-    #GROUND TRUTH FOR HORSESHOE TUMOR
-    #exp_config.json params: 
-    # "exp_name" : "random_exp23",
-    # "probe_depth": -0.009,
-    # "surface_registration_file": "env_registration.p",
-    # "tissue_dimensions": [0.027, 0.072],
-    # "position_offset": [-0.003, 0.082, 0.047],
-    # "rotation_offset":[1, 2.25, 4.0], 
-    # "x_start": 0.0,
-    # "x_end": 1.0,
-    # "y_start": 0.0,
-    # "y_end": 1.0,
-    # "number_rows": 20,
-    # "scans_per_row": 1,
-    # "pick_up_tool": false,
-    # "raster_speed": 0.005,
-    # "additional_notes": "Move across random points on surface"
-
-    #GROUND TRUTH FOR CIRCLE TUMOR
-    # "exp_name" : "random_exp14",
-    # "probe_depth": -0.006,
-    # "surface_registration_file": "env_registration.p",
-    # "tissue_dimensions": [0.027, 0.072],
-    # "position_offset": [-0.003, 0.082, 0.047],
-    # "rotation_offset":[1, 2.25, 4.0], 
-    # "x_start": 0.0,
-    # "x_end": 1.0,
-    # "y_start": 0.0,
-    # "y_end": 1.0,
-    # "number_rows": 20,
-    # "scans_per_row": 1,
-    # "pick_up_tool": false,
-    # "raster_speed": 0.005,
-    # "additional_notes": "Move across random points on surface"
-
-    # only difference should be probe_depth; -0.009 for horseshoe, -0.006 for circle
-    
-
-    #lol 
-    gen_figures("exp_data/random_exp24")
+    gen_figures("exp_data/no_skin_circle_raster")

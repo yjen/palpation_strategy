@@ -254,9 +254,9 @@ def UCB_GPIS(model, workspace, level=0, x=None, acquisition_par=.1 ):
     f_acqu =acquisition_par*sigma - (1-acquisition_par)* (sdf)
     #f_acqu = - sdf +  acquisition_par*sigma
     f_acqu=f_acqu+abs(min(f_acqu)) 
-    buffx=.1*(workspace.bounds[0][1]-workspace.bounds[0][0])
+    buffx=.01*(workspace.bounds[0][1]-workspace.bounds[0][0])
 
-    buffy=.1*(workspace.bounds[1][1]-workspace.bounds[1][0])
+    buffy=.01*(workspace.bounds[1][1]-workspace.bounds[1][0])
     f_acqu[workspace.x[:,0]<workspace.bounds[0][0]+buffx]=f_acqu.mean()
     f_acqu[workspace.x[:,1]<workspace.bounds[1][0]+buffy]=f_acqu.mean()
     f_acqu[workspace.x[:,0]>workspace.bounds[0][1]-buffx]=f_acqu.mean()
@@ -266,39 +266,49 @@ def UCB_GPIS(model, workspace, level=0, x=None, acquisition_par=.1 ):
 
     return x, f_acqu  # note: returns negative value for posterior minimization
 
-def UCB_GPIS_implicitlevel(model, workspace, level=0, x=None, acquisition_par=[.1,.5]):
+def UCB_GPIS_implicitlevel(model, workspace, level=0, x=None, acquisition_par=[.1,.5],neighborhood_size=None,startpoint=None):
     """
     Upper Confidence Band
     """
     x=workspace.x
-    
+
     #x = multigrid(bounds, res)
     # print 'run'
     # print acquisition_par
     mean, sigma = get_moments(model, x)  
     sigma=sigma/sigma.max()
-    lev=(mean.max()-mean.min())+mean.min()
+    lev=acquisition_par[0]*(mean.max()-mean.min())+mean.min()
     # print lev
-    implev=acquisition_par[0]*lev
+    implev=lev#acquisition_par[0]*lev
     bound=getLevelSet (workspace, mean, implev)
     bound=bound.flatten()
     # if bound.shape[0]>0:
-    sdf=abs(mean-level)
+    sdf=abs(mean-implev)
     sdf=sdf/sdf.max()
     # print -sdf.max()
-    # print sigma.mean()
+    # print sigma.mean()s
     f_acqu =acquisition_par[1]*sigma - (1-acquisition_par[1])* (sdf)
     #f_acqu = - sdf +  acquisition_par[0]*sigma
     f_acqu=f_acqu+abs(min(f_acqu)) 
     #else: 
     #    f_acqu=sigma
 
-    buffx=.1*(workspace.bounds[0][1]-workspace.bounds[0][0])
-    buffy=.1*(workspace.bounds[1][1]-workspace.bounds[1][0])
-    f_acqu[workspace.x[:,0]<workspace.bounds[0][0]+buffx]=f_acqu.mean()
-    f_acqu[workspace.x[:,1]<workspace.bounds[1][0]+buffy]=f_acqu.mean()
-    f_acqu[workspace.x[:,0]>workspace.bounds[0][1]-buffx]=f_acqu.mean()
-    f_acqu[workspace.x[:,1]>workspace.bounds[1][1]-buffy]=f_acqu.mean()
+    if neighborhood_size!=None:
+
+        regionmin=startpoint-neighborhood_size
+        regionmax=startpoint+neighborhood_size
+
+        f_acqu[workspace.x[:,0]<regionmin[0]]=0
+        f_acqu[workspace.x[:,1]<regionmin[1]]=0
+        f_acqu[workspace.x[:,0]>regionmax[0]]=0
+        f_acqu[workspace.x[:,1]>regionmax[1]]=0
+
+    #buffx=.001*(workspace.bounds[0][1]-workspace.bounds[0][0])
+    #buffy=.001*(workspace.bounds[1][1]-workspace.bounds[1][0])
+    #f_acqu[workspace.x[:,0]<workspace.bounds[0][0]+buffx]=f_acqu.mean()
+    #f_acqu[workspace.x[:,1]<workspace.bounds[1][0]+buffy]=f_acqu.mean()
+    #f_acqu[workspace.x[:,0]>workspace.bounds[0][1]-buffx]=f_acqu.mean()
+    #f_acqu[workspace.x[:,1]>workspace.bounds[1][1]-buffy]=f_acqu.mean()
 
     return x, f_acqu  # note: returns negative value for posterior minimization
 
@@ -381,6 +391,8 @@ def maxAcquisition(workspace, AcquisitionFunctionVals, numpoints=1):
     """
     Selects numpoints number of points that are maximal from the list of AcquisitionFunctionVals
     """
+    #if neighborhood_size !=None:
+
     ind = np.argpartition(AcquisitionFunctionVals.flatten(), -numpoints)[-numpoints:]
     newpts = workspace.x[ind]
     # print newpts
@@ -407,7 +419,7 @@ def ergAcquisition(workspace, AcquisitionFunctionVals, LQ, xinit=[.2,.3], T=10, 
     return newpts #newpts[0::newlen]
 
     ## ---- Predictive batch optimization
-def batch_optimization(model,workspace,aqfunction, n_inbatch, xinit, GP_params, level=0, acquisition_par=.1):   
+def batch_optimization(model,workspace,aqfunction, n_inbatch, xinit, GP_params, level=0, acquisition_par=.1, neighborhood_size=None,startpoint=None):   
     '''
     Computes batch optimization using the predictive mean to obtain new batch elements
     :param acquisition: acquisition function in which the batch selection is based
@@ -425,8 +437,10 @@ def batch_optimization(model,workspace,aqfunction, n_inbatch, xinit, GP_params, 
     kernel = model_copy.kern    
 
     # Optimization of the first element in the batch
-    xgrid,AcquisitionFunctionVals = aqfunction(model, workspace, level=level, x=None, acquisition_par=acquisition_par)
+    xgrid,AcquisitionFunctionVals = aqfunction(model, workspace, level=level, x=None, acquisition_par=acquisition_par,neighborhood_size=neighborhood_size,startpoint=xinit)
     X_new = maxAcquisition(workspace, AcquisitionFunctionVals, numpoints=1)
+    #print AcquisitionFunctionVals
+    #print 'xnew',X_new
     #X_new = optimize_acquisition(acquisition, d_acquisition, bounds, acqu_optimize_restarts, acqu_optimize_method, model, X_batch=None, L=None, Min=None)
     X_batch = reshape(X_new,input_dim)
 
@@ -437,13 +451,16 @@ def batch_optimization(model,workspace,aqfunction, n_inbatch, xinit, GP_params, 
             X = np.vstack((X, reshape(X_new,input_dim))) 
             Y = np.vstack((Y, model.predict(reshape(X_new, input_dim))[0]))
             model = update_GP(np.hstack((X, Y)),params=GP_params)
-            xgrid,AcquisitionFunctionVals = aqfunction(model, workspace, level=level, x=None, acquisition_par=acquisition_par )
+            xgrid,AcquisitionFunctionVals = aqfunction(model, workspace, level=level, x=None, acquisition_par=acquisition_par,neighborhood_size=neighborhood_size,startpoint=X_new.flatten())
             X_new = maxAcquisition(workspace, AcquisitionFunctionVals, numpoints=1)
 
             X_batch = np.vstack((X_batch,X_new))
             k+=1 
         X_batch=np.vstack((xinit,X_batch))
+        #if neighborhood_size==None:
+        #    print 'solving tsp'
         X_batch=solve_tsp_dynamic(X_batch)
+        #print X_batch
     # if interpolate==True:
     #     x = np.linspace(0, 10, num=11, endpoint=True)
     #     y = np.cos(-x**2/9.0)
