@@ -1,17 +1,37 @@
 #!/usr/bin/env python
 import sys, os, time, IPython
 sys.path.append('../scripts')
-# from shapely.topology import *
-# import numpy as np
 import matplotlib.pyplot as plt
 from runPhase2 import *
-# from Planner import *
-# from simUtils import *
 from model_fit import *
 from plotscripts import *
 import time
 
+###############################################
+# Configure Experimentes
+###############################################
+
+# how many times to run each experiment
+NUM_EXPERIMENTS = 5
+# simulated tumors to try
+tumors = [simCircle,horseshoe]      
+# acquisition functions to compare        
+aqfunctions = [MaxVar_GP,UCB_GP,UCB_GPIS,UCB_GPIS_implicitlevel,UCB_dGPIS] #MaxVar_plus_gradient
+aqfunctionsnames = ["MaxVar_GP","UCB_GP","UCB_GPIS","UCB_GPIS_implicitlevel","UCB_dGPIS" ]#, "random"]"MaxVar_plus_gradient"
+controls =["Max"]
+
+# Levels of Gaussian measurement noise to test
+noisedefault=.01 # set default to lowest noise level
+noiseerrors= float((measmax-measmin))*np.array([.01,.05,.1,.25])
+
+# Levels of measurement bias to test
+tiltdefault=.0 # set default to no tilt
+tilterrors = [0,.05,.5,1]
+
+
+
 def save_table(table, name):
+    # Save results table from set of experiments to a csv
     f = open(name + ".csv", 'wb')
     # header
     f.write(",,MaxVar_GP,UCB_GB,UCB_GBIS,UCB_GPIS_implicitlevel,UCB_dGPIS,\n") #MaxVar_plus_gradient
@@ -25,20 +45,12 @@ def save_table(table, name):
     f.write(",tumor2: healthy tissue removed,{},{},{}\n".format(table[4][0], table[4][1],table[4][2],table[4][3],table[4][4]))#,table[4][5]))
     f.write(",tumor2: tumor left behind,{},{},{}\n".format(table[5][0], table[5][1],table[5][2],table[5][3],table[5][4]))#,table[5][5]))
 
-    # f.write(",st,{},{}\n".format(table[0][0], table[0][1]))
-
-    # f.write("S,lam,{},{}\n".format(table[1][0], table[1][1]))
-    # f.write(",text,{},{}\n".format(table[1][0], table[1][1]))
-    # f.write(",spec,{},{}\n".format(table[1][0], table[1][1]))
-    # f.write(",st,{},{}\n".format(table[1][0], table[1][1]))
-
     f.close()
     return
 
 def save_data(arr, fname, aclabellist, noiselevels):
-    # directory=dirname
+    # save raw data
     arr=np.array(arr).tolist()
-    #aclabellist=np.array(aclabellist.flatten()).tolist()
     arr=[arr,aclabellist,noiselevels]
     # if not os.path.exists(directory):
     #     os.makedirs(directory)
@@ -47,26 +59,14 @@ def save_data(arr, fname, aclabellist, noiselevels):
     f.close()
     return
 
-NUM_EXPERIMENTS = 1
 
-tumors = [simCircle,horseshoe]              # add another model ?
-aqfunctions = [MaxVar_GP,UCB_GP,UCB_GPIS,UCB_GPIS_implicitlevel,UCB_dGPIS]#MaxVar_plus_gradient
-aqfunctionsnames = ["MaxVar_GP","UCB_GP","UCB_GPIS","UCB_GPIS_implicitlevel","UCB_dGPIS" ]#, "random"]"MaxVar_plus_gradient"
-controls =["Max"]
-
-
-# to test gaussian noise level
-noiseerrors= [.01,.05,.1,.5]
-tiltdefault=.0
-# to test noise bias level
-tilterrors = [0,.05,.5,1]
-
-noisedefault=.01
-
-def run_phase2_full(vary_tilt=False):
+def run_phase2_experiments(vary_tilt=False):
+    # This script runs all of the experiments, saves plots and data at each iteration for each experimental configuration
     tumorerrlist=[]
     tumortimelist=[]
     timelist=[]
+
+    # vary either the noise or bias levels
     if vary_tilt==True:
         modelerrors=tilterrors
     else:
@@ -101,25 +101,18 @@ def run_phase2_full(vary_tilt=False):
                     end = time.time()
                     time_elapsed = end - start # in seconds
 
-                    # save_data([means, sigmas, acqvals, measures, error, num_iters], dirname, aqfunctionsnames,str(k))
-                    # error_table[i+0*i+0][j+m]+= num_iters / float(NUM_EXPERIMENTS)
-                    # error_table[i+i*2+2][j+ m]+= time_elapsed[-1] / float(NUM_EXPERIMENTS)
                     error_table[i+i*(len(modelerrors)-1)+m][j]+= error[-1] / float(NUM_EXPERIMENTS)
                     experrlist.append(error)  
                     exptimelist.append(time_elapsed)  
                     print k
 
                 print error_table
-                # save_table(iter_table, "phase2_iterations")
-                # save_table(error_table, "phase2_errors")
-                # save_table(error_table1, "phase2_errors1")
                 noiseerrlist.append(experrlist)
                 noisetimelist.append(exptimelist)
                 noiselabellist.append(dirname)
             acqerrlist.append(noiseerrlist)
             acqtimelist.append(noisetimelist)
             aclabellist.append(noiselabellist)
-        # plot_error(errors_per_method, "phase1_error_exp"+str(k), surf+text)
 
         tumorerrlist.append(acqerrlist)
         tumortimelist.append(acqtimelist)
@@ -132,14 +125,14 @@ def run_phase2_full(vary_tilt=False):
 
 if __name__ == "__main__":
     dirname='tt'
-    vary_tilt=True
+    vary_tilt=False
 
     if vary_tilt==False:
         noisetype='measurement noise'
     else:
         noisetype='measurement bias'
     #run_single_phase2_simulation(simCircle, dirname, AcFunction=UCB_GP, control='Max', plot=True, smode='Sim',iters=20)
-    errorlist,timelist,aclabellist,modelerrors,fname=run_phase2_full(vary_tilt=vary_tilt)
+    errorlist,timelist,aclabellist,modelerrors,fname=run_phase2_experiments(vary_tilt=vary_tilt)
     plot_ph2_error(fname,errorlist,aclabellist,aqfunctionsnames,modelerrors,noisetype)
     make_error_table(fname,noisetype)
 

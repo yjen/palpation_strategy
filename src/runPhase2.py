@@ -17,20 +17,15 @@ import pickle
 ##############################
 # Phase 2
 ###############################
-def evalerror_ph2(tumor,workspace,mean,variance,level,tiltlev=0):
-    # GroundTruth = np.vstack((tumor,tumor[0]))
+def evalerror_ph2(tumor,workspace,mean,variance,level,tiltlev=0,offset=offset):
 
-    # if tiltlev>0:
-    #     level=.5*(mean.max()-mean.min())+mean.min()
-    #     grad=gradfd(mean,workspace)
-    #     level=.5*(grad.max()-grad.min())+grad.min()
-
-    #     boundaryestimate = getLevelSet (workspace, grad, level, allpoly=True)
-
-    # #level=level*(measmax-measmin)+measmin
-    # else:
-    level=.5*(measmax-measmin)+measmin
+    if tiltlev>0:
+        level=.5*(mean.max()-mean.min())+mean.min()
+    
     GroundTruth = Polygon(tumor)
+    print offset
+    print level
+    offset=0
     # see: http://toblerity.org/shapely/manual.html
     boundaryestimate = getLevelSet (workspace, mean, level, allpoly=True)
     offsetboundary=[]
@@ -55,6 +50,7 @@ def evalerror_ph2(tumor,workspace,mean,variance,level,tiltlev=0):
     bnlist=[0]
     err=0
     area=0
+    print len(offsetboundary)
     if len(offsetboundary)>0:
         
         for b in offsetboundary:
@@ -72,32 +68,11 @@ def evalerror_ph2(tumor,workspace,mean,variance,level,tiltlev=0):
                         for p in c1:
                             err1=err1+p.area
                         err=err1
-                # print err
-                    # patchp = PolygonPatch(p, fc='red', ec='red', alpha=0.5, zorder=2)
-                    #     data[4].add_patch(patchp) 
-    # error=max(errlist)   
+
     error=err
     if area==0 and err==0:
         error=GroundTruth.area#(workspace.bounds[0][1]-workspace.bounds[0][0])*(workspace.bounds[1][1]-workspace.bounds[1][0])
 
-    # else:
-    #     err=(workspace.bounds[0][1]-workspace.bounds[0][0])*(workspace.bounds[1][1]-workspace.bounds[1][0])
-    # # if err==0:
-    #     err=(workspace.bounds[0][1]-workspace.bounds[0][0])*(workspace.bounds[1][1]-workspace.bounds[1][0])
-    # print GroundTruth
-    # if len(boundaryestimate)>3:
-    #     try: 
-    #         boundaryestimate=Polygon(boundaryestimate)
-    #         boundaryestimate=boundaryestimate.buffer(-offset)
-    #         err=GroundTruth.symmetric_difference(boundaryestimate)
-    #         err=err.area
-
-    #     except TopologicalError:
-    #         err=.100
-    #         tumorleft=.100
-    # else:
-    #     err=.100
-    #     tumorleft=.100
     return 10000.0*error
 
 def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, 
@@ -110,13 +85,9 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP,
         getmeasurements=getExperimentalStiffnessMeas
         bounds=calculate_boundary("../scripts/env_registration.p")
     elif smode=='Sim':
-
         getmeasurements=getSimulateStiffnessMeas
         bounds=((.0,0.025),(.0,0.05))
-        # bounds=((.0,0.05),(.0,0.025))
-        # bounds=((.0,0.05),(.0,0.05))
 
-        #               bounds=((-.04,.04),(-.04,.04))
     else: 
         print 'invalid mode!'
     
@@ -132,7 +103,6 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP,
         UCB_dGP_acpar=[1.1,.2]
         UCB_dGP_acpar=[.5,.7]
 
-        # GP_params= [6,.005,.0001,7] # parameters for gaussian process update
         GP_params= [14,.003,.002,63] # parameters for gaussian process update
 
     else:   #params for simulation
@@ -225,18 +195,10 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP,
             plt.pause(0.0001)  
             plot_data = plot_beliefGPIS(phantomname, workspace, mean, sigma,
                                       AqcuisFunction, measnew,
-                                      directory, errors,plot_data,level=level,
+                                      directory, errors,plot_data,level=level,tiltlev=tiltlev,
                                       iternum=j, projection3D=False)
         measnew = getmeasurements(next_samples_points,phantomname,noiselev=noiselev,tiltlev=tiltlev)
-        # print measnew.max()
-        # if mode=='Exp':
-        #     measnew = getExperimentalStiffnessMeas(next_samples_points)
-        # if mode=='RecordedExp':
-        #     measnew = getRecordedExperimentalStiffnessMeas(next_samples_points)#np.zeros(next_samples_points.shape)
-        # else:
-        #     measnew = getSimulateStiffnessMeas(phantomname, next_samples_points)
 
-        #   concatenate measurements to prior measurements
         meas = np.append(meas,measnew,axis=0)
 
     # plt.show(block=False)
@@ -244,186 +206,12 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP,
 
 
 if __name__ == "__main__":
-    dirname='tt'
+    dirname='tests'
     run_single_phase2_simulation(horseshoe, dirname, AcFunction=UCB_dGPIS, control='Max', plot=True, tiltlev=1,smode='RecordedExp',iters=20)
     # outleft,outrem,aclabellist=run_phase2_full()
     # plot_error(outrem,outleft,aclabellist)
 
-#TODO:
-# To run Phase 2 on the robot, the function getExperimentalStiffnessMeas, 
-# in Gaussian Process.py, needs to be written to command the robot and collect measurements
-# from expUtils import *
 
-# def run_single_phase2_simulation(AcFunction, dirname, control='Max', block=False, stops=0.38, plot=False):
-    
-#     bounds = calculate_boundary("../scripts/env_registration.p")
-
-#     # grid resolution: should be same for plots, ergodic stuff
-#     gridres = 200
-
-#     # initialize workspace object
-#     workspace = Workspace(bounds,gridres)
-
-#     # set level set to look for-- this should correspond to something, max FI?
-#     level=.8 #pick something between min/max deflection
-
-#     # acquisition functions:  MaxVar_GP, UCB_GP, EI_GP, UCB_GPIS, EI_IS,MaxVar_plus_gradient
-#     # AcFunction=UCB_GPIS
-#     # Acfunctionname="UCB_GPIS"
-
-#     plot_data = None
-#     means = []
-#     sigmas = []
-#     acqvals = []
-#     sampled_points = []
-#     measures = []
-#     errors=[]
-#     directory = dirname #phase2_'+'_'+control+'_'+Acfunctionname
-
-#     if not os.path.exists(directory):
-#         os.makedirs(directory)
-
-#     ###############
-#     #   Initializing
-#     ###############
-#     next_samples_points = randompoints(bounds, 5) 
-#     # collect initial meausrements
-#     meas = getExperimentalStiffnessMeas(next_samples_points)
-
-#     for j in range (50): #(1,100,1)
-#         print "iteration = ", j
-#         # collect measurements
-       
-#         measnew = getExperimentalStiffnessMeas(next_samples_points)
-#         # concatenate measurements to prior measurements
-
-#         # import IPython; IPython.embed()
-#         meas = np.append(meas,measnew,axis=0)
-
-#         # update the GP model    
-#         gpmodel = update_GP(meas)
-
-#         # use GP to predict mean, sigma on a grid
-#         mean, sigma = get_moments(gpmodel, workspace.x)
-#         means.append(np.mean(mean))
-#         sigmas.append(np.max(sigma))
-#         # evaluate selected aqcuisition function over the grid
-#         xgrid, AqcuisFunction = AcFunction(gpmodel, workspace, level)
-#         acqvals.append(AqcuisFunction)
-
-#         # select next sampling points. for now, just use Mac--dMax and Erg need work.
-#         if control=='Max':            
-#             next_samples_points = maxAcquisition(workspace, AqcuisFunction,
-#                                                  numpoints=3, level=level)
-#         if control=='dMax':
-#            next_samples_points = dmaxAcquisition(gpmodel, workspace, AcFunction, meas[-1][0:2],
-#                                                numpoints=3, level=level)
-#         else:
-#             print 'RANDOM'
-#             next_samples_points=randompoints(bounds,1)
-        
-#         # if next_samples_points.shape[0]>1:
-
-#         time.sleep(0.0001)
-#         plt.pause(0.0001)  
-
-#         # Plot everything
-#         plot_data = plot_beliefGPIS(phantomname,workspace,mean,sigma,
-#                                     AqcuisFunction,meas,
-#                                     directory,plot_data,errors,level=level,
-#                                     iternum=j,projection3D=False)
-#         # Save everything--this needs to be debugged
-#         # prename=directory+'/'
-#         # save_p2_data(prename+'mean'+str(j),mean)
-#         # save_p2_data(prename+'sigma'+str(j),sigma)
-#         # save_p2_data(prename+'AqcuisFunction'+str(j),AqcuisFunction)
-#         # save_p2_data(prename+'meas'+str(j),meas)
-
-#     plt.show(block=True)
-#     return means, sigmas, acqvals, measures, errors, j
-
-# # if __name__ == "__main__":
-# #     planning(verbose=True)
-
-
-
-
-# if __name__ == "__main__":
-#     # run_single_phase2_simulation("rantumor", "maxAcquisition", block=True, plot=True,dirname='test')
-#     run_single_phase2_experiment(UCB, dirname='exp', plot=True)
-
-# ##############
-# #Initializing
-# ###############
-# if control == 'Erg':
-#     # initialize ergodic cplanner
-#     xdim = 2
-#     udim = 2
-#     LQ = ErgodicPlanner.lqrsolver(xdim, udim, Nfourier=30, wlimit=(4.), res=gridres,
-#                                 barrcost=50, contcost=.03, ergcost=1000)
-#     # initialize stiffness map (uniform)
-#     initpdf = ErgodicPlanner.uniform_pdf(LQ.xlist)
-#     next_samples_points = ErgodicPlanner.ergoptimize(LQ, initpdf, xinit,
-#                                                    maxsteps=15,plot=True)
-# else:
-#     next_samples_points = randompoints(bounds, 10)
-    
-#     # collect initial meausrements
-# # meas = getSimulateStiffnessMeas(tumorpoly, next_samples_points)
-#     meas = getExperimentalStiffnessMeas(next_samples_points)
-
-
-# for j in range (10): #(1,100,1)
-#     print "iteration = ", j
-#     # collect measurements
-#     # measnew = getSimulateStiffnessMeas(tumorpoly,
-#     #                                    next_samples_points)
-#     # to run experiment instead of simulation:
-#     measnew = getExperimentalStiffnessMeas(next_samples_points)
-#     # concatenate measurements to prior measurements
-#     import IPython; IPython.embed()
-#     meas = np.append(meas,measnew,axis=0)
-    
-#     # update the GP model    
-#     gpmodel = update_GP(meas)
-
-#     # use GP to predict mean, sigma on a grid
-#     mean, sigma = get_moments(gpmodel, workspace.x)
-
-#     # find mean points closest to the level set
-#     boundaryestimate = getLevelSet (workspace, mean, level)
-#     GPIS = implicitsurface(mean,sigma,level)
-
-#     # evaluate selected aqcuisition function over the grid
-#     xgrid, AqcuisFunction = AcFunction(gpmodel, workspace, level)
-
-#     # select next sampling points. for now, just use Mac--dMax and Erg need work.
-#     if control=='Max':     
-#         next_samples_points = maxAcquisition(workspace, AqcuisFunction,
-#                                            numpoints=1)
-#     elif control=='dMax':            
-#         next_samples_points = dmaxAcquisition(workspace, gpmodel, AcFunction, xinit=meas[-1,0:2],
-#                                            numpoints=5)
-#     elif control=='Erg':
-#         next_samples_points = ergAcquisition(workspace, AqcuisFunction,
-#                                              LQ, xinit=meas[-1,0:2])
-#     else:
-#         print 'RANDOM'
-#         next_samples_points=randompoints(bounds,1)
-        
-#     time.sleep(0.0001)
-#     plt.pause(0.0001)  
-
-#     # Plot everything
-#     plot_data = plot_beliefGPIS(tumorpoly,workspace,mean,sigma,
-#                                 GPIS,AqcuisFunction,meas,
-#                                 directory,plot_data,level=level,
-#                                 iternum=j)
-
-# plt.show(block=True)
-
-# # if __name__ == "__main__":
-# #     planning(verbose=True)
 
 
 
