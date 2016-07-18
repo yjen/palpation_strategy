@@ -65,10 +65,13 @@ def plot_beliefGPIS(poly,workspace,mean,variance,aq,meas,dirname,errors,data=Non
                              antialiased=False)
 
     else:
-        data[1].imshow(np.flipud(mean), cmap=cm.coolwarm, vmax=measmax+.5, vmin=measmin-.5,
+        data[1].imshow(np.flipud(mean), cmap=cm.coolwarm, vmax=measmax, vmin=measmin-.5,
                        extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
-        data[1].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=20,
+        data[1].scatter(meas.T[0], meas.T[1], s=10,
                         cmap=cm.coolwarm)
+        data[1].plot(meas.T[0], meas.T[1],'--k')
+        #data[1].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=20,
+        #            cmap=cm.coolwarm)
     data[1].set_title("Stiffness Mean")
     data[1].set_xlabel('x')
     data[1].set_ylabel('y')
@@ -88,7 +91,7 @@ def plot_beliefGPIS(poly,workspace,mean,variance,aq,meas,dirname,errors,data=Non
     else:
         data[2].imshow(np.flipud(variance), cmap=cm.Greys,
                        extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
-        data[2].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=20,
+        data[2].scatter(meas.T[0], meas.T[1], s=10,
                         cmap=cm.coolwarm)
     
     data[2].set_title("Stiffness Variance")  
@@ -107,7 +110,7 @@ def plot_beliefGPIS(poly,workspace,mean,variance,aq,meas,dirname,errors,data=Non
                                                             yy.min(),yy.max())
     )
     data[3].plot(meas.T[0], meas.T[1])
-    data[3].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=20,
+    data[3].scatter(meas.T[0], meas.T[1],s=10,
                     cmap=cm.coolwarm)
     data[3].set_ylim([yy.min(),yy.max()])
     data[3].set_xlim([xx.min(),xx.max()])
@@ -221,7 +224,7 @@ def plot_beliefGPIS(poly,workspace,mean,variance,aq,meas,dirname,errors,data=Non
                                                             yy.min(),yy.max())
     )
     data[6].plot(meas.T[0], meas.T[1])
-    data[6].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=20,
+    data[6].scatter(meas.T[0], meas.T[1], s=10,
                     cmap=cm.coolwarm)
     data[6].set_ylim([yy.min(),yy.max()])
     data[6].set_xlim([xx.min(),xx.max()])
@@ -348,18 +351,22 @@ def plot_error(surface, workspace, mean, sigma, aq, meas, dirname=None, data=Non
        # data[3].plot_surface(xx, yy, sigma.reshape(workspace.res,workspace.res), rstride=1, cstride=1,
                          # cmap=cm.coolwarm, linewidth=0, antialiased=False)
     # else:
-    data[4].imshow(np.flipud(sigma), cmap=cm.coolwarm, vmax=5,
+    data[4].imshow(np.flipud(sigma), cmap=cm.coolwarm, vmin=0, vmax=1,
                        extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
     if plotmeas==True:
-        data[4].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=20,
+        data[4].scatter(meas.T[0], meas.T[1], s=10,
                     cmap=cm.coolwarm)
+    
     data[4].set_title("Estimate Variance")
 
-    data[5].imshow(np.flipud(aq), cmap=cm.coolwarm, vmax=2,
+    # adding vmin=0, vmax=1, can make this very bland
+    data[5].imshow(np.flipud(aq), cmap=cm.coolwarm, 
                        extent=(xx.min(), xx.max(), yy.min(),yy.max() ))
+
     if plotmeas==True:
-        data[5].scatter(meas.T[0], meas.T[1], c=meas.T[2], s=20,
+        data[5].scatter(meas.T[0], meas.T[1], s=10,
                     cmap=cm.coolwarm)
+
     data[5].set_title("Acquisition function")
 
     # plot the aquis function

@@ -7,6 +7,7 @@ from shapely.geometry import Point, Polygon #to calculate point-polygon distance
 from descartes import PolygonPatch
 
 
+
 def update_GP(measurements,method='nonhet',params=[1,.006,1e-5,0]):
     """
     GP for phase2:
@@ -39,6 +40,7 @@ def update_GP(measurements,method='nonhet',params=[1,.006,1e-5,0]):
         # m.Gaussian_noise.fix(noise)
     #     m.optimize_restarts(num_restarts = 10)
     # m.optimize()
+
     return m
 
 
