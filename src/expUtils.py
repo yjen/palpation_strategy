@@ -51,12 +51,11 @@ def getExperimentalStereoMeas(surface, workspace, plot = True):
     """
     needs to be written
     """
-
-
     # z needs to be read from robot
     # should return: np.array([xx, yy,
     #                 z]).T
     pass
+
 
 def getExperimentalStiffnessMeas(sample_points,surface=None,noiselev=None):
     """
