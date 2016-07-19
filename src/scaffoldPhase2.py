@@ -127,27 +127,27 @@ def run_phase2_experiments(vary_tilt=False):
 
 if __name__ == "__main__":
 
+    # Save data to a directory
     timestr = time.strftime("%Y-%m-%d-%H:%M:%S")
     dirname ='ph2_exp'+timestr
 
+    # Choose whether tilt bias will be added
     vary_tilt=False
 
     if vary_tilt==False:
         noisetype='measurement noise'
     else:
         noisetype='measurement bias'
-    # <<<<<<< HEAD
-    #     #run_single_phase2_simulation(simCircle, dirname, AcFunction=UCB_GP, control='Max', plot=True, smode='Sim',iters=20)
-    #     errorlist,timelist,aclabellist,modelerrors,fname=run_phase2_experiments(vary_tilt=vary_tilt)
-    #        plot_ph2_error(fname,errorlist,aclabellist,aqfunctionsnames,modelerrors,noisetype)
-    #     make_error_table(fname,noisetype)
-    # =======
+
+    # run experiments
     means, sigmas, acqvals, measures, error, num_iters, gpmodel=run_single_phase2_simulation(
         simCircle, dirname, AcFunction=UCB_dGPIS, control='Max', plot=True, smode='Sim',iters=5)
 
+    # save data
     alldata=np.array([means, sigmas, acqvals, measures, error, num_iters, gpmodel])
 
     pickle.dump(alldata, open(dirname+'/data.p', "wb"))
+    
     #errorlist,timelist,aclabellist,modelerrors,fname=run_phase2_full(vary_tilt=vary_tilt)
     #plot_ph2_error(fname,errorlist,aclabellist,aqfunctionsnames,modelerrors,noisetype)
     #make_error_table(fname,noisetype)

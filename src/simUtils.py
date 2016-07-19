@@ -207,8 +207,9 @@ def getSimulateStiffnessMeas(sample_points,surface,noiselev=.05,tiltlev=0):
                      sigma_t]).T
 
 def getRecordedExperimentalStiffnessMeas(sample_points,surface=None,noiselev=None,tiltlev=None):
-    # Draws sampled from  a pre-recorded, interpolated  fine mesh of measured stiffness data 
-    #Useful for tuning params before running experiments
+    '''Draws sampled from  a pre-recorded, interpolated  fine mesh of measured stiffness data 
+       Useful for tuning params before running experiments
+    '''
     filename = '../scripts/dense_grid.p'
     data_dict = pickle.load(open(filename, "rb"))
     data = np.array(data_dict['data'])

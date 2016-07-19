@@ -14,45 +14,13 @@ from itertools import combinations
 #Acquisition Functions
 #######################################################################
 
-def UCB_dGPIS2(model, workspace, level=0, x=None, acquisition_par=[0,0,0], numpoints=1):
-    """
-    choose next sample points based on maximizing prior variance + gradient of the mean + mean
-    """
-    mean, sigma = get_moments(model, workspace.x)  
-    sigma=sigma/sigma.max()   
-    fd= gradfd(mean,workspace)
-    fd=fd/np.max(fd)
-    fd[np.isinf(fd)]=0
-
-    fd=np.array([fd.flatten()]).T
-    fd=fd/fd.max()
-    implev=acquisition_par[0]*(fd.max()-fd.min())+fd.min()
-
-    bound=getLevelSet (workspace, fd, implev)
-
-    sdf=abs(fd-implev)
-    sdf=sdf/sdf.max()
-
-    mean=mean/mean.max()
-    mean=np.abs(mean - np.mean(mean))
-
-    f_acqu =  acquisition_par[1]*sigma + acquisition_par[2]*mean - (1-acquisition_par[1]-acquisition_par[2])*sdf
-
-    buffx=.05*(workspace.bounds[0][1]-workspace.bounds[0][0])
-    buffy=.05*(workspace.bounds[1][1]-workspace.bounds[1][0])
-    f_acqu[workspace.x[:,0]<workspace.bounds[0][0]+buffx]=f_acqu.mean()
-    f_acqu[workspace.x[:,1]<workspace.bounds[1][0]+buffy]=f_acqu.mean()
-    f_acqu[workspace.x[:,0]>workspace.bounds[0][1]-buffx]=f_acqu.mean()
-    f_acqu[workspace.x[:,1]>workspace.bounds[1][1]-buffy]=f_acqu.mean()
-
-    return workspace.x, f_acqu  # note: returns negative value for posterior minimization
-
 
 def UCB_dGPIS(model, workspace, level=0, x=None, acquisition_par=[0,0], numpoints=1):
-    """
-    choose next sample points based on maximizing prior variance
-    Note to self: the params have been flipped acquisition_par= [0.2,0.3] is now [0.3, 0.2]    
-    """
+    '''
+    Choose next sample points based on maximizing prior variance + gradient of the mean
+    :model: Model from GP
+    :acquisition_par weights for acquisition function: level set, variance, mean
+    '''
     mean, sigma = get_moments(model, workspace.x)  
     sigma=sigma/sigma.max()   
     fd= gradfd(mean,workspace)
@@ -81,7 +49,9 @@ def UCB_dGPIS(model, workspace, level=0, x=None, acquisition_par=[0,0], numpoint
 
 def MaxVar_GP(model, workspace, level=0,x=None, acquisition_par=0):
     """
-    choose next sample points based on maximizing prior variance
+    Choose next sample points based on maximizing prior variance
+    :model: Model from GP
+    :acquisition_par: None for this function
     """
     if x==None:
         x=workspace.x
@@ -102,6 +72,8 @@ def MaxVar_GP(model, workspace, level=0,x=None, acquisition_par=0):
 def UCB_GP(model, workspace, level=0, x=None, acquisition_par=.8):
     """
     Choose next sample points based on maximizing Upper Confidence Bound
+    :model: Model from GP
+    :acquisition_par: relative weighting of variance vs. mean
     """
     if x==None:
         x=workspace.x
@@ -126,6 +98,8 @@ def UCB_GP(model, workspace, level=0, x=None, acquisition_par=.8):
 def UCB_GPIS(model, workspace, level=0, x=None, acquisition_par=.1 ):
     """
     Upper Confidence Bound over the level set "level"
+    :model: Model from GP
+    :acquisition_par: relative weighting of variance vs. mean
     """
     x=workspace.x
     mean, sigma = get_moments(model, x)  
@@ -147,7 +121,9 @@ def UCB_GPIS(model, workspace, level=0, x=None, acquisition_par=.1 ):
 
 def UCB_GPIS_implicitlevel(model, workspace, level=0, x=None, acquisition_par=[.1,.5]):
     """
-    Upper Confidence Bound over the implicit level set 
+    Upper Confidence Bound over the implicit level set
+    :model: Model from GP
+    :acquisition_par: implicit level, relative weighting of variance vs. mean
     """
     x=workspace.x
     
@@ -269,6 +245,42 @@ def randompoints(bounds, numpoints=1):
 
 
 # Other Acquisition Functions: Not verified
+
+# def UCB_dGPIS2(model, workspace, level=0, x=None, acquisition_par=[0,0,0], numpoints=1):
+#     """
+#     Choose next sample points based on maximizing prior variance + gradient of the mean + mean
+#     :model: Model from GP
+#     :acquisition_par weights for acquisition function: level set, variance, mean
+#     """
+#     mean, sigma = get_moments(model, workspace.x)  
+#     sigma=sigma/sigma.max()   
+#     fd= gradfd(mean,workspace)
+#     fd=fd/np.max(fd)
+#     fd[np.isinf(fd)]=0
+
+#     fd=np.array([fd.flatten()]).T
+#     fd=fd/fd.max()
+#     implev=acquisition_par[0]*(fd.max()-fd.min())+fd.min()
+
+#     bound=getLevelSet (workspace, fd, implev)
+
+#     sdf=abs(fd-implev)
+#     sdf=sdf/sdf.max()
+
+#     mean=mean/mean.max()
+#     mean=np.abs(mean - np.mean(mean))
+
+#     f_acqu =  acquisition_par[1]*sigma + acquisition_par[2]*mean - (1-acquisition_par[1]-acquisition_par[2])*sdf
+
+#     buffx=.05*(workspace.bounds[0][1]-workspace.bounds[0][0])
+#     buffy=.05*(workspace.bounds[1][1]-workspace.bounds[1][0])
+#     f_acqu[workspace.x[:,0]<workspace.bounds[0][0]+buffx]=f_acqu.mean()
+#     f_acqu[workspace.x[:,1]<workspace.bounds[1][0]+buffy]=f_acqu.mean()
+#     f_acqu[workspace.x[:,0]>workspace.bounds[0][1]-buffx]=f_acqu.mean()
+#     f_acqu[workspace.x[:,1]>workspace.bounds[1][1]-buffy]=f_acqu.mean()
+
+#     return workspace.x, f_acqu  # note: returns negative value for posterior minimization
+
 # def dmaxAcquisition(model, workspace, acfun, xinit=[.2,.3], numpoints=1, level=0):
 #     """
 #     Selects numpoints number of points that are maximal from the list of AcquisitionFunctionVals

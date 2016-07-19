@@ -18,7 +18,9 @@ import pickle
 # Phase 2
 ###############################
 def evalerror_ph2(tumor,workspace,mean,variance,level,tiltlev=0,offset=offset):
-
+    '''
+    Calculate the tumor boundar errors
+    '''
     if tiltlev>0:
         level=.5*(mean.max()-mean.min())+mean.min()
     
@@ -77,6 +79,9 @@ def evalerror_ph2(tumor,workspace,mean,variance,level,tiltlev=0,offset=offset):
 
 def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP, 
     control='Max', noiselev=.05,tiltlev=0,plot=False, smode='RecordedExp',iters=20):
+    '''runs a single instance of an experiment, given a set of parameters'''
+
+    # Select function to gather measurements, depending on whether simulation or experiment
     if smode=='RecordedExp': 
         getmeasurements=getRecordedExperimentalStiffnessMeas
         bounds=((.0,0.0229845803642),(.0,0.0577416388862))
@@ -91,10 +96,11 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP,
     else: 
         print 'invalid mode!'
     
-    # set level set to look for-- this should correspond to something, max FI?
+    # set level set that defines a tumor boundary
     levelrel=.5
     level = levelrel*(measmax-measmin)+measmin #pick something between min/max deflection
 
+    # set aqcuisition parameters
     if smode=='RecordedExp' or smode=='Exp': 
         UCB_GP_acpar=.7 # set parameters for acquiisition functions: balancing mean vs. var in prioritizing search
         UCB_GPIS_acpar=.2
@@ -123,13 +129,15 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP,
         acquisition_par=UCB_GPIS_implicit_acpar
     else:
         acquisition_par=0
-    # print acquisition_par
-    # grid resolution: how finely mean, sigma, etc should be calculated
+    
+    # set grid resolution: how finely mean, sigma, etc should be calculated
     gridres = 200
 
     # initialize workspace object
     workspace = Workspace(bounds,gridres)
+    tiltlev=np.arctan2(tiltlev*(measmax-measmin),workspace.bounds[1][1])
 
+    # initialize containers for data
     plot_data = None
     means = []
     sigmas = []
@@ -138,25 +146,23 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP,
     sampled_points = []
     measures = []
 
+    # set save directory
     directory=dirname
     if not os.path.exists(directory):
         os.makedirs(directory)
 
     ###############
-    #Initializing
+    #Initializing Experiment
     ###############
+    # Start by collected several measurements at random locations
     next_samples_points = randompoints(bounds, 5) #randompoints(bounds, 100)
     samplepoints_uninterp=next_samples_points
 
-    tiltlev=np.arctan2(tiltlev*(measmax-measmin),workspace.bounds[1][1])
-
+    # collect initial measurements
     meas = getmeasurements(next_samples_points,phantomname,noiselev=noiselev,tiltlev=tiltlev)
-
     measnew = meas
-    for j in range (iters): #(1,100,1)
 
-        # print "iteration = ", j
-        # collect measurements
+    for j in range (iters): #(1,100,1)
 
         # update the GP model    
         gpmodel = update_GP(meas, params=GP_params)
@@ -167,7 +173,7 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP,
         # evaluate selected aqcuisition function over the griddUCB_GPIS_implicit_acpar
         xgrid, AqcuisFunction = AcFunction(gpmodel, workspace, level=level, acquisition_par=acquisition_par)
 
-        # save data to lists
+        # store data 
         acqvals.append(AqcuisFunction)
         means.append(mean)
         sigmas.append(sigma)
@@ -175,31 +181,21 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP,
         error= evalerror_ph2(phantomname, workspace, mean,sigma,.5,tiltlev)
         errors.append(error)
 
-        print 'error=',error
-        # select next sampling points. for now, just use Mac--dMax and Erg need work.
-        bnd=getLevelSet (workspace, mean, level)
+        # select next sampling locations
+        bnd=getLevelSet(workspace, mean, level)
 
         if control=='Max':         
-            
             next_samples_points = batch_optimization(gpmodel, workspace, AcFunction, 10, 
                 meas[-1][0:2], GP_params,level=level, acquisition_par=acquisition_par)
-        # elif control=='dMax':
-        #     next_samples_points = dmaxAcquisition(gpmodel, workspace, AcFunction, meas[-1][0:2],
-        #                                         numpoints=10, level=level)
         else:
             next_samples_points=randompoints(bounds,1)
-            print 'RANDOM'
-        # print next_samples_points
-        # Plot everything
-        #print samplepoints_uninterp.shape
-        #print next_samples_points.shape
-        #import IPython; IPython.embed()
-        #samplepoints_uninterp
+            print 'Warning: selecting random points!'
+        
         samplepoints_uninterp=np.vstack((next_samples_points,samplepoints_uninterp))
 
         samplepoints_uninterp=np.vstack((samplepoints_uninterp,next_samples_points))
-        #print meas.shape
-        #print samplepoints_uninterp.shape
+
+        # Plot everything:
         if plot==True:
             time.sleep(0.0001)
             plt.pause(0.0001)  
@@ -207,9 +203,8 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP,
                                       AqcuisFunction, samplepoints_uninterp,
                                       directory, errors,plot_data,level=level,
                                       iternum=j, projection3D=False)
-
+        #Collect new measurements
         measnew = getmeasurements(next_samples_points,phantomname,noiselev=noiselev,tiltlev=tiltlev)
-
         meas = np.append(meas,measnew,axis=0)
 
     # plt.show(block=False)

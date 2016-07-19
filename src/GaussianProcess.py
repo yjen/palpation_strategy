@@ -46,7 +46,7 @@ def update_GP(measurements,method='nonhet',params=[1,.006,1e-5,0]):
 
 def update_GP_sparse(measurements,numpts=10):
     """
-    Needs testing!
+    Not currently being used anywhere!
     GP for phase2, using sparse measurements:
     Inputs: data=[x position, y position, measurement, measurement noise]
     TODO: maybe combine with updateGP above

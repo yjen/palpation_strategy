@@ -9,6 +9,11 @@ import GPy
 import pickle
 
 class Workspace(object):
+    '''
+    Class to store worksapce information for all calculations
+    :bounds: 2 x 2 tuple specifying workspace dimensions
+    :res: resolution along each dimension, in number of gridpoints (e.g. 200)
+    '''
     def __init__(self, bounds, res):
         self.bounds=bounds
         self.res=res
@@ -20,7 +25,13 @@ class Workspace(object):
 
 
 def stereo_pad(x,y,z,rangeX,rangeY):
-        # pad the stereo measurements by a fixed amount. Necessary to avoid weird measurements at the edges of the region when using Gaussian Processes
+        '''
+        Function to pad the stereo measurements by a fixed amount. 
+        Necessary to avoid variance issues at the edges of the region when using Gaussian Processes
+        :x,y are measurement locations
+        :z is list of measurements
+        :rangeX and rangeY are the range of the stereo measurements
+        '''
         percentpad=.1
 
         padbyX = percentpad*(rangeX[1]-rangeX[0])
@@ -130,7 +141,6 @@ def gridreshape(x,workspace):
 
 def distanceBetweenCurves(C1, C2):
     D = cdist(C1, C2, 'euclidean')
-
     # none symmetric Hausdorff distances
     H1 = np.max(np.min(D, axis=1))
     H2 = np.max(np.min(D, axis=0))
@@ -139,16 +149,16 @@ def distanceBetweenCurves(C1, C2):
 
 
 def save_p2_data(dat, filename):
-        try:
-            pickle.dump(dat, open(filename, "wb"))
-        except Exception as e:
-            print "Exception: ", e
+    try:
+        pickle.dump(dat, open(filename, "wb"))
+    except Exception as e:
+        print "Exception: ", e
 
 
 def gradfd(data,workspace):
     '''
     returns norm of the gradient (finite difference) of the data in x and y direction 
-    : data: list of inputs, as (x,y) pairs
+    :data: list of inputs, as (x,y) pairs
     '''
     # reshape data into grid
     meansq = data.reshape(workspace.res,workspace.res)
