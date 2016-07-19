@@ -12,4 +12,9 @@ In addition to numpy, scipy, matplotlib, this code depends on:
 - shapely
 
 #### Running Demo Files
+To run a single simulated experiment, run runPhase2.py
+
+To run a batch of simulated experiments, varying noise and bias levels, run scaffoldPhase2.py 
+
+To run an experiment on the robot, edit configs in runPhase2.py and run (needs ROS)
 

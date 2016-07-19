@@ -114,7 +114,7 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP,
     else:   #params for simulation
         UCB_GP_acpar=.5
         UCB_GPIS_acpar=.5
-        UCB_GPIS_implicit_acpar=[.7,.5]
+        UCB_GPIS_implicit_acpar=[.7,.2]
         UCB_dGP_acpar=[.5,.7]
         GP_params= [25,.0033,.004,52]
         # GP_params= [.22,.0033,.004,52]
@@ -214,8 +214,17 @@ def run_single_phase2_simulation(phantomname, dirname, AcFunction=MaxVar_GP,
 if __name__ == "__main__":
     dirname='tests'
 
-    run_single_phase2_simulation(horseshoe, dirname, AcFunction=UCB_dGPIS, control='Max', plot=True, tiltlev=1,smode='RecordedExp',iters=20)
+    # To run experiment, need ROS installed and robot
+    # Simulation = 'Sim', Experiment= 'Exp' 
+    smode='Sim'
 
+    run_single_phase2_simulation(horseshoe, dirname, AcFunction=UCB_GPIS_implicitlevel, 
+                                control='Max', plot=True, tiltlev=0, 
+                                smode=smode, iters=20)
+
+    # save data
+    # alldata=np.array([means, sigmas, acqvals, measures, error, num_iters, gpmodel])
+    # pickle.dump(alldata, open(dirname+'/data.p', "wb"))
     # outleft,outrem,aclabellist=run_phase2_full()
     # plot_error(outrem,outleft,aclabellist)
 

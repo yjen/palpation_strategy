@@ -9,13 +9,15 @@ import time
 import pickle
 
 ###############################################
-# Configure Experimentes
+# Configure Experiments
 ###############################################
 
 # how many times to run each experiment
 NUM_EXPERIMENTS = 5
-# simulated tumors to try
+
+# simulated tumors to run all experiments over
 tumors = [simCircle,horseshoe]      
+
 # acquisition functions to compare        
 aqfunctions = [MaxVar_GP,UCB_GP,UCB_GPIS,UCB_GPIS_implicitlevel,UCB_dGPIS] #MaxVar_plus_gradient
 aqfunctionsnames = ["MaxVar_GP","UCB_GP","UCB_GPIS","UCB_GPIS_implicitlevel","UCB_dGPIS" ]#, "random"]"MaxVar_plus_gradient"
@@ -131,6 +133,10 @@ if __name__ == "__main__":
     timestr = time.strftime("%Y-%m-%d-%H:%M:%S")
     dirname ='ph2_exp'+timestr
 
+    # Run in simulation ('Sim') or experiment ('Exp')?
+    smode='Sim'
+
+    # Select acquisition function
     # Choose whether tilt bias will be added
     vary_tilt=False
 
@@ -139,16 +145,11 @@ if __name__ == "__main__":
     else:
         noisetype='measurement bias'
 
-    # run experiments
-    means, sigmas, acqvals, measures, error, num_iters, gpmodel=run_single_phase2_simulation(
-        simCircle, dirname, AcFunction=UCB_dGPIS, control='Max', plot=True, smode='Sim',iters=5)
+    ################
+    # Run a batch of simulated experiments
+    errorlist,timelist,aclabellist,modelerrors,fname=run_phase2_experiments(vary_tilt=vary_tilt)
 
-    # save data
-    alldata=np.array([means, sigmas, acqvals, measures, error, num_iters, gpmodel])
-
-    pickle.dump(alldata, open(dirname+'/data.p', "wb"))
-    
-    #errorlist,timelist,aclabellist,modelerrors,fname=run_phase2_full(vary_tilt=vary_tilt)
-    #plot_ph2_error(fname,errorlist,aclabellist,aqfunctionsnames,modelerrors,noisetype)
-    #make_error_table(fname,noisetype)
+    # Process Data
+    # plot_ph2_error(fname,errorlist,aclabellist,aqfunctionsnames,modelerrors,noisetype)
+    # make_error_table(fname,noisetype)
 
